@@ -1,0 +1,13 @@
+name: elelem
+version: 0.1.0
+license: MPL2
+
+description: >
+  More details soon, though saying the name out loud gives you a clue.
+
+authors:
+  - nogginly@icloud.com
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
