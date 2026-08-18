@@ -25,15 +25,21 @@ module Elelem::Capability
       # assistant turn has been emitted. Strict servers reject scaffolding
       # interleaved between tool responses.
       DeferCompensationCarrier
+      # Export-side. Adjacent `role: "tool"` messages collapse into one MPSH
+      # user message, because the wire cannot express whether they arrived as
+      # one turn or several. Pairing survives via `call_id`; only the message
+      # boundary is lost.
+      CollapseAdjacentToolResults
     end
 
     def outcome(adaptation : Adaptation) : MPSH::Outcome
       case adaptation
-      in Adaptation::MoveSystemPrompt         then MPSH::Outcome::Restructured
-      in Adaptation::MergeConsecutiveRoles    then MPSH::Outcome::Compensated
-      in Adaptation::PrependUserPlaceholder   then MPSH::Outcome::Compensated
-      in Adaptation::DropEmptyMessage         then MPSH::Outcome::Degraded
-      in Adaptation::DeferCompensationCarrier then MPSH::Outcome::Compensated
+      in Adaptation::MoveSystemPrompt            then MPSH::Outcome::Restructured
+      in Adaptation::MergeConsecutiveRoles       then MPSH::Outcome::Compensated
+      in Adaptation::PrependUserPlaceholder      then MPSH::Outcome::Compensated
+      in Adaptation::DropEmptyMessage            then MPSH::Outcome::Degraded
+      in Adaptation::DeferCompensationCarrier    then MPSH::Outcome::Compensated
+      in Adaptation::CollapseAdjacentToolResults then MPSH::Outcome::Compensated
       end
     end
 
