@@ -1,7 +1,7 @@
 # MPSH Specification
 ## Minimal Portable Session History
 
-**Status**: Authoritative definition of the canonical format. Supersedes the scattered definitions in `llm-protocol-comparison.md` §4, `llm-stateful-session-design.md` §4, and `implementation-plan.md` §2.
+**Status**: Authoritative definition of the canonical format. Supersedes the scattered definitions in `LLM_PROTOCOL_COMPARISON.md` §4, the stateful-session design §4, and `IMPLEMENTATION_PLAN.md` §2.
 
 **Scope**: The canonical message format, its content block catalog, and the capability model that governs mapping to and from provider protocols. Does not cover the session tree, branching, or provider bindings.
 
@@ -119,7 +119,7 @@ Reasoning omitted by retention is **not an annotation**. Annotations record loss
 
 Both `tool_call` and `tool_result` carry a `server_executed` flag marking tools executed **inside the provider's infrastructure** — Anthropic's web search, Gemini's code execution — rather than dispatched by the client.
 
-?                        |Client-executed         |Server-executed                                
+&nbsp;                   |Client-executed         |Server-executed                                
 -------------------------|------------------------|-----------------------------------------------
 Who runs it              |Your tool framework     |The provider                                   
 Arrives as               |A call awaiting a result|A call *and* its result, already complete      
@@ -352,6 +352,9 @@ All structural. No API key, no model, no network.
 ---
 
 **Document Version**: 1.2
+
 **Last Updated**: 2026-08-17
+
 **Changes from 1.1**: Four rulings from Phase 0 implementation review. Foreign `reasoning` corrected from Degraded to Restructured, with Refused reserved for the mid-tool-call position. `refusal` given explicit outcomes: Restructured with a reason, Degraded without. Structural adaptations added as a second axis, classifying message merges and placeholders as Compensated. Reasoning retention introduced as a playback preference distinct from capability, with turn segmentation defined and the model-catalog question recorded as open. Three fixtures added.
+
 **Changes from 1.0**: Portability class replaced by namespaced `provider_metadata`. Added `server_executed`, `redacted` reasoning, `tool_result.exception`. Capability granularity moved to per-media-type. Prior-art evidence added for the loss-visibility rule.

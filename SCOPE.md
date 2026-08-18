@@ -36,7 +36,7 @@ Resolve at the first Phase 0 fixture.
 ### Conformance fixtures do not exist
 
 Phase 0's deliverable list includes the fixture set from
-`docs/mpsh-specification.md` §9. Types are proposed and ratified; fixtures are not
+`docs/MPSH_SPECIFICATION.md` §9. Types are proposed and ratified; fixtures are not
 written. They are the next piece of work and the thing that will compile the
 types for the first time.
 
@@ -110,9 +110,12 @@ single phase.
 
 Session tree, branching, scatter/gather, provider bindings, stateful handles,
 streaming, tool execution and dispatch, prompt caching, compaction. See
-`docs/implementation-plan.md` §7. `llm-stateful-session-design.md` is
-deliberately **not** in `docs/` — it describes bindings, drift markers and
-provider handles, none of which exist here, and committing it invites a
-contributor to start building them. It arrives with Phase 5. `MPSH::CallIdTable` exists because ID translation
+`docs/IMPLEMENTATION_PLAN.md` §7. The stateful-session design is deliberately **not** in `docs/` — it describes
+bindings, drift markers and provider handles, none of which exist here, and
+committing it invites a contributor to start building them. It arrives with
+Phase 5. `docs/PSR_BRANCHING_AND_SCATTER_GATHER.md` *is* present, despite also
+being Phase 5 material, because it is the source of the annotation concept
+Phase 0 already implements and of the view seam that keeps mappers
+branch-unaware. It carries a deferred-status banner. `MPSH::CallIdTable` exists because ID translation
 is needed for round-trip conformance now; it is shaped like what a binding will
 later hold, and is the only part of the deferred layer present.

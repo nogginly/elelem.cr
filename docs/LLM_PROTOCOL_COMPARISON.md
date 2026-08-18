@@ -640,7 +640,7 @@ Store images in a provider-neutral way:
 > - Mappers may synthesize messages, but **synthesized content is never stored**
 > - Loss must be recorded or refused, never silent
 >
-> Full treatment in `mpsh-specification.md`. The mapping rules below remain correct for text and images; the tool-calling tables that follow are new.
+> Full treatment in `MPSH_SPECIFICATION.md`. The mapping rules below remain correct for text and images; the tool-calling tables that follow are new.
 
 ---
 

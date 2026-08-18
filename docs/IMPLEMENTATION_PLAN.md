@@ -3,7 +3,7 @@
 
 **Scope**: Getting to four working protocol implementations against a shared canonical message contract. Stops short of the session tree, bindings, and scatter/gather — those come after.
 
-**Companion documents**: `llm-protocol-comparison.md` (mapping rules), `llm-stateful-session-design.md` (PSR + bindings), `psr-branching-and-scatter-gather.md` (tree + strategies).
+**Companion documents**: `LLM_PROTOCOL_COMPARISON.md` (mapping rules), the stateful-session design (PSR + bindings, not yet in this repository), `PSR_BRANCHING_AND_SCATTER_GATHER.md` (tree + strategies).
 
 ---
 
@@ -36,7 +36,7 @@ Everything in the "later" box can change freely without disturbing the implement
 
 ## 2. MPSH
 
-Defined authoritatively in **`mpsh-specification.md`**. Summarized here only for sequencing purposes:
+Defined authoritatively in **`MPSH_SPECIFICATION.md`**. Summarized here only for sequencing purposes:
 
 ```
 MPSH
@@ -138,7 +138,7 @@ Mapping bug              |Implementation error                   |Cheap
 Undeclared capability gap|The matrix is wrong                    |Cheap                                                        
 Genuine MPSH gap         |The format can't express something real|**Expensive** — a format change touching every implementation
 
-Full fixture set in `mpsh-specification.md` §9. The additions that matter most for sequencing:
+Full fixture set in `MPSH_SPECIFICATION.md` §9. The additions that matter most for sequencing:
 
 Fixture                                   |Targets                                             |Available from
 ------------------------------------------|----------------------------------------------------|--------------
@@ -211,6 +211,6 @@ Prompt caching and compaction                               |Optimizations on a 
 
 **Last Updated**: 2026-08-17
 
-**Changes from 2.0**: Phase 0 checklist corrected — "portability class on every block" was superseded by namespaced `provider_metadata` in `mpsh-specification.md` v1.1 and should have been removed then.
+**Changes from 2.0**: Phase 0 checklist corrected — "portability class on every block" was superseded by namespaced `provider_metadata` in `MPSH_SPECIFICATION.md` v1.1 and should have been removed then.
 
-**Changes from 1.0**: MPSH definition moved to `mpsh-specification.md`. Tool block shape un-deferred into Phase 0. Capability matrix and degradation outcomes added as Phase 0 deliverables. Conformance redefined as matrix-aware.
+**Changes from 1.0**: MPSH definition moved to `MPSH_SPECIFICATION.md`. Tool block shape un-deferred into Phase 0. Capability matrix and degradation outcomes added as Phase 0 deliverables. Conformance redefined as matrix-aware.

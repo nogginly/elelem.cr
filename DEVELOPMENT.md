@@ -6,7 +6,7 @@ break, and the procedure for adding a protocol.
 
 It deliberately does **not** restate design rationale. That lives in the design
 documents under `docs/`, which are the specification; where this document and
-`docs/mpsh-specification.md` disagree, the specification wins.
+`docs/MPSH_SPECIFICATION.md` disagree, the specification wins.
 
 ## Where things are written down
 
@@ -16,7 +16,7 @@ nobody can tell which paragraphs are still true.
 
 Document                                   |Changes                     |Holds                                                   
 -------------------------------------------|----------------------------|--------------------------------------------------------
-`docs/mpsh-specification.md` and companions|Rarely; a change is an event|Why MPSH is shaped this way                             
+`docs/MPSH_SPECIFICATION.md` and companions|Rarely; a change is an event|Why MPSH is shaped this way                             
 `DEVELOPMENT.md` (this file)               |Slowly                      |Layering, conventions, invariants, how to add a protocol
 `docs/protocols/<name>.md`                 |Per mapper                  |One protocol's declaration, gotchas, compensations      
 `SCOPE.md`                                 |Fast; shrinks               |What is outstanding                                     
@@ -213,6 +213,8 @@ itself is wrong for everyone.
 
 **Capability is declared per media type, not per block kind.** "Supports images"
 is too coarse for a model that takes PNG but not WEBP.
+
+Annotations are a category borrowed from `docs/PSR_BRANCHING_AND_SCATTER_GATHER.md`, which is otherwise deferred: persisted, never on the linearization path, never sent to a provider. Degradation events are the first entries; branch rankings will share the channel later.
 
 **Annotations record loss the caller did not ask for.** Requested trimming — for
 instance `ReasoningRetention` — is counted, not annotated. Mixing the two makes
