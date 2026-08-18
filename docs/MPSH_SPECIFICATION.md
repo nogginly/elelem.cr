@@ -218,6 +218,35 @@ Declare capability **per media type, not per block kind.** "Supports images" is 
 
 Kind-level capability remains meaningful only for non-payload blocks (`tool_call`, `tool_result`, `reasoning`).
 
+### Capability is a chain, not a predicate
+
+Implementing three of the four protocols found the same mistake three times, in three disguises. Each time the matrix stated a capability as one fact per protocol, and each time it was really a chain of conditions where any link can break.
+
+Link                                      |Question                                                           |Found by                                                                         
+------------------------------------------|-------------------------------------------------------------------|---------------------------------------------------------------------------------
+**Does the protocol have the concept?**   |Can a request express reasoning, or a server-executed tool, at all?|Declaring four profiles                                                          
+**Can the form hold this content?**       |A `reasoning_content` string cannot carry a payload with no text   |Round-tripping redacted reasoning; the block vanished while the matrix said Exact
+**Does this block belong to that vendor?**|One vendor's opaque item is unreadable by another                  |Declaring four profiles                                                          
+
+All three must hold for **Exact**. A single-cell matrix flattens them, which is why its rows keep needing to be split. Read the tables below as summaries of a chain, not as constants — and when a row seems to say something surprising, the question is usually which link is failing.
+
+The remainder of this section works through the second and third links, which are the two that are not obvious.
+
+### Wire form decides what a capability can hold
+
+Declaring that a protocol supports reasoning is not enough; *where* it puts one determines what survives.
+
+Form     |Where reasoning lives in a request|Carries an opaque payload?|Example                                  
+---------|----------------------------------|--------------------------|-----------------------------------------
+**Block**|A content block in the message    |Yes                       |Anthropic `thinking`, Gemini parts       
+**Item** |An item in the input array        |Yes                       |Responses API `reasoning` item           
+**Field**|A message-level string field      |**No** — text only        |`reasoning_content`, a de-facto extension
+**None** |Nowhere                           |No                        |Strict OpenAI Chat Completions           
+
+The consequence that the matrix originally missed: **redacted reasoning against a `Field` protocol is Degraded, not Exact.** Redacted reasoning is by definition a block with no text, whose content sits in `provider_metadata`. A string field has nothing to hold. Ownership does not save it, and neither does the protocol nominally supporting reasoning.
+
+`None` is not hypothetical either. `reasoning_content` is not in OpenAI's own specification — it is an extension implemented by vLLM, Ollama and others serving reasoning models over the Chat Completions protocol. A profile targeting OpenAI's endpoint strictly declares `None`; one targeting a self-hosted server declares `Field`. Same protocol, two profiles, which is the sharpest evidence yet that a profile describes a wire shape rather than an endpoint.
+
 ### Ownership is a property of the block, not the protocol
 
 Two capabilities cannot be declared per protocol at all, and attempting it is a mistake worth naming because it looks reasonable on paper.
@@ -383,9 +412,11 @@ All structural. No API key, no model, no network.
 
 ---
 
-**Document Version**: 1.3
+**Document Version**: 1.4
 
 **Last Updated**: 2026-08-18
+
+**Changes from 1.3**: Capability restated as a chain of three conditions rather than one predicate per protocol, after implementation found the same flattening error three times. Adds the wire-form axis (Block / Item / Field / None) governing what a declared capability can actually hold, and the consequence that redacted reasoning degrades against a text-only field. Notes that one protocol may need two profiles.
 
 **Changes from 1.2**: Corrections arising from implementing the capability model. `provider_metadata` is keyed by **vendor namespace**, defined in §4 against protocol and provider-instance identity. Ownership of `server_executed` and `reasoning` moved out of the per-protocol matrix into a derived rule (§7), since it is a property of a block seen from a protocol rather than of the protocol. Matrix rows split accordingly.
 

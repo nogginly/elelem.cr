@@ -14,7 +14,38 @@ outstanding belongs here, because nobody greps a codebase for open questions.
 
 ## MUST FIX
 
-Nothing outstanding. The Phase 0 entries — the unverified recursive `Block`
+### Export handles requests, not responses
+
+Acceptance criterion 8 — a live session started on Chat Completions, exported,
+and resumed on the Responses API — needs export to accept a provider
+*response*, which is a different shape from the request the conformance suite
+round-trips (`choices[0].message`, not `messages[]`).
+
+Round-trip conformance is unaffected and remains request-shaped. Fold this into
+Phase 2, since both OpenAI protocols need it and the client layer is where it
+gets used.
+
+### Decide what `text_fallback` means for round-trip identity
+
+No protocol carries `text_fallback`, so every binary block loses it on export.
+The conformance comparator does not check it, which means the loss is currently
+*invisible* rather than declared — the one thing this design is meant never to
+do.
+
+Two defensible answers, and the choice should be deliberate:
+
+- It is **local degradation-support metadata**, not conversation, and therefore
+  outside round-trip identity. Say so in the specification and in the
+  comparator.
+- It is **content** and its loss is a declared divergence, in which case the
+  comparator must name it and every binary fixture declares it.
+
+Settle before Phase 3: Anthropic is the first protocol where fallbacks actually
+fire, and deciding after that is deciding under pressure.
+
+---
+
+Otherwise nothing outstanding. The Phase 0 entries — the unverified recursive `Block`
 union, the plan's superseded checklist line, and the missing conformance
 fixtures — are all resolved. The union compiles, so mappers keep
 compiler-enforced exhaustiveness over the block catalog and the flat-form
@@ -79,10 +110,9 @@ placeholder now would say nothing.
 
 ### Per-protocol documentation
 
-`docs/protocols/<name>.md`, one per mapper, holding its capability declaration,
-its gotchas, and which fixtures it compensates on. Created with the first
-mapper, not before. Keeping this material out of `DEVELOPMENT.md` is what stops
-the spine growing into a monospec.
+`docs/protocols/CHAT_COMPLETIONS.md` exists. One per remaining mapper, written
+with that mapper rather than after it. Keeping this material out of
+`DEVELOPMENT.md` is what stops the spine growing into a monospec.
 
 ---
 
