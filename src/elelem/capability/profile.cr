@@ -20,6 +20,15 @@ module Elelem::Capability
     None
   end
 
+  # Where a reasoning item can live in a *request*, which is a different
+  # question from whether a response returns one.
+  enum ReasoningForm
+    Block # a content block (Anthropic)
+    Item  # an item in the input array (Responses)
+    Field # a message-level field, e.g. `reasoning_content`
+    None  # no home at all; replaying reasoning is impossible
+  end
+
   enum SystemPlacement
     InMessages   # Chat Completions `role: system` / `developer`
     Instructions # Responses API
@@ -49,6 +58,7 @@ module Elelem::Capability
     getter binary_form : BinaryForm
     getter tool_calls : ToolCallForm
     getter tool_results : ToolResultForm
+    getter reasoning : ReasoningForm
     # Whether the protocol has a notion of provider-run tools at all. Whether a
     # *given* call is one of this provider's own is a property of the block, not
     # of the profile — see `Resolver#own?`.
@@ -67,6 +77,7 @@ module Elelem::Capability
       @binary_form : BinaryForm = BinaryForm::Native,
       @tool_calls : ToolCallForm = ToolCallForm::Block,
       @tool_results : ToolResultForm = ToolResultForm::Blocks,
+      @reasoning : ReasoningForm = ReasoningForm::Block,
       @server_executed : Bool = false,
       @refusal_channel : Bool = false,
       @can_synthesize_user_message : Bool = true,

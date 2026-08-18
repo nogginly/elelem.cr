@@ -55,6 +55,16 @@ module Elelem::Capability
     # the turn rather than trimming it.
     private def reasoning_outcome(block : MPSH::ReasoningBlock, profile : Profile,
                                   nesting : Nesting) : MPSH::Outcome
+      # Ownership is necessary but not sufficient: a protocol with nowhere to
+      # put a reasoning item in a *request* cannot replay one, however plainly
+      # it belongs to that vendor. Implementing the mapper is what exposed this
+      # — the matrix had reasoning Exact for its own vendor on all four
+      # protocols, and Chat Completions has no standard field for it.
+      if profile.reasoning.none?
+        return MPSH::Outcome::Refused if nesting.mid_tool_call?
+        return MPSH::Outcome::Degraded
+      end
+
       return MPSH::Outcome::Exact if own?(block, profile)
       nesting.mid_tool_call? ? MPSH::Outcome::Refused : MPSH::Outcome::Restructured
     end
