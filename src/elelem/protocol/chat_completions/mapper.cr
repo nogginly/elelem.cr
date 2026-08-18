@@ -12,6 +12,14 @@ module Elelem::Protocol::ChatCompletions
   # Every outcome passes through `Report#record`, which is where policy is
   # enforced. A mapper that wants to lose something has to say so — there is no
   # path from here to the wire that quietly drops content.
+  # Text standing in for content the protocol could not carry where it
+  # belonged. This is a **protocol marker, not a note to a human**: the export
+  # direction recognises compensation scaffolding by its shape, and this string
+  # is part of that shape. It must stay stable, stay identical in both
+  # directions, and stay distinctive enough not to collide with real tool
+  # output. Improving the wording is a breaking change.
+  COMPENSATION_PLACEHOLDER = "[elelem: content returned separately in the following message]"
+
   class Mapper
     getter profile : Capability::Profile
     getter calls : MPSH::CallIdTable
@@ -28,6 +36,9 @@ module Elelem::Protocol::ChatCompletions
       report.reasoning_dropped = plan.dropped
 
       wire = [] of Wire::Message
+      # Compensation carriers are buffered rather than emitted inline. See
+      # `flush_compensation`.
+      pending = [] of Wire::Part
 
       if prompt = session.system_prompt
         # `InMessages` placement: the prompt becomes a message rather than a
@@ -39,45 +50,77 @@ module Elelem::Protocol::ChatCompletions
 
       session.messages.each_with_index do |message, index|
         case message.role
-        in MPSH::Role::User      then map_user(message, index, wire, report)
-        in MPSH::Role::Assistant then map_assistant(message, index, wire, report, plan)
+        in MPSH::Role::User      then map_user(message, index, wire, report, pending)
+        in MPSH::Role::Assistant then map_assistant(message, index, wire, report, plan, pending)
         end
       end
 
+      flush_compensation(wire, pending, report)
       {Wire::Request.new(model, wire), report}
+    end
+
+    # Emits the buffered carrier, if any, and clears the buffer.
+    #
+    # Ordering is not cosmetic. A single assistant turn may request several
+    # tools in parallel, and strict servers — Azure's OpenAI endpoint among them
+    # — require every `role: "tool"` message answering that turn to appear
+    # before anything else. Emitting a carrier inline after each result
+    # interleaves scaffolding between tool responses and is rejected, even
+    # though permissive servers such as Ollama and LM Studio accept it.
+    #
+    # So carriers are deferred until the run of tool messages ends, and several
+    # results' worth of content may ride in one carrier. This is a
+    # sequence-level adaptation, which is why it is recorded through
+    # `Structural` rather than resolved per block.
+    private def flush_compensation(wire : Array(Wire::Message),
+                                   pending : Array(Wire::Part),
+                                   report : Capability::Report) : Nil
+      return if pending.empty?
+
+      report.record(
+        Capability::Structural.outcome(Capability::Structural::Adaptation::DeferCompensationCarrier),
+        "compensation carrier deferred past #{pending.size} tool result(s)")
+
+      # The synthetic turn. It exists so the request is legal, carries content
+      # the protocol could not put where it belonged, and is flagged so that an
+      # export in this same process discards it rather than re-importing an
+      # OpenAI workaround as conversation. A real export, reading JSON from a
+      # server, has no flag and must recognise it structurally.
+      wire << Wire::Message.new("user", pending.dup, synthetic: true)
+      pending.clear
     end
 
     # A user message may become several wire messages: tool results split out
     # into `role: "tool"` messages, and compensation may append another.
     private def map_user(message : MPSH::Message, index : Int32,
-                         wire : Array(Wire::Message), report : Capability::Report) : Nil
+                         wire : Array(Wire::Message), report : Capability::Report,
+                         pending : Array(Wire::Part)) : Nil
       parts = [] of Wire::Part
-      compensation = [] of Wire::Part
 
       message.content.each do |block|
         case block
         when MPSH::ToolResultBlock
-          wire << tool_result_message(block, index, report, compensation)
+          wire << tool_result_message(block, index, report, pending)
         else
           part = render(block, index, report)
           parts << part if part
         end
       end
 
-      wire << Wire::Message.new("user", parts) unless parts.empty?
+      return if parts.empty?
 
-      unless compensation.empty?
-        # The synthetic turn. It exists so the request is legal, carries content
-        # the protocol could not put where it belonged, and is marked so the
-        # export direction discards it rather than re-importing an OpenAI
-        # workaround as though it were conversation.
-        wire << Wire::Message.new("user", compensation, synthetic: true)
-      end
+      # Genuine user content ends the run of tool messages, so any carrier goes
+      # out first — it belongs to the results above it, not to this turn.
+      flush_compensation(wire, pending, report)
+      wire << Wire::Message.new("user", parts)
     end
 
     private def map_assistant(message : MPSH::Message, index : Int32,
                               wire : Array(Wire::Message), report : Capability::Report,
-                              plan : Capability::Retention::Plan) : Nil
+                              plan : Capability::Retention::Plan,
+                              pending : Array(Wire::Part)) : Nil
+      # An assistant turn definitively closes the preceding run of tool results.
+      flush_compensation(wire, pending, report)
       parts = [] of Wire::Part
       calls = [] of Wire::ToolCall
       refusal : String? = nil
@@ -116,7 +159,7 @@ module Elelem::Protocol::ChatCompletions
     # the caller appends as a synthesized user message.
     private def tool_result_message(block : MPSH::ToolResultBlock, index : Int32,
                                     report : Capability::Report,
-                                    compensation : Array(Wire::Part)) : Wire::Message
+                                    pending : Array(Wire::Part)) : Wire::Message
       outcome = Capability::Resolver.outcome(block, profile)
       report.record(outcome, "tool result rendered as a role:tool message",
         index, MPSH::BlockKind::ToolResult)
@@ -129,8 +172,8 @@ module Elelem::Protocol::ChatCompletions
         else
           part = render(nested, index, report, Capability::Resolver::Nesting::InsideToolResult)
           if part
-            compensation << part
-            text << "[content returned separately: #{nested.kind.to_s.downcase}]"
+            pending << part
+            text << COMPENSATION_PLACEHOLDER
           end
         end
       end

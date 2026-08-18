@@ -21,14 +21,19 @@ module Elelem::Capability
       PrependUserPlaceholder
       DropEmptyMessage
       MoveSystemPrompt
+      # A compensation carrier held back until every tool result answering one
+      # assistant turn has been emitted. Strict servers reject scaffolding
+      # interleaved between tool responses.
+      DeferCompensationCarrier
     end
 
     def outcome(adaptation : Adaptation) : MPSH::Outcome
       case adaptation
-      in Adaptation::MoveSystemPrompt       then MPSH::Outcome::Restructured
-      in Adaptation::MergeConsecutiveRoles  then MPSH::Outcome::Compensated
-      in Adaptation::PrependUserPlaceholder then MPSH::Outcome::Compensated
-      in Adaptation::DropEmptyMessage       then MPSH::Outcome::Degraded
+      in Adaptation::MoveSystemPrompt         then MPSH::Outcome::Restructured
+      in Adaptation::MergeConsecutiveRoles    then MPSH::Outcome::Compensated
+      in Adaptation::PrependUserPlaceholder   then MPSH::Outcome::Compensated
+      in Adaptation::DropEmptyMessage         then MPSH::Outcome::Degraded
+      in Adaptation::DeferCompensationCarrier then MPSH::Outcome::Compensated
       end
     end
 
