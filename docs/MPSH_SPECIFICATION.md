@@ -70,7 +70,19 @@ This rules out modelling tool results as a message role — a design that only l
 
 ### Universal fields
 
-Every block and every message carries an optional **`provider_metadata`**: a map keyed by provider name, holding data meaningful only to that provider.
+Every block and every message carries an optional **`provider_metadata`**: a map keyed by **vendor namespace**, holding data meaningful only to whoever issued it.
+
+The key is not a protocol and not an endpoint. It names *whoever can read the payload back*, which is a coarser identity than either:
+
+Identity            |Example                    |Answers                                            |Is it the metadata key?
+--------------------|---------------------------|---------------------------------------------------|-----------------------
+**Vendor namespace**|`openai`                   |Whose opaque data is this, and who can interpret it|**Yes**                
+Protocol            |`openai.chat_completions`  |What shape does the request take                   |No                     
+Provider instance   |Ollama at `localhost:11434`|Where is it sent, which models are served          |No                     
+
+The distinction has teeth in both directions. One vendor may offer several protocols — an encrypted reasoning item issued over OpenAI's Chat Completions is replayable over its Responses API, because the party that can decrypt it is unchanged. And one protocol may be served by many providers: Ollama, LM Studio and vLLM all speak Chat Completions, and none of them issues OpenAI's ciphertext. A key that named the protocol would fail the first case; one that named the endpoint would fail both.
+
+Where a vendor offers exactly one protocol the two coincide, which is why the distinction is easy to miss until a second protocol from the same vendor arrives.
 
 ```
 provider_metadata: { "openai": {...}, "anthropic": {...} }
@@ -206,27 +218,46 @@ Declare capability **per media type, not per block kind.** "Supports images" is 
 
 Kind-level capability remains meaningful only for non-payload blocks (`tool_call`, `tool_result`, `reasoning`).
 
+### Ownership is a property of the block, not the protocol
+
+Two capabilities cannot be declared per protocol at all, and attempting it is a mistake worth naming because it looks reasonable on paper.
+
+"Exact for its own tools, degraded for everyone else's" is not a fact about a protocol. Anthropic's web search and Gemini's code execution are both server-executed, and each is opaque to the other; a single flag per protocol answers the wrong question. The same applies to reasoning: whether an item is replayable depends on who issued it, not on what the target protocol supports.
+
+The answer is already in the data. An item a vendor issued and needs echoed back carries that vendor's `provider_metadata` key, and nothing else does. So:
+
+Block state                         |Meaning                                    |Outcome                                             
+------------------------------------|-------------------------------------------|----------------------------------------------------
+No `provider_metadata` at all       |Portable by construction; belongs to no one|Exact everywhere                                    
+Carries the target's vendor key     |The target issued it and can read it back  |Exact                                               
+Carries only some other vendor's key|Opaque to the target                       |Restructured (reasoning), Degraded (server-executed)
+
+A protocol-level declaration remains necessary but not sufficient: a protocol that has no notion of server-executed tools degrades them regardless of who ran them.
+
+The matrix below therefore reads its `server_executed` and `reasoning` rows as *rules parameterized by ownership*, not as per-protocol constants.
+
 ### Capability matrix
 
 Values below are a starting point, not a source of truth — **each implementation must confirm against current provider documentation**, since capabilities change more often than protocol shapes do.
 
-Block                                          |Chat Completions                     |Responses                                      |Anthropic                          |Gemini                      
------------------------------------------------|-------------------------------------|-----------------------------------------------|-----------------------------------|----------------------------
-`text`                                         |Exact                                |Exact                                          |Exact                              |Exact                       
-`image` (in user message)                      |Restructured (data URI)              |Restructured (data URI)                        |Exact                              |Exact                       
-`audio` (in user message)                      |Restructured, model-gated            |Restructured, model-gated                      |**Refused** → degrade to transcript|Exact                       
-`document`                                     |Restructured                         |Restructured                                   |Exact                              |Exact                       
-`tool_call` (client)                           |Restructured (hoist to field)        |Restructured (item)                            |Exact                              |Exact                       
-`tool_result` (text only)                      |Restructured (`role: "tool"` message)|Restructured (item)                            |Exact                              |Exact                       
-**`tool_result` (containing image)**           |**Compensated**                      |**Compensated**                                |**Exact**                          |Verify — likely compensated 
-`tool_call` / `tool_result` (`server_executed`)|**Degraded** → text                  |Provider-specific; exact only for its own tools|Exact only for its own tools       |Exact only for its own tools
-`reasoning` (foreign)                          |Restructured                         |Restructured                                   |Restructured                       |Restructured                
-`reasoning` (own provider)                     |Exact                                |Exact                                          |Exact                              |Exact                       
-`reasoning` (foreign, mid-tool-call)           |**Refused**                          |**Refused**                                    |**Refused**                        |**Refused**                 
-`refusal` (with `reason`)                      |Restructured → text                  |Restructured → text                            |Restructured → text                |Restructured → text         
-`refusal` (no `reason`)                        |**Degraded**                         |**Degraded**                                   |**Degraded**                       |**Degraded**                
+Block                                                   |Chat Completions                     |Responses                |Anthropic                          |Gemini                     
+--------------------------------------------------------|-------------------------------------|-------------------------|-----------------------------------|---------------------------
+`text`                                                  |Exact                                |Exact                    |Exact                              |Exact                      
+`image` (in user message)                               |Restructured (data URI)              |Restructured (data URI)  |Exact                              |Exact                      
+`audio` (in user message)                               |Restructured, model-gated            |Restructured, model-gated|**Refused** → degrade to transcript|Exact                      
+`document`                                              |Restructured                         |Restructured             |Exact                              |Exact                      
+`tool_call` (client)                                    |Restructured (hoist to field)        |Restructured (item)      |Exact                              |Exact                      
+`tool_result` (text only)                               |Restructured (`role: "tool"` message)|Restructured (item)      |Exact                              |Exact                      
+**`tool_result` (containing image)**                    |**Compensated**                      |**Compensated**          |**Exact**                          |Verify — likely compensated
+`tool_call` / `tool_result` (`server_executed`, own)    |**Degraded** → text (no such concept)|Exact                    |Exact                              |Exact                      
+`tool_call` / `tool_result` (`server_executed`, foreign)|**Degraded** → text                  |**Degraded** → text      |**Degraded** → text                |**Degraded** → text        
+`reasoning` (foreign)                                   |Restructured                         |Restructured             |Restructured                       |Restructured               
+`reasoning` (own vendor, or unattributed)               |Exact                                |Exact                    |Exact                              |Exact                      
+`reasoning` (foreign, mid-tool-call)                    |**Refused**                          |**Refused**              |**Refused**                        |**Refused**                
+`refusal` (with `reason`)                               |Restructured → text                  |Restructured → text      |Restructured → text                |Restructured → text        
+`refusal` (no `reason`)                                 |**Degraded**                         |**Degraded**             |**Degraded**                       |**Degraded**               
 
-Three rows deserve attention. The **image-bearing tool result** is what forced this entire model, and demonstrates why the union rule is right: an intersection format would have deleted a capability Claude offers natively to accommodate a protocol that lacks it. The **server-executed** row shows a capability that is exact for exactly one provider and degrades everywhere else — the sharpest case of an asymmetry a format-conversion model cannot represent. The **foreign reasoning** row was Degraded in v1.1 and is corrected here: nothing leaves MPSH, since the block is retained and only the unreadable payload is shed by namespacing. Calling it a loss would make `strict` refuse every cross-provider handoff of a reasoning-model session — precisely the move this format exists to permit.
+Three rows deserve attention. The **image-bearing tool result** is what forced this entire model, and demonstrates why the union rule is right: an intersection format would have deleted a capability Claude offers natively to accommodate a protocol that lacks it. The **server-executed** rows show a capability that is exact for exactly one vendor and degrades everywhere else — the sharpest case of an asymmetry a format-conversion model cannot represent, and the one that forced ownership to be derived from the block rather than declared per protocol. The **foreign reasoning** row was Degraded in v1.1 and is corrected here: nothing leaves MPSH, since the block is retained and only the unreadable payload is shed by namespacing. Calling it a loss would make `strict` refuse every cross-provider handoff of a reasoning-model session — precisely the move this format exists to permit.
 
 ### Compensation, illustrated
 
@@ -272,16 +303,16 @@ Degradation events are recorded as **annotations** — the same off-path metadat
 
 Every implementation must map in both directions. The export direction has obligations the import direction doesn't:
 
-Obligation                      |Detail                                                                                                        
---------------------------------|--------------------------------------------------------------------------------------------------------------
-Normalize roles                 |`model`, `developer`, `tool` → canonical roles; tool results become blocks in a user message                  
-Mint MPSH identifiers           |Record `provider_id → mpsh_id` in binding translation state                                                   
-Split fused representations     |A `data:` URI becomes raw base64 plus a media type                                                            
-Un-hoist fields into blocks     |`tool_calls` field → `tool_call` blocks                                                                       
-Namespace provider data         |Anything not canonically representable goes under `provider_metadata[<provider>]`, never into canonical fields
-Flag server-executed tools      |Provider-run tool calls and results marked `server_executed: true` so no client ever dispatches them          
-Preserve redacted reasoning     |Reasoning that occurred but was withheld becomes `reasoning(redacted: true)`, not an omission                 
-Discard compensation scaffolding|A synthetic user message this client generated must not be re-imported as if it were real                     
+Obligation                      |Detail                                                                                                      
+--------------------------------|------------------------------------------------------------------------------------------------------------
+Normalize roles                 |`model`, `developer`, `tool` → canonical roles; tool results become blocks in a user message                
+Mint MPSH identifiers           |Record `provider_id → mpsh_id` in binding translation state                                                 
+Split fused representations     |A `data:` URI becomes raw base64 plus a media type                                                          
+Un-hoist fields into blocks     |`tool_calls` field → `tool_call` blocks                                                                     
+Namespace provider data         |Anything not canonically representable goes under `provider_metadata[<vendor>]`, never into canonical fields
+Flag server-executed tools      |Provider-run tool calls and results marked `server_executed: true` so no client ever dispatches them        
+Preserve redacted reasoning     |Reasoning that occurred but was withheld becomes `reasoning(redacted: true)`, not an omission               
+Discard compensation scaffolding|A synthetic user message this client generated must not be re-imported as if it were real                   
 
 That last one is only achievable if compensation is generated at map time and never round-tripped. It is the practical reason rule 2 of §1 is stated as an invariant rather than a guideline.
 
@@ -334,7 +365,8 @@ All structural. No API key, no model, no network.
 - [ ] `tool_result` carries `exception` distinct from `is_error`
 - [ ] `server_executed` on both `tool_call` and `tool_result`; never dispatched by the client
 - [ ] MPSH mints its own `call_id`; provider IDs in binding translation state
-- [ ] `provider_metadata` available on every block and message, keyed by provider name
+- [ ] `provider_metadata` available on every block and message, keyed by **vendor namespace** — not protocol, not endpoint
+- [ ] Ownership of `server_executed` and `reasoning` derived from the block's metadata, never declared per protocol
 - [ ] Reasoning retained structurally, including `redacted` with no text
 - [ ] Binary payloads support inline and reference forms
 - [ ] Raw base64 + separate media type; no `data:` URIs in storage
@@ -351,9 +383,11 @@ All structural. No API key, no model, no network.
 
 ---
 
-**Document Version**: 1.2
+**Document Version**: 1.3
 
-**Last Updated**: 2026-08-17
+**Last Updated**: 2026-08-18
+
+**Changes from 1.2**: Corrections arising from implementing the capability model. `provider_metadata` is keyed by **vendor namespace**, defined in §4 against protocol and provider-instance identity. Ownership of `server_executed` and `reasoning` moved out of the per-protocol matrix into a derived rule (§7), since it is a property of a block seen from a protocol rather than of the protocol. Matrix rows split accordingly.
 
 **Changes from 1.1**: Four rulings from Phase 0 implementation review. Foreign `reasoning` corrected from Degraded to Restructured, with Refused reserved for the mid-tool-call position. `refusal` given explicit outcomes: Restructured with a reason, Degraded without. Structural adaptations added as a second axis, classifying message merges and placeholders as Compensated. Reasoning retention introduced as a playback preference distinct from capability, with turn segmentation defined and the model-catalog question recorded as open. Three fixtures added.
 

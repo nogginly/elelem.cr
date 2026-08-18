@@ -238,6 +238,18 @@ abstraction is the first protocol from a different family.
    form, tool call and result forms, structural rules. Verify against current
    provider documentation, not memory — capabilities drift faster than protocol
    shapes.
+
+   A `Profile` describes a **protocol**, never an endpoint: Ollama, LM Studio
+   and vLLM all speak Chat Completions and share one profile. Its
+   `metadata_key` names the **vendor** whose opaque data can be replayed, which
+   is a different identity again — both OpenAI protocols declare `openai`,
+   because an encrypted reasoning item issued over one is readable over the
+   other.
+
+   Two things are *not* declarable here. Whether a server-executed tool or a
+   reasoning item belongs to the target is a property of the block, derived from
+   its `provider_metadata` by `Resolver#own?`. A profile only says whether the
+   protocol has the concept at all — necessary, not sufficient.
 2. **Write the map direction.** MPSH view in, request body out. Every outcome
    goes through `Report#record`; that is where policy is enforced, and where a
    mapper that wants to lose something has to say so.

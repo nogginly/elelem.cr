@@ -14,60 +14,50 @@ outstanding belongs here, because nobody greps a codebase for open questions.
 
 ## MUST FIX
 
-### Nothing has been compiled
-
-Phase 0 has passed `ameba` and `crystal spec`, but the spec suite is empty, so
-essentially no code has been through the type checker. Crystal only checks paths
-it actually instantiates. Expect the first fixture to surface several errors at
-once.
-
-**Highest-risk construct**: `MPSH::Block` is a recursive union alias —
-`ToolResultBlock#content : Array(Block)` forward-references the alias that
-includes `ToolResultBlock`. This mirrors `JSON::Any` and should be legal, but it
-is unverified and load-bearing.
-
-*If it does not compile*: fall back to an abstract base class plus a `kind` enum.
-The cost is real and should be recorded here if paid — mappers lose
-compiler-enforced exhaustiveness over the block catalog, which is the single
-guard against a mapper silently forgetting `audio`.
-
-Resolve at the first Phase 0 fixture.
-
-### Conformance fixtures do not exist
-
-Phase 0's deliverable list includes the fixture set from
-`docs/MPSH_SPECIFICATION.md` §9. Types are proposed and ratified; fixtures are not
-written. They are the next piece of work and the thing that will compile the
-types for the first time.
-
-The three fixtures arising from Phase 0 rulings are now in the specification's
-§9 list: refusal with and without `reason`, consecutive same-role messages
-against an alternation-requiring profile, and reasoning under each retention
-mode with an open tool-calling turn.
+Nothing outstanding. The Phase 0 entries — the unverified recursive `Block`
+union, the plan's superseded checklist line, and the missing conformance
+fixtures — are all resolved. The union compiles, so mappers keep
+compiler-enforced exhaustiveness over the block catalog and the flat-form
+fallback was not needed.
 
 ---
 
 ## WILL FIX
 
-### Model awareness, and whether a model catalog should exist
+### The third identity: providers, and whether a model catalog should exist
 
-Everything in this shard is keyed on **protocol**. The requirement that
-motivated `ReasoningRetention::CompletedTurns` is keyed on **model** — one model
-family asks that reasoning be dropped once a turn closes, regardless of the
-protocol it is reached through.
+Phase 0 established two identities and needs a third.
 
-Open questions, parked until the protocol layer exists and can be argued against
-something concrete:
+Identity             |Where it lives now    |Answers                                            
+---------------------|----------------------|---------------------------------------------------
+**Vendor namespace** |`Profile#metadata_key`|Whose opaque data is this, and who can read it back
+**Protocol**         |`Profile#provider`    |What shape does the request take                   
+**Provider instance**|Does not exist yet    |Where is it sent, which models are served          
 
-- Should a model catalog exist, independent of protocol?
+The third arrives with the client layer, and it is genuinely many-to-one:
+Ollama, LM Studio and vLLM all serve Chat Completions, and none of them issues
+OpenAI's encrypted reasoning items. A provider is an endpoint plus a protocol
+plus the models available there.
+
+That last part is where the parked model-catalog question attaches, because the
+two turned out to be the same question. `ReasoningRetention::CompletedTurns`
+exists for a requirement keyed on **model**, not protocol — one model family
+asks that reasoning be dropped once a turn closes. Declared media support has
+the same problem in miniature: both OpenAI profiles list audio media types, but
+audio support is model-gated in practice, and a self-hosted server speaking Chat
+Completions may support none of it.
+
+Open questions:
+
+- Should a model catalog exist, keyed independently of protocol, and is it the
+  same thing as a provider's model list or a separate layer?
 - What is the minimal preference set it carries? Reasoning retention is one.
-  There are probably two or three others, and the discipline is to keep the list
-  short.
+  Media support narrowing is a likely second.
 - **The trap**: a catalog is a second place where "what this endpoint wants" is
-  decided. If a preference can override capability rather than only constrain
-  playback, it becomes a back door around the capability model. Retention is
-  safe precisely because it can only ask for *less* than the protocol can carry.
-  Any candidate preference failing that test does not belong in the catalog.
+  decided. A preference may only ask for *less* than the protocol can carry —
+  narrowing declared media, or trimming playback. One that can *add* capability,
+  or override a refusal, is a back door around the capability model. Any
+  candidate failing that test does not belong in the catalog.
 
 ### `tool_result.content` as a nested block list
 
