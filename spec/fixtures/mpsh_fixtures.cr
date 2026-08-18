@@ -193,13 +193,22 @@ module Elelem::Fixtures
   end
 
   # Arrives already complete. A client that dispatches this is broken.
+  #
+  # Attributed to the provider that ran it: a server-executed tool is exact only
+  # for its own provider, so the metadata key is what makes this fixture
+  # discriminating rather than merely present.
   def server_executed_tool : M::Session
     args = M::Object{"query" => "crystal lang shards".as(M::Value)}
+    call = M::ToolCallBlock.new(CALL_SEARCH, "web_search", args, server_executed: true)
+    call.put_meta("anthropic", "tool_name", "web_search")
+    result = M::ToolResultBlock.new(CALL_SEARCH, blocks(text("three results")),
+      server_executed: true)
+    result.put_meta("anthropic", "tool_name", "web_search")
+
     session(
       user(text("Search for Crystal shards.")),
-      assistant(M::ToolCallBlock.new(CALL_SEARCH, "web_search", args, server_executed: true)),
-      user(M::ToolResultBlock.new(CALL_SEARCH, blocks(text("three results")),
-        server_executed: true)),
+      assistant(call),
+      user(result),
       assistant(text("Here's what I found."))
     )
   end
@@ -234,11 +243,18 @@ module Elelem::Fixtures
 
   # An open turn: the tool call has not been answered, so the reasoning block
   # sits mid-tool-call and retention must not trim it.
+  #
+  # Attributed, and that attribution is the whole point. An unattributed
+  # reasoning block is portable and maps exactly anywhere; only an opaque one
+  # its issuer requires replayed unmodified can make this position a refusal.
   def reasoning_mid_tool_call : M::Session
+    reasoning = M::ReasoningBlock.new(redacted: true)
+    reasoning.put_meta("openai", "encrypted_content", "b3BhcXVl")
+
     session(
       user(text("What's the weather in Kyoto?")),
       assistant(
-        M::ReasoningBlock.new(redacted: true),
+        reasoning,
         M::ToolCallBlock.new(CALL_WEATHER, "get_weather", M::Object.new)
       )
     )

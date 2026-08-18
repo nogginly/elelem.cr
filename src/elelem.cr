@@ -18,5 +18,11 @@ require "./elelem/capability/resolver"
 require "./elelem/capability/structural"
 require "./elelem/capability/retention"
 
+# Protocol layer. Capability declarations only for now; mappers follow.
+require "./elelem/protocol/chat_completions"
+require "./elelem/protocol/responses"
+require "./elelem/protocol/anthropic"
+require "./elelem/protocol/gemini"
+
 module Elelem
 end

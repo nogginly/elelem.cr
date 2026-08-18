@@ -33,7 +33,7 @@ module Elelem::Capability
       in MPSH::ToolResultBlock
         tool_result_outcome(block, profile)
       in MPSH::ReasoningBlock
-        reasoning_outcome(profile, nesting)
+        reasoning_outcome(block, profile, nesting)
       in MPSH::RefusalBlock
         # Ruling: the session plays back as it happened. A past refusal is just
         # history, and carrying its text to a provider with no refusal channel
@@ -53,9 +53,32 @@ module Elelem::Capability
     # The exception is real. Some providers require a reasoning item be replayed
     # unmodified between a tool call and its result; dropping one there breaks
     # the turn rather than trimming it.
-    private def reasoning_outcome(profile : Profile, nesting : Nesting) : MPSH::Outcome
-      return MPSH::Outcome::Exact if profile.own_reasoning?
+    private def reasoning_outcome(block : MPSH::ReasoningBlock, profile : Profile,
+                                  nesting : Nesting) : MPSH::Outcome
+      return MPSH::Outcome::Exact if own?(block, profile)
       nesting.mid_tool_call? ? MPSH::Outcome::Refused : MPSH::Outcome::Restructured
+    end
+
+    # Does this block belong to the protocol being mapped to?
+    #
+    # Declaring this on the `Profile` was wrong, and declaring the four profiles
+    # is what exposed it: "exact for its own tools, degraded for everyone
+    # else's" is not a fact about a protocol, it is a fact about a *block seen
+    # from* a protocol. The answer is already present in the data — an item that
+    # a provider issued and needs echoed back carries that provider's
+    # `provider_metadata` key, and nothing else does.
+    #
+    # A block with no provider metadata at all is portable by construction:
+    # plain reasoning text belongs to no one and maps exactly everywhere.
+    #
+    # Note this tests `metadata_key`, not `provider`. The vendor that can read
+    # an opaque payload back is not the same identity as the protocol carrying
+    # it — one vendor may offer two protocols, and one protocol may be served by
+    # many providers.
+    private def own?(block, profile : Profile) : Bool
+      metadata = block.provider_metadata
+      return true if metadata.empty?
+      metadata.has_key?(profile.metadata_key)
     end
 
     private def binary_outcome(block : MPSH::BinaryBlock, profile : Profile,
@@ -90,10 +113,13 @@ module Elelem::Capability
       return MPSH::Outcome::Refused if profile.tool_calls.none?
 
       if block.server_executed?
-        # A provider-run call is never dispatched by a client, and almost never
-        # has an equivalent elsewhere. Where it has none, the result survives as
+        # A provider-run call is never dispatched by a client, and it is exact
+        # only for the provider that ran it. Anthropic's web search is not
+        # Gemini's, however well both support the concept — so the profile's
+        # flag is necessary and not sufficient. Elsewhere the result survives as
         # conversation and the tool framing does not.
-        return profile.server_executed? ? MPSH::Outcome::Exact : MPSH::Outcome::Degraded
+        return MPSH::Outcome::Exact if profile.server_executed? && own?(block, profile)
+        return MPSH::Outcome::Degraded
       end
 
       profile.tool_calls.block? ? MPSH::Outcome::Exact : MPSH::Outcome::Restructured
@@ -101,7 +127,9 @@ module Elelem::Capability
 
     private def tool_result_outcome(block : MPSH::ToolResultBlock, profile : Profile) : MPSH::Outcome
       return MPSH::Outcome::Refused if profile.tool_results.none?
-      return MPSH::Outcome::Degraded if block.server_executed? && !profile.server_executed?
+      if block.server_executed?
+        return MPSH::Outcome::Degraded unless profile.server_executed? && own?(block, profile)
+      end
 
       worst = profile.tool_results.blocks? ? MPSH::Outcome::Exact : MPSH::Outcome::Restructured
       block.content.each do |nested|
