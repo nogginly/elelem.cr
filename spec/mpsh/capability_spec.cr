@@ -115,10 +115,20 @@ describe "capability resolution" do
   end
 
   describe "reasoning" do
-    it "is exact for the provider that produced it" do
+    it "is exact for the provider that produced it, where the form can hold it" do
+      # Both protocols own this block. Only one can carry it: the Responses API
+      # models reasoning as an item, which keeps an opaque payload, while Chat
+      # Completions has only a text field.
       session = Elelem::Fixtures.reasoning_with_provider_payload
-      outcome_of(session, 1, 0, CHAT).should eq(M::Outcome::Exact)
       outcome_of(session, 1, 0, RESPONSES).should eq(M::Outcome::Exact)
+    end
+
+    it "degrades redacted reasoning where the wire form carries only text" do
+      # Ownership plus a declared wire home is still not sufficient — the form
+      # has to be able to hold what the block actually contains. Redacted
+      # reasoning has no text at all.
+      session = Elelem::Fixtures.reasoning_with_provider_payload
+      outcome_of(session, 1, 0, CHAT).should eq(M::Outcome::Degraded)
     end
 
     it "restructures for a foreign provider rather than counting as loss" do

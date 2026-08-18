@@ -65,6 +65,16 @@ module Elelem::Capability
         return MPSH::Outcome::Degraded
       end
 
+      # A message-level field carries text and nothing else. Redacted reasoning
+      # is precisely the case with no text — the content lives in
+      # `provider_metadata`, which the field cannot hold — so ownership does not
+      # save it. Found by round-tripping the fixture: the block vanished
+      # entirely while the matrix claimed Exact.
+      if block.redacted? && block.text.nil? && profile.reasoning.field?
+        return MPSH::Outcome::Refused if nesting.mid_tool_call?
+        return MPSH::Outcome::Degraded
+      end
+
       return MPSH::Outcome::Exact if own?(block, profile)
       nesting.mid_tool_call? ? MPSH::Outcome::Refused : MPSH::Outcome::Restructured
     end

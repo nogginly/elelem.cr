@@ -120,8 +120,30 @@ module Elelem::Protocol::ChatCompletions
 
     private def tool_result(message : Wire::Message) : MPSH::ToolResultBlock
       provider_id = message.tool_call_id || ""
-      MPSH::ToolResultBlock.new(calls.mpsh_id(provider_id),
-        [MPSH::TextBlock.new(text_of(message)).as(MPSH::Block)])
+      MPSH::ToolResultBlock.new(calls.mpsh_id(provider_id), split_placeholders(text_of(message)))
+    end
+
+    # A tool result arrives as one string, and the placeholders inside it mark
+    # where non-text content belonged. Splitting on the marker restores the
+    # block boundaries, which is what lets the carrier be absorbed back into the
+    # right positions rather than appended.
+    #
+    # Splitting on the marker itself rather than on newlines matters: genuine
+    # tool output contains newlines, and splitting on those would shred it.
+    private def split_placeholders(body : String) : Array(MPSH::Block)
+      return [] of MPSH::Block if body.empty?
+
+      blocks = [] of MPSH::Block
+      segments = body.split(COMPENSATION_PLACEHOLDER)
+
+      segments.each_with_index do |segment, index|
+        trimmed = segment.strip('\n')
+        blocks << MPSH::TextBlock.new(trimmed) unless trimmed.empty?
+        # Every split point but the last trailing one had a placeholder.
+        blocks << MPSH::TextBlock.new(COMPENSATION_PLACEHOLDER) if index < segments.size - 1
+      end
+
+      blocks
     end
 
     private def assistant(session : MPSH::Session, message : Wire::Message) : Nil
@@ -154,7 +176,10 @@ module Elelem::Protocol::ChatCompletions
       in String
         body.empty? ? [] of MPSH::Block : [MPSH::TextBlock.new(body).as(MPSH::Block)]
       in Array(Wire::Part)
-        body.compact_map { |part| part_to_block(part) }
+        # `compact_map` infers the union of what `part_to_block` can actually
+        # return — four block kinds — which is narrower than `MPSH::Block`.
+        # Widen at the element, not the array.
+        body.compact_map { |part| part_to_block(part).as(MPSH::Block?) }
       in Nil
         [] of MPSH::Block
       end
