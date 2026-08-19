@@ -1,4 +1,5 @@
 require "./wire/request"
+require "./wire/response"
 require "./mapper"
 require "../../mpsh/session"
 require "../../mpsh/translation"
@@ -53,6 +54,48 @@ module Elelem::Protocol::Responses
       flush_assistant(session, assistant)
       flush_run(session, run)
       session
+    end
+
+    # The response direction.
+    #
+    # `output[]` is walked entire — it is the reply's parts, not a list of
+    # alternatives — and every item type it can hold is an assistant item, so
+    # the gathering that `export` does across a whole conversation collapses
+    # into a single pass with no flushing at all.
+    def export_reply(body : String) : MPSH::Message
+      export_reply(Wire::Response.from_json(body))
+    end
+
+    def export_reply(response : Wire::Response) : MPSH::Message
+      blocks = [] of MPSH::Block
+
+      response.output.each do |item|
+        case item
+        when Wire::ReasoningItem
+          blocks << reasoning(item)
+        when Wire::FunctionCallItem
+          blocks << MPSH::ToolCallBlock.new(
+            calls.mpsh_id(item.call_id), item.name, parse_arguments(item.arguments))
+        when Wire::RefusalItem
+          blocks << MPSH::RefusalBlock.new(item.reason)
+        when Wire::MessageItem
+          blocks.concat(parts_to_blocks(item.content))
+        when Wire::FunctionCallOutputItem
+          # A tool output is something the caller sends; a provider never
+          # returns one. Ignored rather than raised on, since a compatibility
+          # server echoing input back is odd but not fatal.
+          nil
+        end
+      end
+
+      reply = MPSH::Message.new(MPSH::Role::Assistant, blocks,
+        response.model.try { |model| MPSH::Provenance.new(NAME, model) })
+
+      response.status.try { |value| reply.put_meta(METADATA_KEY, "status", value) }
+      response.id.try { |value| reply.put_meta(METADATA_KEY, "response_id", value) }
+      response.usage.try { |usage| reply.put_meta(METADATA_KEY, "usage", usage.to_metadata) }
+
+      reply
     end
 
     private def message_item(session : MPSH::Session, item : Wire::MessageItem,

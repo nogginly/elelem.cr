@@ -1,4 +1,5 @@
 require "./wire/request"
+require "./wire/response"
 require "./mapper"
 require "../../mpsh/session"
 require "../../mpsh/translation"
@@ -34,6 +35,35 @@ module Elelem::Protocol::Anthropic
       end
 
       session
+    end
+
+    # The response direction.
+    #
+    # The shallowest of the four, because the reply *is* the top-level object:
+    # `content[]` at the root, no wrapper, no index to pick, and every block
+    # type already handled by `to_block` on the request side.
+    #
+    # The one thing that must not go wrong is `server_tool_use`. It arrives
+    # already executed, and `to_block` marks it `server_executed: true` so the
+    # caller's `reject(&.server_executed?)` keeps it out of the dispatch loop.
+    # Reading it as an ordinary `tool_use` would be a correctness bug, not a
+    # fidelity one — the caller would be asked to run a tool it does not have.
+    def export_reply(body : String) : MPSH::Message
+      export_reply(Wire::Response.from_json(body))
+    end
+
+    def export_reply(response : Wire::Response) : MPSH::Message
+      blocks = response.content.compact_map { |block| to_block(block).as(MPSH::Block?) }
+
+      reply = MPSH::Message.new(MPSH::Role::Assistant, blocks,
+        response.model.try { |model| MPSH::Provenance.new(NAME, model) })
+
+      response.stop_reason.try { |value| reply.put_meta(METADATA_KEY, "stop_reason", value) }
+      response.stop_sequence.try { |value| reply.put_meta(METADATA_KEY, "stop_sequence", value) }
+      response.id.try { |value| reply.put_meta(METADATA_KEY, "response_id", value) }
+      response.usage.try { |usage| reply.put_meta(METADATA_KEY, "usage", usage.to_metadata) }
+
+      reply
     end
 
     # Scaffolding invented to satisfy the first-user rule. Recognised by its

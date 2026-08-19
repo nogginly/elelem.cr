@@ -1,4 +1,5 @@
 require "./wire/request"
+require "./wire/response"
 require "./mapper"
 require "../../mpsh/session"
 require "../../mpsh/translation"
@@ -54,6 +55,69 @@ module Elelem::Protocol::Gemini
       end
 
       session
+    end
+
+    # The response direction.
+    #
+    # `candidates[]` is the alternatives plural, so index 0 is the reply.
+    #
+    # The awkward part is pairing, and it is awkward in a new way here. On the
+    # request side an ordinal is counted across the whole session, so
+    # `name#0` is stable and both directions agree on it. A reply is not part
+    # of that count: its calls have not been mapped yet, and minting against
+    # `name#0` would collide with a key the request side has already bound,
+    # handing back an existing call's identifier.
+    #
+    # So reply calls are keyed in their own space. Only the function *name*
+    # has to survive — `function_name` recovers it by splitting at the last
+    # `#` — and the next `map` rebinds every call to its real session ordinal
+    # before any result is rendered. The reply-scoped key is provisional by
+    # construction, which is why it is safe for it to be arbitrary.
+    def export_reply(body : String) : MPSH::Message
+      export_reply(Wire::Response.from_json(body))
+    end
+
+    def export_reply(response : Wire::Response) : MPSH::Message
+      candidate = response.candidate
+      unless candidate
+        raise MalformedResponseError.new(NAME, "response has no candidates")
+      end
+
+      blocks = [] of MPSH::Block
+      ordinals = Hash(String, Int32).new(0)
+
+      candidate.content.parts.each do |part|
+        block = reply_block(part, ordinals)
+        blocks << block if block
+      end
+
+      reply = MPSH::Message.new(MPSH::Role::Assistant, blocks,
+        response.model_version.try { |model| MPSH::Provenance.new(NAME, model) })
+
+      candidate.finish_reason.try { |value| reply.put_meta(METADATA_KEY, "finishReason", value) }
+      response.usage.try { |usage| reply.put_meta(METADATA_KEY, "usage", usage.to_metadata) }
+
+      reply
+    end
+
+    # A reply carries no tool *results* — those are something the caller sends
+    # — so only calls need keying, and they get the provisional space
+    # described above.
+    private def reply_block(part : Wire::Part, ordinals : Hash(String, Int32)) : MPSH::Block?
+      case part
+      when Wire::FunctionCallPart
+        ordinal = ordinals[part.name]
+        ordinals[part.name] = ordinal + 1
+        MPSH::ToolCallBlock.new(
+          calls.mpsh_id("#{part.name}#reply:#{ordinal}"),
+          part.name, parse_object(part.args))
+      when Wire::TextPart
+        MPSH::TextBlock.new(part.text)
+      when Wire::InlineDataPart
+        binary(part)
+      when Wire::ThoughtPart
+        thought(part)
+      end
     end
 
     private def to_block(part : Wire::Part,

@@ -1,4 +1,5 @@
 require "./wire/request"
+require "./wire/response"
 require "./mapper"
 require "../../mpsh/session"
 require "../../mpsh/translation"
@@ -30,6 +31,43 @@ module Elelem::Protocol::ChatCompletions
 
     def export(request : Wire::Request) : MPSH::Session
       export(request.messages)
+    end
+
+    # The response direction.
+    #
+    # A request is a conversation; a response is one assistant turn. None of
+    # the machinery above applies — no system prompt to merge, no carrier to
+    # absorb, no placeholder to unpick, no run of tool results to collapse —
+    # because a reply cannot contain user content, and compensation
+    # scaffolding is something this client invents on the way out, never
+    # something a provider sends back.
+    #
+    # What remains is the un-hoisting: `tool_calls` is a message field here and
+    # blocks in MPSH, exactly as it is on the request side, so the same code
+    # does the job.
+    def export_reply(body : String) : MPSH::Message
+      export_reply(Wire::Response.from_json(body))
+    end
+
+    def export_reply(response : Wire::Response) : MPSH::Message
+      choice = response.choice
+      unless choice
+        raise MalformedResponseError.new(NAME, "response has no choices")
+      end
+
+      reply = MPSH::Message.new(MPSH::Role::Assistant,
+        assistant_blocks(choice.message),
+        response.model.try { |model| MPSH::Provenance.new(NAME, model) })
+
+      # Namespaced, because none of it is canonical. A finish reason is not
+      # consulted for control flow — "are there client-executed tool calls in
+      # the reply" is the whole condition — and it is recorded only so a
+      # caller that wants it can find it.
+      choice.finish_reason.try { |value| reply.put_meta(METADATA_KEY, "finish_reason", value) }
+      response.id.try { |value| reply.put_meta(METADATA_KEY, "response_id", value) }
+      response.usage.try { |usage| reply.put_meta(METADATA_KEY, "usage", usage.to_metadata) }
+
+      reply
     end
 
     def export(messages : Array(Wire::Message)) : MPSH::Session
@@ -147,6 +185,13 @@ module Elelem::Protocol::ChatCompletions
     end
 
     private def assistant(session : MPSH::Session, message : Wire::Message) : Nil
+      session << MPSH::Message.new(MPSH::Role::Assistant, assistant_blocks(message))
+    end
+
+    # Shared by both directions. A reply and an assistant message already in a
+    # request carry the same fields and mean the same things, so reading them
+    # twice would be two places to forget the same rule.
+    private def assistant_blocks(message : Wire::Message) : Array(MPSH::Block)
       blocks = [] of MPSH::Block
 
       # Reasoning first, matching where providers place it in a turn.
@@ -168,7 +213,7 @@ module Elelem::Protocol::ChatCompletions
           calls.mpsh_id(call.id), call.name, parse_arguments(call.arguments))
       end
 
-      session << MPSH::Message.new(MPSH::Role::Assistant, blocks)
+      blocks
     end
 
     private def parts_to_blocks(message : Wire::Message) : Array(MPSH::Block)
