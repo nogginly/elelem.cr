@@ -1,7 +1,11 @@
-require "../capability/profile"
+require "../../capability/profile"
 
 module Elelem::Protocol::Anthropic
-  NAME = "anthropic"
+  METADATA_KEY = "anthropic"
+  NAME         = "anthropic"
+
+  # Required by the protocol with no default. A caller may override per request.
+  DEFAULT_MAX_TOKENS = 4096
 
   # The most capable target and the strictest validator at once.
   #

@@ -27,7 +27,9 @@ require "./elelem/protocol/responses/capabilities"
 require "./elelem/protocol/responses/wire"
 require "./elelem/protocol/responses/mapper"
 require "./elelem/protocol/responses/export"
-require "./elelem/protocol/anthropic"
+require "./elelem/protocol/anthropic/capabilities"
+require "./elelem/protocol/anthropic/wire"
+require "./elelem/protocol/anthropic/mapper"
 require "./elelem/protocol/gemini"
 
 module Elelem
