@@ -89,11 +89,37 @@ Open questions:
   or override a refusal, is a back door around the capability model. Any
   candidate failing that test does not belong in the catalog.
 
+### Carrier deferral is reimplemented per protocol
+
+Three mappers now buffer compensation carriers and flush them at turn
+boundaries, and the rule is identical in all three: a carrier belongs to the run
+of tool results preceding it, so it must be emitted before anything that is not
+itself a tool result — genuine user content, an assistant turn, or the end of
+the request.
+
+Written three times, expressed differently each time, and wrong once: the Gemini
+mapper flushed only before user messages, so the carrier landed *after* the
+model's reply, where export could no longer see the results it belonged to. The
+symptom was two divergences — a message count off by one and an image that
+stayed a placeholder — from a single missing case.
+
+Export has the same duplication in reverse: three near-identical
+`carrier?`/`absorb_carrier`/`split_placeholders` implementations differing only
+in the wire types they walk.
+
+Extract once the fourth protocol is stable rather than mid-checkpoint. The shape
+is probably a small module parameterized by two predicates — *is this part a
+tool result* and *build a carrier message* — since the buffering, the flush
+points and the placeholder handling are otherwise identical. `Structural` is
+where the outcome is already recorded, so it is the natural home.
+
+Worth doing before a fifth protocol, not after.
+
 ### A localizable content synthesizer
 
 Mappers insert two kinds of text, and conflating them would break export.
 
-&nbsp;     |Markers                                             |Glue                                    
+           |Markers                                             |Glue                                    
 -----------|----------------------------------------------------|----------------------------------------
 Examples   |`COMPENSATION_PLACEHOLDER`, `FIRST_USER_PLACEHOLDER`|"Result of a provider-run web_search:"  
 Read by    |Our own exporter, structurally                      |The model                               
