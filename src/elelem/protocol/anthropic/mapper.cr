@@ -68,6 +68,15 @@ module Elelem::Protocol::Anthropic
     # conformance suite asserts the *predicted* divergence rather than fidelity.
     private def normalize(messages : Array(Wire::Message),
                           report : Capability::Report) : Array(Wire::Message)
+      # Dropping an empty message is Degraded, so it is recorded rather than
+      # done quietly. A silent drop is exactly the failure this design exists to
+      # prevent, and it is easy to reach for `reject` without noticing.
+      messages.count(&.content.empty?).times do
+        report.record(Capability::Structural.outcome(
+          Capability::Structural::Adaptation::DropEmptyMessage),
+          "empty message removed to satisfy validation")
+      end
+
       messages = messages.reject(&.content.empty?)
       return messages if messages.empty?
 
@@ -141,8 +150,15 @@ module Elelem::Protocol::Anthropic
         nested << rendered if rendered
       end
 
-      Wire::ToolResultBlock.new(
-        calls.provider_id(block.call_id) || block.call_id, nested, block.is_error?)
+      provider_id = calls.provider_id(block.call_id) || block.call_id
+
+      if block.server_executed?
+        meta = block.meta_for(profile.metadata_key)
+        block_type = meta.try(&.["result_type"]?).try(&.as?(String)) || "web_search_tool_result"
+        return Wire::ServerToolResultBlock.new(provider_id, nested, block_type)
+      end
+
+      Wire::ToolResultBlock.new(provider_id, nested, block.is_error?)
     end
 
     private def tool_use(block : MPSH::ToolCallBlock, index : Int32,
@@ -153,6 +169,14 @@ module Elelem::Protocol::Anthropic
 
       provider_id = calls.provider_id(block.call_id) || block.call_id
       calls.bind(block.call_id, provider_id)
+
+      # A provider-run tool is its own block type here. Emitting one as an
+      # ordinary `tool_use` would lose the flag and invite a client to dispatch
+      # a tool it does not have — a correctness bug, not a fidelity one.
+      if block.server_executed?
+        return Wire::ServerToolUseBlock.new(provider_id, block.name, block.arguments.to_json)
+      end
+
       Wire::ToolUseBlock.new(provider_id, block.name, block.arguments.to_json)
     end
 

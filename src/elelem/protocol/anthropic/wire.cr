@@ -120,6 +120,49 @@ module Elelem::Protocol::Anthropic
       end
     end
 
+    # Provider-run tools are a distinct block type here, not a flag on an
+    # ordinary tool call. That distinction is the protocol agreeing with MPSH:
+    # a server-executed call is a different category, not a variation, and a
+    # client must never dispatch one.
+    struct ServerToolUseBlock < Block
+      getter id : String
+      getter name : String
+      getter input : String
+
+      def initialize(@id : String, @name : String, @input : String)
+      end
+
+      def to_json(json : JSON::Builder)
+        json.object do
+          json.field "type", "server_tool_use"
+          json.field "id", @id
+          json.field "name", @name
+          json.field "input" { json.raw @input }
+        end
+      end
+    end
+
+    # The result block type is tool-specific — `web_search_tool_result` and
+    # friends — so it is carried rather than assumed, and preserved through
+    # `provider_metadata` on export.
+    struct ServerToolResultBlock < Block
+      getter tool_use_id : String
+      getter content : Array(Block)
+      getter block_type : String
+
+      def initialize(@tool_use_id : String, @content : Array(Block),
+                     @block_type : String = "web_search_tool_result")
+      end
+
+      def to_json(json : JSON::Builder)
+        json.object do
+          json.field "type", @block_type
+          json.field "tool_use_id", @tool_use_id
+          json.field("content") { json.array { @content.each(&.to_json(json)) } }
+        end
+      end
+    end
+
     # Thinking carries a signature that must be replayed unmodified. Like the
     # Responses API's reasoning item and unlike a text field, it can hold an
     # opaque payload.

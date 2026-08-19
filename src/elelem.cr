@@ -30,6 +30,7 @@ require "./elelem/protocol/responses/export"
 require "./elelem/protocol/anthropic/capabilities"
 require "./elelem/protocol/anthropic/wire"
 require "./elelem/protocol/anthropic/mapper"
+require "./elelem/protocol/anthropic/export"
 require "./elelem/protocol/gemini"
 
 module Elelem

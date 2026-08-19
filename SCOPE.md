@@ -25,24 +25,6 @@ Round-trip conformance is unaffected and remains request-shaped. Fold this into
 Phase 2, since both OpenAI protocols need it and the client layer is where it
 gets used.
 
-### Decide what `text_fallback` means for round-trip identity
-
-No protocol carries `text_fallback`, so every binary block loses it on export.
-The conformance comparator does not check it, which means the loss is currently
-*invisible* rather than declared — the one thing this design is meant never to
-do.
-
-Two defensible answers, and the choice should be deliberate:
-
-- It is **local degradation-support metadata**, not conversation, and therefore
-  outside round-trip identity. Say so in the specification and in the
-  comparator.
-- It is **content** and its loss is a declared divergence, in which case the
-  comparator must name it and every binary fixture declares it.
-
-Settle before Phase 3: Anthropic is the first protocol where fallbacks actually
-fire, and deciding after that is deciding under pressure.
-
 ---
 
 Otherwise nothing outstanding. The Phase 0 entries — the unverified recursive `Block`

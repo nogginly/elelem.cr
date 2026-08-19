@@ -146,6 +146,12 @@ module Conformance
     end
   end
 
+  # `text_fallback` is deliberately not compared. No protocol carries one — it
+  # is an instruction to future mappings rather than content the conversation
+  # contained, in the same category as `provider_metadata`. Where a fallback is
+  # actually used, the block was replaced by its text and the loss is already
+  # named as Degraded; comparing it here would add a divergence to every binary
+  # fixture while reporting nothing new.
   private def compare_binary(a : M::BinaryBlock, b : M::BinaryBlock, path : String,
                              found : Array(Divergence)) : Nil
     if a.media_type != b.media_type

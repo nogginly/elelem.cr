@@ -150,6 +150,12 @@ The single most consequential shape decision in the catalog. It matches Anthropi
 
 Not documentation. Without it, an audio block reaching a text-only provider can only be refused; with it, the mapping degrades to a transcript. Populate at ingest wherever possible.
 
+**It sits outside round-trip identity, deliberately.** No protocol has a field meaning "here is a text version in case you cannot take the real thing" — a fallback is an instruction to future mappings, not content the conversation contained. It is therefore in the same category as `provider_metadata`: carried in MPSH, never on the wire, and not compared when checking round-trip fidelity.
+
+The consequence is easier to see by cases. Where the target accepts the media, the fallback is unused and rides along in MPSH untouched, so nothing diverges. Where the target does not, the mapper emits the fallback text *in place of* the block — and export reads back a plain text block, correctly, because a plain text block is what was sent. The audio is gone and so is the fallback, but that loss is already named: the outcome was **Degraded**, recorded as an annotation.
+
+Comparing fallbacks separately would therefore add a divergence to every binary fixture while reporting nothing the Degraded outcome does not already say. Implementations should exclude it from round-trip comparison and say so where the comparison is defined.
+
 ---
 
 ## 5. Identity
@@ -399,7 +405,7 @@ All structural. No API key, no model, no network.
 - [ ] Reasoning retained structurally, including `redacted` with no text
 - [ ] Binary payloads support inline and reference forms
 - [ ] Raw base64 + separate media type; no `data:` URIs in storage
-- [ ] `text_fallback` on every binary block
+- [ ] `text_fallback` on every binary block, and excluded from round-trip comparison
 - [ ] Capability declared **per media type**, not per block kind
 - [ ] Capability matrix declared per implementation, verified against live docs
 - [ ] Compensation synthesized at map time, never written back
@@ -412,9 +418,11 @@ All structural. No API key, no model, no network.
 
 ---
 
-**Document Version**: 1.4
+**Document Version**: 1.5
 
-**Last Updated**: 2026-08-18
+**Last Updated**: 2026-08-19
+
+**Changes from 1.4**: `text_fallback` placed outside round-trip identity, on the grounds that it is an instruction to future mappings rather than conversation content — the same category as `provider_metadata`. Where it is used, the Degraded outcome already records the loss.
 
 **Changes from 1.3**: Capability restated as a chain of three conditions rather than one predicate per protocol, after implementation found the same flattening error three times. Adds the wire-form axis (Block / Item / Field / None) governing what a declared capability can actually hold, and the consequence that redacted reasoning degrades against a text-only field. Notes that one protocol may need two profiles.
 

@@ -201,9 +201,10 @@ module Elelem::Fixtures
     args = M::Object{"query" => "crystal lang shards".as(M::Value)}
     call = M::ToolCallBlock.new(CALL_SEARCH, "web_search", args, server_executed: true)
     call.put_meta("anthropic", "tool_name", "web_search")
+
     result = M::ToolResultBlock.new(CALL_SEARCH, blocks(text("three results")),
       server_executed: true)
-    result.put_meta("anthropic", "tool_name", "web_search")
+    result.put_meta("anthropic", "result_type", "web_search_tool_result")
 
     session(
       user(text("Search for Crystal shards.")),
