@@ -353,6 +353,52 @@ That last one is only achievable if compensation is generated at map time and ne
 
 ---
 
+## 8a. What the Checkpoint Established
+
+All four protocols are implemented and pass a shared structural conformance
+suite offline. Anthropic and Gemini are **unexecuted**: keys gate execution, not
+mapping.
+
+The checkpoint existed to find out whether this format survives a protocol from
+a different family. It did, without a format change — and the distribution of
+corrections is the useful evidence:
+
+Corrections found by                            |Where they landed       
+------------------------------------------------|------------------------
+Declaring four capability profiles              |**The capability model**
+Round-tripping fixtures through mappers         |**The capability model**
+Implementing the structurally divergent protocol|The mappers only        
+
+Three corrections changed this document (ownership is per block not per
+protocol; ownership does not imply a wire home; a wire home does not imply the
+form can hold the payload). Gemini — the protocol most likely to break the
+format — changed only mapper code.
+
+Two decisions paid off in ways that would have been expensive to retrofit:
+
+- **MPSH mints its own `call_id`.** Gemini's `functionCall` carries no
+  identifier at all, so pairing is reconstructed from function name and
+  ordering through the same translation table the other protocols use for real
+  identifiers. A canonical format storing a provider id could not have done
+  this.
+- **`tool_result.content` as a nested block list.** One protocol expresses an
+  image-bearing tool result natively and passes under strict policy; two must
+  synthesize scaffolding. The same fixture exercises both, which no intersection
+  format could have represented.
+
+### What remains unproven
+
+Structural verification cannot settle behaviour at request time. Specifically:
+whether a `thinking` block lacking a signature is rejected, whether Gemini's
+`functionResponse` accepts inline binary, and whether `reasoning_content` is
+accepted by the servers that implement it. Each is recorded in `SCOPE.md` with
+the change it would imply.
+
+Export also handles **requests only**. A live handoff needs response-shaped
+export, which is unbuilt.
+
+---
+
 ## 9. Conformance
 
 **Round-trip fidelity**: an MPSH conversation mapped to a protocol and exported back must reproduce the original exactly — *except* where the capability matrix declares the mapping Compensated or Degraded, in which case the divergence must match what the matrix predicts.
@@ -418,9 +464,11 @@ All structural. No API key, no model, no network.
 
 ---
 
-**Document Version**: 1.5
+**Document Version**: 1.6
 
 **Last Updated**: 2026-08-19
+
+**Changes from 1.5**: Adds §8a recording what the checkpoint established — four protocols implemented, the format unchanged by the structurally divergent one, and which decisions paid off — together with what structural verification leaves unproven.
 
 **Changes from 1.4**: `text_fallback` placed outside round-trip identity, on the grounds that it is an instruction to future mappings rather than conversation content — the same category as `provider_metadata`. Where it is used, the Degraded outcome already records the loss.
 

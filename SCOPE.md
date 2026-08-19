@@ -42,14 +42,6 @@ rather than emitting an invalid one. Confirm against a live call before
 changing the matrix — this is precisely the class of thing structural
 verification cannot settle.
 
-### Protocol documentation is behind the code
-
-`docs/protocols/CHAT_COMPLETIONS.md` exists. `RESPONSES.md`, `ANTHROPIC.md` and
-`GEMINI.md` do not. Deferred deliberately until the Gemini mapper lands, since
-that is the implementation likeliest to force another correction to the shared
-capability model — and revising three protocol documents afterwards costs more
-than writing them once.
-
 ---
 
 ## WILL FIX
@@ -119,7 +111,7 @@ Worth doing before a fifth protocol, not after.
 
 Mappers insert two kinds of text, and conflating them would break export.
 
-           |Markers                                             |Glue                                    
+&nbsp;     |Markers                                             |Glue                                    
 -----------|----------------------------------------------------|----------------------------------------
 Examples   |`COMPENSATION_PLACEHOLDER`, `FIRST_USER_PLACEHOLDER`|"Result of a provider-run web_search:"  
 Read by    |Our own exporter, structurally                      |The model                               

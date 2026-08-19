@@ -1,0 +1,105 @@
+# Gemini generateContent
+
+Protocol identity `gemini`; vendor namespace `gemini`.
+
+The checkpoint's other half, and the structurally most divergent of the four.
+Written and structurally verified without a key.
+
+## Why this one is the real test
+
+Chat Completions and Responses share every assumption. Anthropic breaks the
+structural ones. This protocol breaks an assumption the others all made without
+noticing: **that a tool call has an identifier.**
+
+It does not. A `functionCall` carries a name and arguments, and nothing else.
+Calls are paired to responses by function name and ordering alone.
+
+That is the case MPSH's identity decision exists for. A stored OpenAI `call_...`
+cannot supply what this mapper needs, and a Gemini-originated session has no
+identifier to store in the first place — so MPSH mints its own `call_id` and
+keeps provider identifiers in translation state. The implementation plan called
+retrofitting this "unusually painful"; the checkpoint is where it paid.
+
+## Declared capabilities
+
+Capability      |Declared                                        |Note                                                 
+----------------|------------------------------------------------|-----------------------------------------------------
+Binary content  |`Native`                                        |`inline_data` keeps mime type and base64 separate    
+Tool calls      |`Block`                                         |A `functionCall` part                                
+Tool results    |`TextOnly`                                      |Conservative — see *The response shape* below        
+Reasoning       |`Block`                                         |Thought parts, with a signature                      
+Server-executed |`true`                                          |Code execution exists; no part is emitted for one yet
+Refusal channel |`false`                                         |Carried as text                                      
+Media accepted  |widest of the four, **including audio natively**|                                                     
+String shorthand|**none**                                        |Every message is `{role, parts}`, always             
+
+## Structural divergences
+
+Individually mechanical; collectively the reason this protocol is a real test.
+
+Divergence                             |Consequence                                              
+---------------------------------------|---------------------------------------------------------
+The assistant role is spelled `model`  |The single most common source of a silently wrong mapping
+Everything is `{role, parts}`          |No string shorthand to fall back on                      
+Model name in the **URL path**         |`Request#path`, deliberately excluded from `to_json`     
+`systemInstruction` is a content object|Not a bare string — `{parts: [{text: ...}]}`             
+Generation settings nested             |Inside `generationConfig`                                
+
+## Pairing without identifiers
+
+Both directions count occurrences of each function name and agree on
+`name#ordinal`, which is minted into an MPSH `call_id` through the same
+`CallIdTable` the other protocols use for real identifiers.
+
+Nothing is invented on the wire. An unexpected key is a request a provider can
+reject, so no identifier field is added.
+
+**The limit, stated because it cannot be detected:** this works because
+responses arrive in the order their calls were made. A provider that reordered
+them, or omitted one, would break the correspondence, and there is nothing in
+the wire to notice with.
+
+## The response shape
+
+`functionResponse.response` is an **object** on this protocol, not a string. We
+write `{"output": ...}` and read that key back.
+
+That is a convention we chose, not something the protocol dictates. A session
+produced by another Gemini client will have used a different shape, so export
+keeps the whole JSON as text rather than guessing at a key that may not exist.
+
+`tool_results` is declared `TextOnly` conservatively, pending confirmation that
+`functionResponse` can carry inline binary data. If it can, this becomes
+`Blocks` and the image-bearing tool result stops compensating here — a change to
+the declaration alone, with no mapper change and no test change.
+
+## Compensation
+
+Same placeholder constant, same rules, same deferral as elsewhere.
+
+Worth recording that the deferral condition was **wrong here first**. The mapper
+flushed carriers only before user messages, so a carrier landed after the
+model's reply, where export could no longer see the tool results it belonged to.
+Two divergences from one missing case: a message count off by one, and an image
+that stayed a placeholder.
+
+The rule is identical across three mappers and was expressed differently in each
+— see `../../SCOPE.md` on extracting it before a fifth protocol arrives.
+
+## Conformance
+
+`spec/conformance/gemini_spec.cr`. Fourteen fixtures round-trip untouched,
+including both audio cases, which this protocol takes natively.
+
+Fixture                          |Expected                                            
+---------------------------------|----------------------------------------------------
+`tool_call_text_result`          |Exact — pairing reconstructed with no identifier    
+`tool_call_image_result`         |Compensated; refuses under strict policy            
+`audio_with_transcript`          |**Exact** — audio is native here, unlike Anthropic  
+`server_executed_tool`           |Degraded — the concept exists, this tool is not ours
+`reasoning_with_provider_payload`|Another vendor's payload dropped, and named         
+
+## Not yet built
+
+Response-shaped export; `candidates[0].content.parts[]` is a different shape
+from the request. Tracked in `../../SCOPE.md`.
