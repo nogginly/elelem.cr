@@ -10,6 +10,20 @@ require "../spec_helper"
 # Both properties are also the entire precondition for caching the mapped prefix
 # locally, which is how the O(n)-per-turn mapping cost is avoided later. Asserted
 # now so it stays true, rather than built now on a cost nobody has measured.
+#
+# The cost that motivates this is smaller than it first appears. Export is O(1)
+# per turn — only the new response is exported, never the whole session — so
+# there is no round trip of the full history. The O(n) map is not a delta
+# against holding wire objects either: a stateless protocol must transmit the
+# entire history regardless, so the only extra work is one transform pass, which
+# the network round trip dwarfs.
+#
+# When caching does arrive, two constraints apply. The cache boundary must be a
+# **turn** boundary rather than an arbitrary index, because deferred carriers and
+# consecutive-role merges span messages and a prefix cut mid-turn can render
+# differently from the whole. And `ReasoningRetention::CompletedTurns` is in
+# direct tension with caching: it rewrites the prefix the moment a turn closes,
+# invalidating both this cache and the provider's.
 private def map_chat(session : M::Session)
   Elelem::Protocol::ChatCompletions::Mapper.new.map(session, "test-model", C::Policy::Lenient)[0].to_json
 end

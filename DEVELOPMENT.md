@@ -10,7 +10,7 @@ documents under `docs/`, which are the specification; where this document and
 
 ## Where things are written down
 
-Four kinds of content, separated by how often they change. The separation is the
+Five kinds of content, separated by how often they change. The separation is the
 point: interleaving them is how a development document becomes unreadable, since
 nobody can tell which paragraphs are still true.
 
@@ -19,7 +19,14 @@ Document                                   |Changes                     |Holds
 `docs/MPSH_SPECIFICATION.md` and companions|Rarely; a change is an event|Why MPSH is shaped this way                             
 `DEVELOPMENT.md` (this file)               |Slowly                      |Layering, conventions, invariants, how to add a protocol
 `docs/protocols/<name>.md`                 |Per mapper                  |One protocol's declaration, gotchas, compensations      
+`HANDOFF.md`                               |When a phase completes      |Where the work stands, what is next, how to work here   
 `SCOPE.md`                                 |Fast; shrinks               |What is outstanding                                     
+
+`HANDOFF.md` and `SCOPE.md` are the pair most likely to drift into each other.
+The division: HANDOFF *names* the next pieces and points at SCOPE for their
+detail. If an edit to HANDOFF starts restating SCOPE's entries, it is drifting —
+and a stale orientation document is worse than none, which is why its state
+section is kept short and factual enough to check against reality in seconds.
 
 **The test for this file**: if a paragraph would need editing when a fifth
 protocol arrives, it belongs in a protocol document instead.
@@ -226,6 +233,93 @@ content it never received. This is not hypothetical: a widely used Python
 multi-provider client stores tool-result images faithfully and then discards them
 in both of its OpenAI mappers, with no error and no record, because its
 capability model had only one outcome and the case had nowhere to go.
+
+## How an agent uses this shard
+
+Two models were considered, and the difference is not stylistic.
+
+**Model A** — the provider owns the session, MPSH is an export format used at
+save points. **Model B** — MPSH *is* the working state, and a request is built
+from it every turn.
+
+**Model B is the design.** Every protocol here is stateless, so the full history
+crosses the wire each turn either way; a provider-held copy buys nothing and is
+a second copy in a lossier format. Under Model A a session is portable
+*sometimes*, at save points. Under Model B it is portable at every turn, because
+the canonical form is never stale. `Mapper#map` already takes a whole session
+and returns a request, which is Model B's per-turn operation.
+
+Statefulness, where a protocol offers it, does not change this: a server-side
+handle is a disposable optimization over an authoritative local record, and the
+moment a session moves to another vendor the handle is worthless.
+
+### The turn loop belongs to the caller
+
+`send` performs **one request**: one exchange, one reply. It does not loop, does
+not dispatch tools, and does not decide whether a turn is finished. That keeps
+the client a translator.
+
+```crystal
+loop do
+  reply, report = client.send(session) { |event, turn| present(event) }
+  session << reply
+
+  calls = reply.content.select(MPSH::ToolCallBlock).reject(&.server_executed?)
+  break if calls.empty?
+
+  results = calls.map { |call| dispatch(call) }
+  session << MPSH::Message.new(MPSH::Role::User, results)
+end
+```
+
+Four details there are load-bearing:
+
+- **Tool calls are read off the reply, not accumulated from events.** The reply
+  is the authoritative record; the event stream is not. This also removes any
+  need for the caller to know that "the block returned" means "all calls have
+  arrived".
+- **`reject(&.server_executed?)`** — a provider-run call arrives already
+  complete. Dispatching one means running a tool you do not have. This is the
+  one line where an error is a correctness bug rather than a fidelity one.
+- **All results go in one message.** Parallel calls answering one assistant turn
+  *are* one turn, which is why the mappers defer carriers and the exporters
+  collapse adjacent results. Separate messages would round-trip as one anyway.
+- **No finish reason is consulted.** "Are there client-executed tool calls in
+  the reply" is the whole condition.
+
+### Events are presentation; the session is state
+
+Do not conflate them. Text arriving in three chunks is three events and one
+`TextBlock`. Reasoning may be several events and one block, or a block with no
+events at all. The stream describes what happened over time; the session records
+what the turn contained.
+
+The event type is a **closed union**, like `Block`, so `case ... in` is
+compiler-checked and a new event kind breaks every consumer until each says what
+it does. Never a stringly-typed tuple — that trap has been hit before, and it
+makes every consumer re-parse.
+
+Two consequences worth stating:
+
+- **A terminal event carries no meaning.** Whether the model stopped or wants a
+  tool is a fact about the reply, not the stream. Encoding it in an event tempts
+  callers to branch on the thing that is not authoritative.
+- **Degradation is an event.** Annotations reach the caller live rather than
+  only post-hoc in the `Report`, which suits the loudness this design insists
+  on.
+
+Provider-specific values with no canonical equivalent travel as a namespaced
+event variant carrying vendor plus `MPSH::Object` — the same namespacing as
+`provider_metadata`, and unlike its predecessor it has an inverse.
+
+### API shape
+
+- `send` returns `(MPSH::Message, Capability::Report)`. The session stays the
+  caller's; the client never owns it, because a client-owned session is Model A
+  by another route.
+- Degradation policy is set on the client, with an optional per-call override.
+- The event block is optional. Without it the same pair is returned, minus
+  progress.
 
 ## Adding a protocol
 

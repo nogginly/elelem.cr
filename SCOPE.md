@@ -25,6 +25,51 @@ Round-trip conformance is unaffected and remains request-shaped. Fold this into
 Phase 2, since both OpenAI protocols need it and the client layer is where it
 gets used.
 
+### Interrupted turns must leave a sendable session
+
+A turn can stop before it completes: a user interrupt in an interactive agent, a
+resource limit in an automated one, a provider quota, a dropped connection, a
+timeout. All produce the same problem and differ only in cause, so they are one
+case with a cause attached.
+
+**The invariant**: the session is never left in a state a subsequent `send`
+cannot build on. Concretely, no `tool_call` block without a matching
+`tool_result` — a dangling call is the one shape Anthropic rejects outright and
+the others merely tolerate. Partial turns therefore need *repair*, not just
+truncation.
+
+Three states, and only the third is awkward:
+
+What arrived                   |Action                                                                                                                                       
+-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------
+Nothing                        |Append nothing. The session is unchanged and immediately resendable                                                                          
+Text, no tool calls            |Append the partial assistant message; mark it truncated in `provider_metadata`                                                               
+Tool calls, possibly incomplete|**Drop the calls, keep any text.** A partial set may be half a parallel plan, and there is no way to know whether another was about to arrive
+
+**Mechanism: cooperative, not an exception.** Raising from inside the caller's
+block unwinds through the client mid-parse, leaving it to reconstruct state
+while handling control flow — where subtle bugs live. Prefer a signal the block
+can set, with the client stopping at the next safe point and finalising
+normally:
+
+```crystal
+reply, report = client.send(session) do |event, turn|
+  turn.stop if user_pressed_escape?
+  present(event)
+end
+report.interrupted?   # cause attached
+```
+
+The cause matters only for the caller's next move — await input, back off,
+retry. Session repair is identical in all three.
+
+**Quota needs one distinction.** A pre-request rejection leaves the session
+untouched and is a plain retry; mid-response truncation is the third state
+above. Streaming exposes the second far more often, which is another reason
+streaming is not purely additive later.
+
+No fixture covers this. Build alongside the client.
+
 ### Thinking blocks without a signature will be rejected at request time
 
 Anthropic requires a `thinking` block to carry the signature it issued, replayed
