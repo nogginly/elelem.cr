@@ -25,13 +25,30 @@ Round-trip conformance is unaffected and remains request-shaped. Fold this into
 Phase 2, since both OpenAI protocols need it and the client layer is where it
 gets used.
 
----
+### Thinking blocks without a signature will be rejected at request time
 
-Otherwise nothing outstanding. The Phase 0 entries — the unverified recursive `Block`
-union, the plan's superseded checklist line, and the missing conformance
-fixtures — are all resolved. The union compiles, so mappers keep
-compiler-enforced exhaustiveness over the block catalog and the flat-form
-fallback was not needed.
+Anthropic requires a `thinking` block to carry the signature it issued, replayed
+unmodified. We carry signatures correctly when they exist — but nothing stops a
+reasoning block that arrived from *another* vendor being mapped here, producing
+a `thinking` block with no signature.
+
+The resolver calls foreign reasoning **Restructured**, which is right in the
+abstract: the block survives in MPSH and only the unreadable payload is shed.
+This protocol turns that into a hard rejection rather than a graceful drop.
+
+Likely correct answer: foreign reasoning mapped to a protocol requiring a
+replayable signature should be **Degraded**, dropping the block from the wire
+rather than emitting an invalid one. Confirm against a live call before
+changing the matrix — this is precisely the class of thing structural
+verification cannot settle.
+
+### Protocol documentation is behind the code
+
+`docs/protocols/CHAT_COMPLETIONS.md` exists. `RESPONSES.md`, `ANTHROPIC.md` and
+`GEMINI.md` do not. Deferred deliberately until the Gemini mapper lands, since
+that is the implementation likeliest to force another correction to the shared
+capability model — and revising three protocol documents afterwards costs more
+than writing them once.
 
 ---
 
@@ -72,6 +89,60 @@ Open questions:
   or override a refusal, is a back door around the capability model. Any
   candidate failing that test does not belong in the catalog.
 
+### A localizable content synthesizer
+
+Mappers insert two kinds of text, and conflating them would break export.
+
+&nbsp;     |Markers                                             |Glue                                    
+-----------|----------------------------------------------------|----------------------------------------
+Examples   |`COMPENSATION_PLACEHOLDER`, `FIRST_USER_PLACEHOLDER`|"Result of a provider-run web_search:"  
+Read by    |Our own exporter, structurally                      |The model                               
+Must be    |Byte-identical in both directions                   |Idiomatic in the conversation's language
+Localizable|**Never**                                           |Yes                                     
+
+Markers are matched exactly on export, so a session mapped under one locale and
+exported under another would fail to recognise its own scaffolding. They stay
+constants, and the reason is recorded beside them.
+
+Glue is read by the model and should be in the conversation's language — which
+is *not* the user's interface locale: someone with a French UI may be talking to
+the model in Spanish.
+
+Shape: a method-per-case interface (`combine_tool_call_with_response(...)`)
+rather than a translation table, so an implementation can reorder a sentence
+instead of substituting words. English implementation first.
+
+Two constraints, both load-bearing:
+
+- **It must be a pure function.** Mapping determinism and prefix stability are
+  asserted in `spec/conformance/determinism_spec.cr` and are the precondition
+  for prefix caching. A sidecar model generating glue per call breaks both. If
+  dynamic synthesis is wanted, its output must be generated once and pinned —
+  `provider_metadata` on the block that needed it is the natural home — and the
+  interface should permit that without changing callers.
+- **Locale is supplied, not detected.** Inferring it is a guess that degrades in
+  mixed-language sessions. Default English.
+
+Build when the Gemini mapper needs it, so it has two consumers rather than one.
+
+### Server-executed tools degrade without their framing
+
+When a provider-run tool has no equivalent on the target, the result content
+survives as conversation and the tool framing does not. That is the right
+choice — synthesizing a phantom `tool_call` would advertise a tool the target
+does not have, and may prompt it to request one — but the current degradation
+drops the framing entirely.
+
+Bare result content loses the fact that a lookup occurred, which occasionally
+matters. A short lead-in restores it as prose. That lead-in is **glue**, so it
+waits on the synthesizer above.
+
+Explicitly not attempted: re-expressing one vendor's server tool as another's.
+Anthropic's web search and Gemini's code execution have rough counterparts, but
+they take different parameters and return different shapes, so the mapping
+cannot be right by construction. It is the same class of problem as the model
+catalog, one layer up.
+
 ### `tool_result.content` as a nested block list
 
 Specified and implemented as nested blocks. Prior art in Python uses a flat
@@ -89,12 +160,6 @@ Deferred to a named moment rather than "later": **when Phase 2 passes.** The
 quick-start example is the handoff — start on Chat Completions, export, resume
 on Responses — and that example cannot be written honestly before then. A
 placeholder now would say nothing.
-
-### Per-protocol documentation
-
-`docs/protocols/CHAT_COMPLETIONS.md` exists. One per remaining mapper, written
-with that mapper rather than after it. Keeping this material out of
-`DEVELOPMENT.md` is what stops the spine growing into a monospec.
 
 ---
 
