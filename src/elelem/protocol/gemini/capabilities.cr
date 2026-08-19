@@ -1,7 +1,8 @@
-require "../capability/profile"
+require "../../capability/profile"
 
 module Elelem::Protocol::Gemini
-  NAME = "gemini"
+  METADATA_KEY = "gemini"
+  NAME         = "gemini"
 
   # The most structurally divergent protocol: assistant role renamed, every
   # message wrapped in `parts`, model in the URL path, and tool calls paired to
