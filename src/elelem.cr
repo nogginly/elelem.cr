@@ -18,21 +18,31 @@ require "./elelem/capability/resolver"
 require "./elelem/capability/structural"
 require "./elelem/capability/retention"
 
-# Protocol layer. Capability declarations only for now; mappers follow.
+# Protocol layer. One directory per protocol: capabilities, wire vocabulary
+# (request out, response in), mapper and exporter.
+require "./elelem/protocol/errors"
+# - Chat completions
 require "./elelem/protocol/chat_completions/capabilities"
-require "./elelem/protocol/chat_completions/wire"
+require "./elelem/protocol/chat_completions/wire/request"
+require "./elelem/protocol/chat_completions/wire/response"
 require "./elelem/protocol/chat_completions/mapper"
 require "./elelem/protocol/chat_completions/export"
+# - Responses
 require "./elelem/protocol/responses/capabilities"
-require "./elelem/protocol/responses/wire"
+require "./elelem/protocol/responses/wire/request"
+require "./elelem/protocol/responses/wire/response"
 require "./elelem/protocol/responses/mapper"
 require "./elelem/protocol/responses/export"
+# - Anthropic
 require "./elelem/protocol/anthropic/capabilities"
-require "./elelem/protocol/anthropic/wire"
+require "./elelem/protocol/anthropic/wire/request"
+require "./elelem/protocol/anthropic/wire/response"
 require "./elelem/protocol/anthropic/mapper"
 require "./elelem/protocol/anthropic/export"
+# - Gemini
 require "./elelem/protocol/gemini/capabilities"
-require "./elelem/protocol/gemini/wire"
+require "./elelem/protocol/gemini/wire/request"
+require "./elelem/protocol/gemini/wire/response"
 require "./elelem/protocol/gemini/mapper"
 require "./elelem/protocol/gemini/export"
 

@@ -1,4 +1,4 @@
-require "./wire"
+require "./wire/request"
 require "./capabilities"
 require "../../capability/resolver"
 require "../../capability/policy"

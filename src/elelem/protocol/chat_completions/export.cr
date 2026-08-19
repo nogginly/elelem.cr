@@ -1,4 +1,4 @@
-require "./wire"
+require "./wire/request"
 require "./mapper"
 require "../../mpsh/session"
 require "../../mpsh/translation"
