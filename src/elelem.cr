@@ -26,6 +26,7 @@ require "./elelem/protocol/chat_completions/export"
 require "./elelem/protocol/responses/capabilities"
 require "./elelem/protocol/responses/wire"
 require "./elelem/protocol/responses/mapper"
+require "./elelem/protocol/responses/export"
 require "./elelem/protocol/anthropic"
 require "./elelem/protocol/gemini"
 
