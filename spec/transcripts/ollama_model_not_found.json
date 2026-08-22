@@ -20,12 +20,12 @@
         "status": 404,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 17:35:51 GMT",
+          "Date": "Sat, 22 Aug 2026 19:33:54 GMT",
           "Content-Length": "106"
         },
         "body": "{\"error\":{\"message\":\"model 'no-such-model' not found\",\"type\":\"not_found_error\",\"param\":null,\"code\":null}}\n"
       },
-      "recorded_at": "2026-08-22T17:35:51Z"
+      "recorded_at": "2026-08-22T19:33:54Z"
     }
   ]
 }

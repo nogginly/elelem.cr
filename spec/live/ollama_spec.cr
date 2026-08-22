@@ -61,6 +61,33 @@ private def asked : M::Session
   session
 end
 
+# Every live request carries a cap.
+#
+# Not tidiness: an uncapped local model already cost this suite a twelve-minute
+# stall and a 4,096-token turn that never reached an answer. A cap makes the
+# run bounded, re-recording cheap, and the reasoning of a verbose model
+# somebody else's problem.
+private CAP = Elelem::Options.new(max_output_tokens: 512)
+
+# Deliberately far too small to finish a sentence. Reproduces an interrupted
+# turn on demand, where previously we waited for a model to over-think.
+private TINY = Elelem::Options.new(max_output_tokens: 24)
+
+private def weather_tool : Elelem::Tool
+  Elelem::Tool.new("get_weather", "Look up the current weather in a city",
+    %({"type":"object","properties":{"city":{"type":"string","description":"City name"}},"required":["city"]}))
+end
+
+private def armed : Elelem::Options
+  Elelem::Options.new(tools: [weather_tool], max_output_tokens: 512)
+end
+
+private def tool_question : M::Session
+  session = M::Session.new("Use the supplied tools when they apply.")
+  session << M::Message.user("What is the weather in Paris? Use the get_weather tool.")
+  session
+end
+
 describe "Ollama" do
   # One server, three protocols. The same session, the same question, three
   # wire shapes — which is the claim the shard makes, exercised against
@@ -68,7 +95,7 @@ describe "Ollama" do
   describe "a plain exchange" do
     it "completes over Chat Completions" do
       Wiretap.intercept(TEXT_CHAT) do
-        reply, report = client(Elelem::ProtocolKind::ChatCompletions).send(asked, MODEL)
+        reply, report = client(Elelem::ProtocolKind::ChatCompletions).send(asked, MODEL, options: CAP)
 
         reply.role.should eq M::Role::Assistant
         reply.content.select(M::TextBlock).should_not be_empty
@@ -78,7 +105,7 @@ describe "Ollama" do
 
     it "completes over the Responses API" do
       Wiretap.intercept(TEXT_RESPONSES) do
-        reply, report = client(Elelem::ProtocolKind::Responses).send(asked, MODEL)
+        reply, report = client(Elelem::ProtocolKind::Responses).send(asked, MODEL, options: CAP)
 
         reply.content.select(M::TextBlock).should_not be_empty
         report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
@@ -87,7 +114,7 @@ describe "Ollama" do
 
     it "completes over the Anthropic Messages API" do
       Wiretap.intercept(TEXT_ANTHROPIC) do
-        reply, report = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL)
+        reply, report = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL, options: CAP)
 
         reply.content.select(M::TextBlock).should_not be_empty
         report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
@@ -100,7 +127,7 @@ describe "Ollama" do
     # that acquired a home from whoever answered would not be portable.
     it "records which deployment answered" do
       Wiretap.intercept(TEXT_CHAT) do
-        reply, _ = client(Elelem::ProtocolKind::ChatCompletions).send(asked, MODEL)
+        reply, _ = client(Elelem::ProtocolKind::ChatCompletions).send(asked, MODEL, options: CAP)
 
         provenance = reply.provenance.should_not be_nil
         provenance.model.should_not be_empty
@@ -109,7 +136,7 @@ describe "Ollama" do
 
     it "keeps usage out of the conversation" do
       Wiretap.intercept(TEXT_ANTHROPIC) do
-        reply, _ = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL)
+        reply, _ = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL, options: CAP)
         key = Elelem::Protocol::Anthropic::METADATA_KEY
 
         reply.meta?(key, "usage").should_not be_nil
@@ -131,7 +158,7 @@ describe "Ollama" do
     # fixtures.
     it "reads a thinking block from a live reply" do
       Wiretap.intercept(TEXT_ANTHROPIC) do
-        reply, _ = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL)
+        reply, _ = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL, options: CAP)
 
         reasoning = reply.content.select(M::ReasoningBlock)
         next if reasoning.empty? # a non-thinking model is not a failure
@@ -150,7 +177,7 @@ describe "Ollama" do
   describe "reasoning" do
     it "reads the bare `reasoning` field from Chat Completions" do
       Wiretap.intercept(TEXT_CHAT) do
-        reply, _ = client(Elelem::ProtocolKind::ChatCompletions).send(asked, MODEL)
+        reply, _ = client(Elelem::ProtocolKind::ChatCompletions).send(asked, MODEL, options: CAP)
 
         # Ollama spells this `reasoning`; vLLM and DeepSeek spell it
         # `reasoning_content`. Reading only the latter dropped the trace here
@@ -161,7 +188,7 @@ describe "Ollama" do
 
     it "reads a thinking block from the Anthropic endpoint" do
       Wiretap.intercept(TEXT_ANTHROPIC) do
-        reply, _ = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL)
+        reply, _ = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL, options: CAP)
 
         reply.content.select(M::ReasoningBlock).should_not be_empty
       end
@@ -169,7 +196,7 @@ describe "Ollama" do
 
     it "reads a reasoning item, with its opaque payload, from the Responses API" do
       Wiretap.intercept(TEXT_RESPONSES) do
-        reply, _ = client(Elelem::ProtocolKind::Responses).send(asked, MODEL)
+        reply, _ = client(Elelem::ProtocolKind::Responses).send(asked, MODEL, options: CAP)
         key = Elelem::Protocol::Responses::METADATA_KEY
 
         blocks = reply.content.select(M::ReasoningBlock)
@@ -239,6 +266,112 @@ describe "Ollama" do
 
         session.messages.size.should eq 6
         report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
+      end
+    end
+  end
+
+  # The turn loop, end to end, against a real server.
+  #
+  # Until tool declarations existed, nothing could provoke a call: the mappers
+  # translated calls and results faithfully in history, but a model offered no
+  # tools has nothing to call. These are the first specs in the project where
+  # a provider decides to invoke something and we answer it.
+  #
+  # They are also the first live exercise of `CallIdTable`. Every previous test
+  # of pairing round-tripped through our own mappers, which agree with
+  # themselves by construction; here the identifier is one Ollama minted.
+  describe "tool calls" do
+    it "calls a declared tool and accepts the result, over Chat Completions" do
+      Wiretap.intercept("ollama_tools_chat_completions") do
+        session = tool_question
+        turn = client(Elelem::ProtocolKind::ChatCompletions)
+
+        reply, _ = turn.send(session, MODEL, options: armed)
+        session << reply
+
+        calls = reply.content.select(M::ToolCallBlock).reject(&.server_executed?)
+        calls.size.should eq 1
+        calls[0].name.should eq "get_weather"
+        # The model chose the argument; we assert the shape, not the value.
+        calls[0].arguments.should be_a M::Object
+
+        # Dispatch, as a caller would.
+        session << M::Message.new(M::Role::User, calls.map do |call|
+          M::ToolResultBlock.new(call.call_id,
+            [M::TextBlock.new("18C, light rain").as(M::Block)]).as(M::Block)
+        end)
+
+        answer, report = turn.send(session, MODEL, options: armed)
+        answer.content.select(M::TextBlock).should_not be_empty
+        report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
+      end
+    end
+
+    it "calls a declared tool and accepts the result, over Anthropic" do
+      Wiretap.intercept("ollama_tools_anthropic") do
+        session = tool_question
+        turn = client(Elelem::ProtocolKind::Anthropic)
+
+        reply, _ = turn.send(session, MODEL, options: armed)
+        session << reply
+
+        calls = reply.content.select(M::ToolCallBlock).reject(&.server_executed?)
+        calls.size.should eq 1
+
+        session << M::Message.new(M::Role::User, calls.map do |call|
+          M::ToolResultBlock.new(call.call_id,
+            [M::TextBlock.new("18C, light rain").as(M::Block)]).as(M::Block)
+        end)
+
+        answer, _ = turn.send(session, MODEL, options: armed)
+        answer.content.select(M::TextBlock).should_not be_empty
+      end
+    end
+
+    # The handoff, now with a tool call in the history. A call minted by one
+    # protocol has to be rendered by another — and on Gemini it would be paired
+    # by name and ordering rather than by identifier, which is the case
+    # `CallIdTable` exists for.
+    it "carries a tool exchange from Chat Completions to Anthropic" do
+      Wiretap.intercept("ollama_tools_handoff") do
+        session = tool_question
+
+        reply, _ = client(Elelem::ProtocolKind::ChatCompletions)
+          .send(session, MODEL, options: armed)
+        session << reply
+
+        calls = reply.content.select(M::ToolCallBlock).reject(&.server_executed?)
+        calls.size.should eq 1
+
+        session << M::Message.new(M::Role::User, calls.map do |call|
+          M::ToolResultBlock.new(call.call_id,
+            [M::TextBlock.new("18C, light rain").as(M::Block)]).as(M::Block)
+        end)
+
+        # Different protocol, same conversation, including the call and its
+        # answer.
+        answer, report = client(Elelem::ProtocolKind::Anthropic)
+          .send(session, MODEL, options: armed)
+
+        answer.content.select(M::TextBlock).should_not be_empty
+        report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
+      end
+    end
+  end
+
+  # An interrupted turn, on purpose. The first time this appeared it was an
+  # accident — a small model reasoning past its ceiling — and an accident is a
+  # poor fixture.
+  describe "truncation" do
+    it "reports a turn cut short by the cap" do
+      Wiretap.intercept("ollama_truncated_anthropic") do
+        reply, _ = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL, options: TINY)
+        key = Elelem::Protocol::Anthropic::METADATA_KEY
+
+        # The turn is honest about being incomplete: the stop reason says so,
+        # and repair is the caller's business, not the exporter's.
+        reply.meta?(key, "stop_reason").should eq "max_tokens"
+        reply.content.should_not be_empty
       end
     end
   end

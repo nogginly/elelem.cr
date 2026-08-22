@@ -1,0 +1,32 @@
+{
+  "name": "ollama_truncated_anthropic",
+  "recorded_with": "wiretap/0.3.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "Content-Length": "190",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":24,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
+        "body_digest": "e777ae1f9e4df6305457d1679519b2219a55ddcc503448249474cd6cd7a28f2c"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 19:33:54 GMT",
+          "Content-Length": "307"
+        },
+        "body": "{\"id\":\"msg_7127949afca2ce98d040f216\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer\"}],\"stop_reason\":\"max_tokens\",\"usage\":{\"input_tokens\":30,\"output_tokens\":24}}\n"
+      },
+      "recorded_at": "2026-08-22T19:33:54Z"
+    }
+  ]
+}

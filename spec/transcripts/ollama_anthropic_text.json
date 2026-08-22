@@ -9,24 +9,24 @@
         "headers": {
           "content-type": "application/json",
           "anthropic-version": "2023-06-01",
-          "Content-Length": "192",
+          "Content-Length": "191",
           "Host": "localhost:11434",
           "User-Agent": "Crystal",
           "Accept-Encoding": "gzip, deflate"
         },
-        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":4096,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
-        "body_digest": "cb53df83ffaa6f87ffb75eb071f47bfecd8f00922aa2f351b7096492a8642f43"
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
+        "body_digest": "135bdf2a9050cf12bcb75b2430af8249f34853894b675adf60a0469f11acfbda"
       },
       "response": {
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 17:35:24 GMT",
-          "Content-Length": "719"
+          "Date": "Sat, 22 Aug 2026 19:33:19 GMT",
+          "Content-Length": "886"
         },
-        "body": "{\"id\":\"msg_c42ad2e895608afca1d2b5b7\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Fact: Mount Everest is the tallest mountain on Earth (above sea level).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\" (Simple, direct, one sentence).\\n    *   \\\"The tallest mountain on Earth is Mount Everest.\\\" (Also good).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\"},{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":112}}\n"
+        "body": "{\"id\":\"msg_d7b27d011a87eb7b9552a1b2\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Fact: Mount Everest is the tallest mountain on Earth (above sea level).\\n\\n    *   Draft 1: Mount Everest is the tallest mountain on Earth. (Simple, direct)\\n    *   Draft 2: The tallest mountain on Earth is Mount Everest. (Also simple)\\n    *   Draft 3: Mount Everest is the highest mountain above sea level. (A bit more technical, but still one sentence)\\n\\n    *   Draft 1 is the most concise and direct.\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\"},{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":158}}\n"
       },
-      "recorded_at": "2026-08-22T17:35:24Z"
+      "recorded_at": "2026-08-22T19:33:19Z"
     }
   ]
 }

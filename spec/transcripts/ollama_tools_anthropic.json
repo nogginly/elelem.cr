@@ -1,0 +1,58 @@
+{
+  "name": "ollama_tools_anthropic",
+  "recorded_with": "wiretap/0.3.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "Content-Length": "424",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]}],\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}",
+        "body_digest": "67bfa703f0ae207cb502cec786bb5ae7cf970310d6451b206fe7483d169e642c"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 19:33:48 GMT",
+          "Content-Length": "479"
+        },
+        "body": "{\"id\":\"msg_e43d6d610d8e8de4d263663b\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user is asking for the weather in Paris and specifically requested to use the `get_weather` tool.\\nI should call the `get_weather` tool with the argument `city='Paris'`.\"},{\"type\":\"tool_use\",\"id\":\"call_kwfh4ehk\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":90,\"output_tokens\":60}}\n"
+      },
+      "recorded_at": "2026-08-22T19:33:48Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "Content-Length": "895",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user is asking for the weather in Paris and specifically requested to use the `get_weather` tool.\\nI should call the `get_weather` tool with the argument `city='Paris'`.\"},{\"type\":\"tool_use\",\"id\":\"mc_1787427228825_1\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"mc_1787427228825_1\",\"content\":[{\"type\":\"text\",\"text\":\"18C, light rain\"}]}]}],\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}",
+        "body_digest": "fefc9ffbfc3b9c71d9cb3bb895bb35a47222bf1803fc9cc1f2ad1e7b7a03028a"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 19:33:50 GMT",
+          "Content-Length": "397"
+        },
+        "body": "{\"id\":\"msg_9ac51b082d3e24995089ee3f\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The tool returned the weather in Paris as \\\"18C, light rain\\\". I should now communicate this to the user.\"},{\"type\":\"text\",\"text\":\"The weather in Paris is 18°C with light rain.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":173,\"output_tokens\":41}}\n"
+      },
+      "recorded_at": "2026-08-22T19:33:50Z"
+    }
+  ]
+}
