@@ -29,6 +29,11 @@ module Elelem
     # The vendor this deployment honours opaque data for. See `narrowed`.
     getter vendor : String?
 
+    # Declared once here; every adapter inherits it, since the vendor question
+    # is the same one for all four protocols.
+    def initialize(@vendor : String? = nil)
+    end
+
     # A prepared request and the means to read its reply.
     #
     # The split is deliberate. `prepare` builds a body, `Server#post` sends it,
