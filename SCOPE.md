@@ -14,18 +14,13 @@ outstanding belongs here, because nobody greps a codebase for open questions.
 
 ## MUST FIX
 
-### Export handles requests, not responses
-
-Acceptance criterion 8 — a live session started on Chat Completions, exported,
-and resumed on the Responses API — needs export to accept a provider
-*response*, which is a different shape from the request the conformance suite
-round-trips (`choices[0].message`, not `messages[]`).
-
-Round-trip conformance is unaffected and remains request-shaped. Fold this into
-Phase 2, since both OpenAI protocols need it and the client layer is where it
-gets used.
-
 ### Interrupted turns must leave a sendable session
+
+**Now reproducible on demand.** `spec/live/ollama_spec.cr` records a turn cut
+short by `max_output_tokens: 24`: `stop_reason: max_tokens`, a thinking block,
+and no answer. It first appeared by accident — a small model reasoning past its
+ceiling — and an accident is a poor fixture. Repair remains unbuilt; the
+exporter is deliberately honest and returns what arrived.
 
 A turn can stop before it completes: a user interrupt in an interactive agent, a
 resource limit in an automated one, a provider quota, a dropped connection, a
@@ -70,7 +65,52 @@ streaming is not purely additive later.
 
 No fixture covers this. Build alongside the client.
 
+### Reasoning controls are not expressible
+
+Tool declarations and the output cap landed in `Options`; reasoning controls did
+not. Every protocol has one and no two agree on the *unit*:
+
+Protocol        |Spelling                |Unit  
+----------------|------------------------|------
+Chat Completions|`reasoning_effort`      |Level 
+Responses       |`reasoning.effort`      |Level 
+Anthropic       |`thinking.budget_tokens`|Tokens
+Gemini          |`thinkingConfig`        |Both  
+
+A shared enum is not inventing an abstraction: Anthropic's own product presents
+Low/Medium/High, so mapping a level onto a budget is adopting a vendor's
+abstraction rather than guessing at equivalence. Callers wanting exactness
+should still be able to pass a budget directly.
+
+This is the one request option that **should** add a `Profile` field. The answer
+is genuinely trichotomous — effort, budget, or no control at all — and a mapper
+must branch on it. Contrast tools and the output cap, which every protocol
+expresses and which therefore needed no declaration.
+
+Where a protocol has no control, the request loses something the caller asked
+for, and that should be annotated. Note this stretches `Report` from describing
+*history* fidelity to describing *request* fidelity. Probably right — silence is
+the failure the capability model exists to prevent — but it is a second concept
+in one bag, and worth revisiting if it reads badly.
+
+### The specification is silent on request parameters
+
+`docs/MPSH_SPECIFICATION.md` covers tool *calls and results* in detail and says
+nothing about tool *definitions*, output caps or reasoning controls. `Options`
+was built past the edge of the spec rather than against it.
+
+That is not obviously wrong — the spec describes a portable *session*, and these
+are per-call concerns that deliberately never enter one. But the omission should
+be a recorded decision rather than an accident, so a future reader does not
+assume the spec ruled on it. Resolve when the spec is next revised.
+
 ### Thinking blocks without a signature will be rejected at request time
+
+**The Ollama run did not touch this**, and cannot. Its recorded `thinking`
+blocks carry no `signature` field at all, so a block without one passes
+trivially. This stays open until a real Anthropic endpoint is recorded — see
+`docs/servers/ollama.md`.
+
 
 Anthropic requires a `thinking` block to carry the signature it issued, replayed
 unmodified. We carry signatures correctly when they exist — but nothing stops a
@@ -91,40 +131,33 @@ verification cannot settle.
 
 ## WILL FIX
 
-### The third identity: providers, and whether a model catalog should exist
+### A model catalog, keyed independently of protocol
 
-Phase 0 established two identities and needs a third.
+The third identity is built — `Server`, `Provider` and the vendor axis are in
+`DEVELOPMENT.md` — but the part that attached to it is not. `Provider` answers
+"where is it sent and whose opaque data does it honour". It does not answer
+"what can *this model* do".
 
-Identity             |Where it lives now    |Answers                                            
----------------------|----------------------|---------------------------------------------------
-**Vendor namespace** |`Profile#metadata_key`|Whose opaque data is this, and who can read it back
-**Protocol**         |`Profile#provider`    |What shape does the request take                   
-**Provider instance**|Does not exist yet    |Where is it sent, which models are served          
-
-The third arrives with the client layer, and it is genuinely many-to-one:
-Ollama, LM Studio and vLLM all serve Chat Completions, and none of them issues
-OpenAI's encrypted reasoning items. A provider is an endpoint plus a protocol
-plus the models available there.
-
-That last part is where the parked model-catalog question attaches, because the
-two turned out to be the same question. `ReasoningRetention::CompletedTurns`
-exists for a requirement keyed on **model**, not protocol — one model family
-asks that reasoning be dropped once a turn closes. Declared media support has
-the same problem in miniature: both OpenAI profiles list audio media types, but
-audio support is model-gated in practice, and a self-hosted server speaking Chat
-Completions may support none of it.
+`ReasoningRetention::CompletedTurns` exists for a requirement keyed on **model**,
+not protocol: one model family asks that reasoning be dropped once a turn
+closes. Declared media support has the same problem in miniature — both OpenAI
+profiles list audio media types, but audio support is model-gated in practice,
+and a self-hosted server speaking Chat Completions may support none of it.
 
 Open questions:
 
-- Should a model catalog exist, keyed independently of protocol, and is it the
-  same thing as a provider's model list or a separate layer?
+- Should a catalog exist as its own layer, or is it a property of a provider?
 - What is the minimal preference set it carries? Reasoning retention is one.
   Media support narrowing is a likely second.
 - **The trap**: a catalog is a second place where "what this endpoint wants" is
-  decided. A preference may only ask for *less* than the protocol can carry —
-  narrowing declared media, or trimming playback. One that can *add* capability,
-  or override a refusal, is a back door around the capability model. Any
-  candidate failing that test does not belong in the catalog.
+  decided. A preference may only ask for *less* than the protocol can carry.
+  One that can *add* capability, or override a refusal, is a back door around
+  the capability model. Any candidate failing that test does not belong.
+
+Note the precedent now set by vendor narrowing, which solves the same shape of
+problem: it reassigns one `Profile` field and lets the existing resolver do the
+work, rather than adding a parallel decision path. A catalog should look like
+that or it is probably wrong.
 
 ### Carrier deferral is reimplemented per protocol
 
@@ -226,6 +259,36 @@ placeholder now would say nothing.
 
 ---
 
+## Lessons that changed how this is built
+
+Not tasks. Recorded because each cost something and each will recur.
+
+### A fixture written by the same hand as the code tests the hand, not the wire
+
+Ollama spells the Chat Completions reasoning field `reasoning`; vLLM and
+DeepSeek spell it `reasoning_content`. The reader required the second, so every
+Ollama reasoning trace was dropped — silently, with no error and no annotation,
+while 218 offline examples stayed green. They stayed green *because* the
+fixtures had been written from the same assumption as the reader.
+
+One recording found it. Every protocol here is served by implementations that
+disagree with its specification in small ways, and only a transcript is
+evidence. Both spellings are now read, as Gemini already read `inlineData` and
+`inline_data`.
+
+### An uncapped request is unbounded
+
+A small model with no output cap spent 4,096 tokens reasoning without reaching
+an answer, and an earlier run stalled twelve minutes with every later request
+queued behind it — Ollama processes serially, so one runaway blocks the rest.
+Live requests now always carry a cap.
+
+### Record transcripts; never hand-write them
+
+Both times a transcript was guessed at rather than captured, the guess was wrong
+and cost a debugging round. A real server produces the real error body, which is
+what the decoder actually has to survive.
+
 ## Explicitly not doing
 
 ### No `UNSUPPORTED.md`
@@ -235,72 +298,6 @@ protocol's declared `Profile` rather than written by hand, expressed per media
 type rather than per feature, and queryable by callers at runtime. A prose
 version would be a second statement of the same fact and would drift within a
 single phase.
-
-### Requests cannot declare tools
-
-No protocol's wire request carries a `tools` array. The mappers translate tool
-calls and results faithfully *in history*, but nothing tells a model which
-tools exist, so a live model will never emit a call. Every tool-bearing example
-in the conformance suite starts from a session that already contains a call —
-which is why 218 offline examples passed without exposing this.
-
-The consequence is that the turn loop in `DEVELOPMENT.md` cannot currently be
-driven end to end: it dispatches calls that nothing can provoke. It also means
-the live suite covers text and handoff only, since the tool half of the matrix
-is unreachable against a real server.
-
-This is an omission rather than a decision. It needs a shared MPSH tool
-definition — name, description, parameter schema — and four mappings from it,
-one per protocol, each with its own spelling (`tools[].function` on Chat
-Completions, flat `tools[]` on Responses and Anthropic,
-`tools[].functionDeclarations` on Gemini). `tool_choice` is a separate question
-and can wait; Ollama does not implement it on the Anthropic endpoint in any
-case.
-
-Deferred to the step after the live handoff, so that the first live evidence is
-not blocked on it.
-
-### Requests carry no generation parameters
-
-Only the Anthropic request has `max_tokens`, and only because the protocol
-refuses without it. No protocol can express an output limit otherwise, a
-temperature, or a reasoning budget — `reasoning_effort` on Chat Completions,
-the `thinking` object on Anthropic, the `reasoning` object on Responses. Three
-spellings of one idea, and none of them expressible.
-
-This is the same omission as the missing tool declarations above, and the two
-belong to one piece of work: the wire requests model *conversation* faithfully
-and *generation* not at all. Both need a shared MPSH type and four mappings
-from it.
-
-It has already cost real time. A small hyperactive model, given no output cap,
-spent 4,096 tokens reasoning without reaching an answer — a live interrupted
-turn — and an earlier run stalled for twelve minutes on an uncapped request. A
-cap is not a nicety on a local endpoint; it is the difference between a fast
-suite and an unbounded one.
-
-One thing to reclaim when it lands: an interrupted turn should be a
-*deliberate* fixture. A tiny cap produces truncation on demand and
-deterministically, which is a better test than waiting for a model to
-over-think.
-
-### Reading a protocol is not knowing a server
-
-Ollama spells the Chat Completions reasoning field `reasoning`; vLLM and
-DeepSeek spell it `reasoning_content`. The reader accepted only the second, so
-every reasoning trace from Ollama was dropped — no error, no annotation, and a
-green suite, because the offline fixtures had been written from the same
-assumption as the reader and therefore agreed with it.
-
-Recording against a real server found it in one run. The general lesson is
-cheap to state and easy to forget: a fixture written by the same hand as the
-code tests the hand, not the wire. Every protocol this shard supports is served
-by implementations that disagree with its specification in small ways, and only
-a transcript is evidence.
-
-Both spellings are now read, as `inlineData` and `inline_data` both are on
-Gemini. Expect more of these, and expect each to arrive with a green suite
-already in place.
 
 ### Out of scope for the current pass
 

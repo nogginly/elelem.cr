@@ -79,31 +79,54 @@ flowchart TB
         ST --> PO
     end
 
-    subgraph PROTO["protocol/ — NOT BUILT YET (Phases 1-2 + checkpoint)"]
+    subgraph PROTO["protocol/ — one directory per protocol"]
         C1["chat_completions"]
         C2["responses"]
         C3["anthropic"]
         C4["gemini"]
+        W["each: capabilities · wire/request<br/>wire/response · mapper · export"]
+    end
+
+    subgraph LIVE["the live layer — the only part that touches a network"]
+        SV["Server<br/>deployment · connection · status→error"]
+        PV["Provider<br/>server + protocol + vendor"]
+        AD["Adapter<br/>path · headers · prepare/read"]
+        CL["Client<br/>send → (Message, Report)"]
+        OP["Options<br/>tools · output cap"]
+        SV --> PV --> AD --> CL
+        OP --> AD
     end
 
     B -.consumed by.-> R
     R -.governs.-> PROTO
     T -.owned by.-> PROTO
     PROTO -.exports back to.-> S
+    PROTO -.driven by.-> AD
 
     classDef built stroke:#2e7d32,stroke-width:3px
-    classDef pending stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5
-    class S,M,B,P,T,PR,R,ST,PO built
-    class C1,C2,C3,C4 pending
+    class S,M,B,P,T,PR,R,ST,PO,C1,C2,C3,C4,W,SV,PV,AD,CL,OP built
 ```
 
 ```
 src/elelem/
   mpsh/         canonical types — knows nothing of HTTP or any provider
   capability/   outcomes, profiles, policy — depends on mpsh, never the reverse
-  protocol/     one module per protocol: map + export + declared capabilities
-  client/       session API
+  protocol/     one directory per protocol:
+                  capabilities.cr   declared Profile
+                  wire/request.cr   serialize-only — what we build
+                  wire/response.cr  parse-only — what we read
+                  mapper.cr         MPSH → request
+                  export.cr         request or response → MPSH
+  server.cr     one deployment: host, credential, connection, status errors
+  provider.cr   a server speaking one protocol, plus its vendor claim
+  adapter.cr    per protocol: path, headers, prepare/read
+  client.cr     send(session, model) → (Message, Report)
+  options.cr    tools and output cap — per call, never stored in a session
 ```
+
+Flat files rather than a directory, because a directory here *is* a namespace
+and none of these five wants one yet. Group them when there are enough to share
+a vocabulary, not merely a layer.
 
 Two structural rules, both absolute:
 
@@ -116,6 +139,38 @@ Two structural rules, both absolute:
 Rule 2 is the failure that makes a client un-portable, and it has been made
 before: once storage form is wire form, there is no mapping layer, and therefore
 nothing to make portable.
+
+Note the asymmetry it produces in `wire/`. A request is something this shard
+*builds*, so `request.cr` is serialize-only; a response is something it *reads*,
+so `response.cr` is parse-only. One direction per file, because the two fail in
+different ways and mixing them invites a request type to grow a reader nobody
+needs.
+
+## Three identities, kept apart
+
+The distinction that the live layer exists to preserve, and the one most likely
+to be collapsed by a well-meaning simplification:
+
+Axis    |Question                                    |Where it lives             
+--------|--------------------------------------------|---------------------------
+Protocol|Which wire shape?                           |`Capability::Profile`      
+Server  |Which deployment?                           |`Server`                   
+Vendor  |Whose opaque data does this endpoint honour?|`Provider` → `metadata_key`
+Model   |Which capabilities within a protocol?       |**Unmodelled, parked**     
+
+Ollama forces them apart: one server, three protocols, none of them its own
+vendor. A gateway forces them apart the other way — OpenRouter fronting Claude
+is `server: openrouter, vendor: anthropic`, and the opaque data really does
+replay.
+
+`Provider` narrows a `Profile` when server and vendor disagree, by reassigning
+`metadata_key` so `Resolver#own?` stops recognising foreign opaque data.
+**Narrowing only.** A misconfigured provider can degrade, never fabricate a
+capability the wire lacks. The default is pessimistic and falls out of comparing
+names rather than needing a flag, because the two errors are not symmetric:
+wrongly optimistic replays a signature a real endpoint rejects and breaks the
+turn, while wrongly pessimistic costs fidelity that is recorded and
+recoverable.
 
 ## Conventions
 
@@ -347,15 +402,27 @@ abstraction is the first protocol from a different family.
 2. **Write the map direction.** MPSH view in, request body out. Every outcome
    goes through `Report#record`; that is where policy is enforced, and where a
    mapper that wants to lose something has to say so.
-3. **Write the export direction.** Response in, MPSH out. This direction carries
+3. **Write the response reader.** `wire/response.cr`, parse-only, tolerant of
+   unknown fields — providers add them constantly and a strict reader breaks on
+   every vendor tweak. Only an absent top-level envelope raises. Note which
+   arrays are *alternatives* (`choices`, `candidates` — take index 0, we never
+   ask for more than one) and which are the reply's own parts (`output`,
+   Anthropic's `content` — walk them entire).
+4. **Write the export direction.** Response in, MPSH out. This direction carries
    obligations the other does not: normalize roles, mint MPSH IDs and record the
    translation, split fused representations, un-hoist fields into blocks,
    namespace provider data, flag server-executed tools, preserve redacted
    reasoning as a block rather than an omission — and **discard compensation
    scaffolding**, so a synthetic message this client generated is never
    re-imported as though it were real.
-4. **Run the shared conformance suite.** Same fixtures, every protocol.
-5. **Write `docs/protocols/<name>.md`.**
+5. **Write the request options.** Tool declarations and the output cap, in this
+   protocol's spelling. All four differ; see `options.cr` and
+   `spec/conformance/options_spec.cr`.
+6. **Write an `Adapter`.** Path, headers, error-body decoding. This is the only
+   place an endpoint is named, which is what keeps `Client` protocol-agnostic.
+7. **Run the shared conformance suite.** Same fixtures, every protocol.
+8. **Record against a real server.** See *Live specs* below.
+9. **Write `docs/protocols/<name>.md`.**
 
 ### The conformance gate
 
@@ -375,6 +442,38 @@ Genuine MPSH gap         |The format cannot express something real|**Expensive**
 The pair that actually validates the design is one fixture against two
 protocols: an image-bearing `tool_result` mapped to a protocol that must fake the
 capability, and to one that has it natively. Neither alone proves anything.
+
+## Live specs
+
+`spec/live/` means *needs a transcript*; everything else is `spec/conformance/`
+and runs anywhere. The line is what a spec consumes, not what it is about —
+`layer_spec.cr` tests the live layer and needs no network, so it is conformance.
+
+Recording uses `wiretap`, a development-only dependency: the first run hits a
+real server and writes `spec/transcripts/<name>.json`, every run after replays
+from disk. Transcripts are committed. They are the evidence, and they are what
+makes the suite offline for everyone who did not record them.
+
+Four things learned the hard way:
+
+- **Record, never hand-write.** Both times a transcript was guessed at rather
+  than captured, the guess was wrong and cost a debugging round.
+- **A fixture written by the same hand as the code tests the hand, not the
+  wire.** Ollama spells the Chat Completions reasoning field `reasoning`; vLLM
+  and DeepSeek spell it `reasoning_content`. The reader took only the second, so
+  every Ollama reasoning trace was dropped — silently, with hundreds of offline
+  examples green, because the fixtures shared the reader's assumption.
+- **Share a transcript name when the request is byte-identical**, never merely
+  to save a recording. Two examples that send different things get different
+  names.
+- **Multi-turn transcripts re-cut all their turns.** Turn *n+1* depends on what
+  the model said at turn *n*, and a model is not a pure function — so a
+  re-record changes every turn after the first even when nothing in the code
+  moved.
+
+Always cap output on a live request. An uncapped local model cost this suite a
+twelve-minute stall and a turn that spent 4,096 tokens reasoning without
+reaching an answer.
 
 ## Contributing
 

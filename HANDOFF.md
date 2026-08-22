@@ -12,59 +12,67 @@ Document                    |Why
 `SCOPE.md`                  |The worklist. Every open question, each with the trap that makes it awkward   
 `DEVELOPMENT.md`            |Layering, conventions, how an agent uses the shard, how to add a protocol     
 `docs/protocols/*.md`       |One per protocol: declared capabilities, limits, the bugs each produced       
+`docs/servers/*.md`         |One per server: what it serves, where it diverges, what a green run misses    
 
 Where this file and `docs/MPSH_SPECIFICATION.md` disagree, the specification
 wins.
 
 ## State
 
-Phases 0–2 and the checkpoint are complete. Four protocols — Chat Completions,
-Responses, Anthropic, Gemini — each with a mapper, an exporter and a shared
-structural conformance suite. 218 examples, entirely offline: no key, no model,
-no network, no HTTP object constructed. Zero runtime dependencies.
+Phase 3 is complete: **the live handoff works.** Four protocols — Chat
+Completions, Responses, Anthropic, Gemini — each with a mapper, an exporter, a
+response reader, and a wire request that can declare tools and cap output.
+Zero runtime dependencies; `wiretap` is development-only.
 
-Seven of nine acceptance criteria are met. Outstanding: a live handoff
-(criterion 8), and confirming `shards.yml` still has no runtime dependencies
-(criterion 9).
+Three of the four protocols have been exercised against a real server. Ollama
+serves Chat Completions, Responses and an Anthropic-compatible endpoint from
+one port, and `spec/live/ollama_spec.cr` records a session answered by one
+protocol and continued on another, including a tool call minted on one and
+replayed on the next. Transcripts are committed under `spec/transcripts/` and
+replay offline, so the suite needs no server.
 
-Anthropic and Gemini are **structurally verified but unexecuted**, which is the
-checkpoint working as designed — keys gate execution, not mapping.
+**Gemini has never been executed.** Ollama does not serve it, so that mapper
+remains structurally verified and unrun — the checkpoint working as designed.
 
-## Next: the path to a live handoff
+Recording practice, and why re-recording is more disruptive than it looks:
+*Live specs* in `DEVELOPMENT.md`.
 
-Three pieces, in order. Each is a `MUST FIX` in `SCOPE.md` with fuller detail.
+## The live layer
 
-1. **Response-shaped export.** Exporters currently handle *requests*, which is
-   what round-trip conformance needs. A live call returns a different shape per
-   protocol — `choices[0].message`, `output[]` items, Anthropic's `content[]`.
-   Mostly a second entry point onto existing block-building, not new
-   translation.
-2. **A minimal client.** `HTTP::Client` and nothing else. No retries, no
-   streaming, no tool dispatch. This is where the third identity gets a type: a
-   provider is an endpoint plus a protocol plus available models. API shape is
-   settled — see `DEVELOPMENT.md`, *How an agent uses this shard*.
-3. **The Ollama run.** The first thing in this project to touch a network.
+Built and described in `DEVELOPMENT.md` — *Layering*, *Three identities, kept
+apart*, and *Live specs*. The short version: `Server` is a deployment,
+`Provider` is a server speaking one protocol plus its vendor claim, `Adapter`
+holds the only endpoint knowledge, `Client#send` performs one exchange and
+returns `(MPSH::Message, Capability::Report)`.
 
-### On Ollama, and what it will not prove
+The one rule worth repeating here because breaking it is silent: vendor
+narrowing is **one-directional**. A provider may declare that a deployment
+honours *less* than its protocol allows, never more.
 
-Ollama serves Chat Completions, Responses *and* an Anthropic-compatible
-protocol from one endpoint, so a three-way handoff on one local model is
-possible with no API spend. That is a far stronger portability demonstration
-than the OpenAI pair, because the Anthropic leg genuinely reshapes the request.
+## Next
 
-But a compatibility layer proves the **shape is accepted**, not that Anthropic
-accepts it, and the difference falls exactly where the open questions are:
+1. **Reasoning controls.** The remaining half of the request-options work.
+   Every protocol has one; no two agree on the unit — a named effort level on
+   three, a token budget on Anthropic. Anthropic's own product presents
+   Low/Medium/High, so a shared enum adopts a vendor's abstraction rather than
+   inventing one. `Profile` should gain a field here: the answer is genuinely
+   trichotomous (effort, budget, none) and a mapper must branch on it.
+2. **Anthropic live.** The only endpoint that can falsify the narrowing
+   default, because it actually validates signatures. Ollama ignores them, so a
+   correctly pessimistic provider and a wrongly optimistic one both pass.
+3. **Gemini live.** The only live coverage that protocol will get.
+4. **Azure will amend the design.** It speaks Chat Completions but embeds a
+   deployment name and `api-version` in the path and authenticates with
+   `api-key`, not `Bearer`. `Adapter` currently assumes path and auth are
+   *protocol* facts; Azure proves they are protocol-plus-deployment facts. Do
+   it last, so the amendment lands against three working examples.
 
-- Ollama has no thinking signature to demand, so a `thinking` block without one
-  will pass. The signature entry in `SCOPE.md` stays open regardless.
-- Compatibility layers are permissive. Alternation, first-user and `max_tokens`
-  may be accepted where the real endpoint rejects — the same asymmetry already
-  seen between Azure and Ollama on tool-result ordering.
-- A non-Claude model behind an Anthropic-shaped API does not inherit Claude's
-  capabilities.
+### On Ollama
 
-Write that distinction into the Ollama work so a green run is not later read as
-having closed items it never touched.
+What it serves, where it diverges, and what a green run there does *not* prove:
+`docs/servers/ollama.md`. Read it before treating any live green as having
+closed a `SCOPE.md` item — the signature questions in particular remain open,
+because Ollama has no signature to validate.
 
 ## How to work on this
 
@@ -78,7 +86,11 @@ having closed items it never touched.
   mapper code.
 - **A green suite is narrower than it looks.** Compilation proves types line up.
   Structural conformance proves shapes. Neither says anything about request-time
-  behaviour, and three known uncertainties are recorded in `SCOPE.md`.
+  behaviour.
+- **A fixture written by the same hand as the code tests the hand, not the
+  wire.** One recording found a bug that hundreds of green offline examples
+  could not. See *Live specs* in `DEVELOPMENT.md` for the rules that follow
+  from it.
 - **`SCOPE.md` "Explicitly not doing" is a decision**, not an oversight to
   helpfully correct.
 - Diagrams are Mermaid, fenced inline in Markdown so they render on GitHub.
