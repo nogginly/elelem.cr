@@ -1,4 +1,5 @@
 require "./wire/request"
+require "../../options"
 require "./capabilities"
 require "../../capability/resolver"
 require "../../capability/policy"
@@ -38,7 +39,8 @@ module Elelem::Protocol::Anthropic
     def map(session : MPSH::Session, model : String,
             policy : Capability::Policy = Capability::Policy::Compensating,
             retention : Capability::ReasoningRetention = Capability::ReasoningRetention::All,
-            max_tokens : Int32 = DEFAULT_MAX_TOKENS) : {Wire::Request, Capability::Report}
+            max_tokens : Int32 = DEFAULT_MAX_TOKENS,
+            options : Options = Options.new) : {Wire::Request, Capability::Report}
       report = Capability::Report.new(NAME, policy)
       plan = Capability::Retention.plan(session.messages, retention)
       report.reasoning_dropped = plan.dropped
@@ -53,7 +55,23 @@ module Elelem::Protocol::Anthropic
       end
 
       messages = normalize(rendered, report)
-      {Wire::Request.new(model, messages, max_tokens, session.system_prompt), report}
+      # `options.max_output_tokens` wins when set. The positional `max_tokens`
+      # stays because this protocol requires a value and had one before options
+      # existed; it is the fallback, not a second way to say the same thing.
+      {Wire::Request.new(model, messages, options.max_output_tokens || max_tokens,
+        session.system_prompt, declarations(options)), report}
+    end
+
+    # Tool declarations and generation options, translated per protocol.
+    #
+    # Added as a trailing parameter rather than folded in with `policy` and
+    # `retention`: those govern what may be lost translating *history*, these
+    # govern what the model is asked to do *next*. Two questions that happen to
+    # ride on one call.
+    private def declarations(options : Options) : Array(Wire::ToolDeclaration)
+      options.tools.map do |tool|
+        Wire::ToolDeclaration.new(tool.name, tool.description, tool.parameters)
+      end
     end
 
     private def role_of(message : MPSH::Message) : String

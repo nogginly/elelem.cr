@@ -20,6 +20,7 @@ require "./elelem/capability/retention"
 
 # Protocol layer. One directory per protocol: capabilities, wire vocabulary
 # (request out, response in), mapper and exporter.
+require "./elelem/options"
 require "./elelem/protocol/errors"
 # - Chat completions
 require "./elelem/protocol/chat_completions/capabilities"

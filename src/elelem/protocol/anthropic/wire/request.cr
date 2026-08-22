@@ -209,14 +209,36 @@ module Elelem::Protocol::Anthropic
       end
     end
 
+    # Flat, and the schema field is `input_schema` rather than `parameters` —
+    # the only protocol of the four to name it after what it constrains rather
+    # than what it is.
+    struct ToolDeclaration
+      getter name : String
+      getter description : String?
+      getter input_schema : String
+
+      def initialize(@name : String, @description : String?, @input_schema : String)
+      end
+
+      def to_json(json : JSON::Builder)
+        json.object do
+          json.field "name", @name
+          @description.try { |text| json.field "description", text }
+          json.field("input_schema") { json.raw @input_schema }
+        end
+      end
+    end
+
     struct Request
       getter model : String
       getter system : String?
       getter messages : Array(Message)
       getter max_tokens : Int32
+      getter tools : Array(ToolDeclaration)
 
       def initialize(@model : String, @messages : Array(Message),
-                     @max_tokens : Int32, @system : String? = nil)
+                     @max_tokens : Int32, @system : String? = nil,
+                     @tools : Array(ToolDeclaration) = [] of ToolDeclaration)
       end
 
       def to_json(json : JSON::Builder)
@@ -229,6 +251,9 @@ module Elelem::Protocol::Anthropic
             json.field "system", text
           end
           json.field("messages") { json.array { @messages.each(&.to_json(json)) } }
+          unless @tools.empty?
+            json.field("tools") { json.array { @tools.each(&.to_json(json)) } }
+          end
         end
       end
 

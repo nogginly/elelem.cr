@@ -162,17 +162,53 @@ module Elelem::Protocol::ChatCompletions
       end
     end
 
+    # A tool offered to the model. This protocol wraps the declaration in a
+    # `function` object under a `type` discriminator — the only one of the four
+    # to nest it, and the same hoisting instinct that puts tool *calls* on the
+    # message rather than in the content.
+    struct ToolDeclaration
+      getter name : String
+      getter description : String?
+      getter parameters : String
+
+      def initialize(@name : String, @description : String?, @parameters : String)
+      end
+
+      def to_json(json : JSON::Builder)
+        json.object do
+          json.field "type", "function"
+          json.field("function") do
+            json.object do
+              json.field "name", @name
+              @description.try { |text| json.field "description", text }
+              # Emitted raw: the schema is already JSON, and re-encoding it
+              # through a parsed form would only risk changing it.
+              json.field("parameters") { json.raw @parameters }
+            end
+          end
+        end
+      end
+    end
+
     struct Request
       getter model : String
       getter messages : Array(Message)
+      getter tools : Array(ToolDeclaration)
+      getter max_tokens : Int32?
 
-      def initialize(@model : String, @messages : Array(Message))
+      def initialize(@model : String, @messages : Array(Message),
+                     @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
+                     @max_tokens : Int32? = nil)
       end
 
       def to_json(json : JSON::Builder)
         json.object do
           json.field "model", @model
           json.field("messages") { json.array { @messages.each(&.to_json(json)) } }
+          unless @tools.empty?
+            json.field("tools") { json.array { @tools.each(&.to_json(json)) } }
+          end
+          @max_tokens.try { |value| json.field "max_tokens", value }
         end
       end
 

@@ -133,13 +133,43 @@ module Elelem::Protocol::Gemini
     # The model is *not* a body field here — it goes in the URL path. `model` is
     # carried so a client can build `.../models/{model}:generateContent`, and is
     # deliberately excluded from `to_json`.
+    # Doubly nested: declarations sit inside `functionDeclarations`, which sits
+    # inside an entry of `tools`. The outer array exists because this protocol
+    # groups function declarations alongside provider-run tools like code
+    # execution — a distinction the other three draw with a block type rather
+    # than with request structure.
+    struct ToolDeclaration
+      getter name : String
+      getter description : String?
+      getter parameters : String
+
+      def initialize(@name : String, @description : String?, @parameters : String)
+      end
+
+      def to_json(json : JSON::Builder)
+        json.object do
+          json.field "name", @name
+          @description.try { |text| json.field "description", text }
+          # Gemini accepts a restricted OpenAPI subset rather than full JSON
+          # Schema, so a schema this protocol rejects may be valid elsewhere.
+          # Emitted as given: silently rewriting a caller's schema would be a
+          # worse failure than the provider's own error message.
+          json.field("parameters") { json.raw @parameters }
+        end
+      end
+    end
+
     struct Request
       getter model : String
       getter contents : Array(Content)
       getter system_instruction : String?
+      getter tools : Array(ToolDeclaration)
+      getter max_output_tokens : Int32?
 
       def initialize(@model : String, @contents : Array(Content),
-                     @system_instruction : String? = nil)
+                     @system_instruction : String? = nil,
+                     @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
+                     @max_output_tokens : Int32? = nil)
       end
 
       def path : String
@@ -159,6 +189,24 @@ module Elelem::Protocol::Gemini
             end
           end
           json.field("contents") { json.array { @contents.each(&.to_json(json)) } }
+          unless @tools.empty?
+            json.field("tools") do
+              json.array do
+                json.object do
+                  json.field("functionDeclarations") do
+                    json.array { @tools.each(&.to_json(json)) }
+                  end
+                end
+              end
+            end
+          end
+          # The only protocol to put generation parameters in their own object
+          # rather than at the top level.
+          @max_output_tokens.try do |value|
+            json.field("generationConfig") do
+              json.object { json.field "maxOutputTokens", value }
+            end
+          end
         end
       end
 

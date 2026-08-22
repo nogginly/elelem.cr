@@ -42,11 +42,13 @@ module Elelem
     def send(session : MPSH::Session, model : String,
              policy : Capability::Policy? = nil,
              retention : Capability::ReasoningRetention? = nil,
-             max_tokens : Int32? = nil) : {MPSH::Message, Capability::Report}
+             max_tokens : Int32? = nil,
+             options : Options = Options.new) : {MPSH::Message, Capability::Report}
       exchange = provider.adapter.prepare(session, model,
         policy || @policy,
         retention || @retention,
-        max_tokens || provider.default_max_tokens)
+        max_tokens || provider.default_max_tokens,
+        options)
 
       reply = exchange.read(transmit(model, exchange.body))
       {reply, exchange.report}

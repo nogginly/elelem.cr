@@ -1,4 +1,5 @@
 require "./wire/request"
+require "../../options"
 require "./capabilities"
 require "../../capability/resolver"
 require "../../capability/policy"
@@ -30,7 +31,8 @@ module Elelem::Protocol::ChatCompletions
 
     def map(session : MPSH::Session, model : String,
             policy : Capability::Policy = Capability::Policy::Compensating,
-            retention : Capability::ReasoningRetention = Capability::ReasoningRetention::All) : {Wire::Request, Capability::Report}
+            retention : Capability::ReasoningRetention = Capability::ReasoningRetention::All,
+            options : Options = Options.new) : {Wire::Request, Capability::Report}
       report = Capability::Report.new(NAME, policy)
       plan = Capability::Retention.plan(session.messages, retention)
       report.reasoning_dropped = plan.dropped
@@ -56,7 +58,7 @@ module Elelem::Protocol::ChatCompletions
       end
 
       flush_compensation(wire, pending, report)
-      {Wire::Request.new(model, wire), report}
+      {Wire::Request.new(model, wire, declarations(options), options.max_output_tokens), report}
     end
 
     # Emits the buffered carrier, if any, and clears the buffer.
@@ -72,6 +74,18 @@ module Elelem::Protocol::ChatCompletions
     # results' worth of content may ride in one carrier. This is a
     # sequence-level adaptation, which is why it is recorded through
     # `Structural` rather than resolved per block.
+    # Tool declarations and generation options, translated per protocol.
+    #
+    # Added as a trailing parameter rather than folded in with `policy` and
+    # `retention`: those govern what may be lost translating *history*, these
+    # govern what the model is asked to do *next*. Two questions that happen to
+    # ride on one call.
+    private def declarations(options : Options) : Array(Wire::ToolDeclaration)
+      options.tools.map do |tool|
+        Wire::ToolDeclaration.new(tool.name, tool.description, tool.parameters)
+      end
+    end
+
     private def flush_compensation(wire : Array(Wire::Message),
                                    pending : Array(Wire::Part),
                                    report : Capability::Report) : Nil

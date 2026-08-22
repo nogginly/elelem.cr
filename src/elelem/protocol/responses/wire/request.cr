@@ -211,12 +211,37 @@ module Elelem::Protocol::Responses
       end
     end
 
+    # Flat, unlike Chat Completions' nested `function` object — the same
+    # flattening this protocol applies to tool calls, which are items in their
+    # own right here rather than a field hoisted onto a message.
+    struct ToolDeclaration
+      getter name : String
+      getter description : String?
+      getter parameters : String
+
+      def initialize(@name : String, @description : String?, @parameters : String)
+      end
+
+      def to_json(json : JSON::Builder)
+        json.object do
+          json.field "type", "function"
+          json.field "name", @name
+          @description.try { |text| json.field "description", text }
+          json.field("parameters") { json.raw @parameters }
+        end
+      end
+    end
+
     struct Request
       getter model : String
       getter instructions : String?
       getter input : Array(Item)
+      getter tools : Array(ToolDeclaration)
+      getter max_output_tokens : Int32?
 
-      def initialize(@model : String, @input : Array(Item), @instructions : String? = nil)
+      def initialize(@model : String, @input : Array(Item), @instructions : String? = nil,
+                     @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
+                     @max_output_tokens : Int32? = nil)
       end
 
       def to_json(json : JSON::Builder)
@@ -226,6 +251,12 @@ module Elelem::Protocol::Responses
             json.field "instructions", text
           end
           json.field("input") { json.array { @input.each(&.to_json(json)) } }
+          unless @tools.empty?
+            json.field("tools") { json.array { @tools.each(&.to_json(json)) } }
+          end
+          # `max_output_tokens` here, `max_tokens` on the other three. One idea,
+          # four spellings.
+          @max_output_tokens.try { |value| json.field "max_output_tokens", value }
         end
       end
 

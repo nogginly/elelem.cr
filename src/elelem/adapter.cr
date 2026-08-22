@@ -1,4 +1,5 @@
 require "http/headers"
+require "./options"
 require "./protocol/chat_completions/mapper"
 require "./protocol/chat_completions/export"
 require "./protocol/responses/mapper"
@@ -60,7 +61,8 @@ module Elelem
     abstract def prepare(session : MPSH::Session, model : String,
                          policy : Capability::Policy,
                          retention : Capability::ReasoningRetention,
-                         max_tokens : Int32) : Exchange
+                         max_tokens : Int32,
+                         options : Options) : Exchange
 
     # Protocol-specific auth and versioning. The credential is the server's;
     # how it is spelled on the wire is the protocol's.
@@ -128,9 +130,10 @@ module Elelem
     end
 
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
-                retention : Capability::ReasoningRetention, max_tokens : Int32) : Exchange
+                retention : Capability::ReasoningRetention, max_tokens : Int32,
+                options : Options = Options.new) : Exchange
       mapper = Protocol::ChatCompletions::Mapper.new(narrowed)
-      request, report = mapper.map(session, model, policy, retention)
+      request, report = mapper.map(session, model, policy, retention, options)
       exporter = Protocol::ChatCompletions::Exporter.new(mapper.calls)
 
       Exchange.new(request.to_json, report, ->(body : String) { exporter.export_reply(body) })
@@ -155,9 +158,10 @@ module Elelem
     end
 
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
-                retention : Capability::ReasoningRetention, max_tokens : Int32) : Exchange
+                retention : Capability::ReasoningRetention, max_tokens : Int32,
+                options : Options = Options.new) : Exchange
       mapper = Protocol::Responses::Mapper.new(narrowed)
-      request, report = mapper.map(session, model, policy, retention)
+      request, report = mapper.map(session, model, policy, retention, options)
       exporter = Protocol::Responses::Exporter.new(mapper.calls)
 
       Exchange.new(request.to_json, report, ->(body : String) { exporter.export_reply(body) })
@@ -190,9 +194,10 @@ module Elelem
     # is why `max_tokens` is threaded through every `prepare` and ignored by
     # three of them. Better a visible seam than a per-protocol options bag.
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
-                retention : Capability::ReasoningRetention, max_tokens : Int32) : Exchange
+                retention : Capability::ReasoningRetention, max_tokens : Int32,
+                options : Options = Options.new) : Exchange
       mapper = Protocol::Anthropic::Mapper.new(narrowed)
-      request, report = mapper.map(session, model, policy, retention, max_tokens)
+      request, report = mapper.map(session, model, policy, retention, max_tokens, options)
       exporter = Protocol::Anthropic::Exporter.new(mapper.calls)
 
       Exchange.new(request.to_json, report, ->(body : String) { exporter.export_reply(body) })
@@ -225,9 +230,10 @@ module Elelem
     end
 
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
-                retention : Capability::ReasoningRetention, max_tokens : Int32) : Exchange
+                retention : Capability::ReasoningRetention, max_tokens : Int32,
+                options : Options = Options.new) : Exchange
       mapper = Protocol::Gemini::Mapper.new(narrowed)
-      request, report = mapper.map(session, model, policy, retention)
+      request, report = mapper.map(session, model, policy, retention, options)
       exporter = Protocol::Gemini::Exporter.new(mapper.calls)
 
       Exchange.new(request.to_json, report, ->(body : String) { exporter.export_reply(body) })
