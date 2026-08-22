@@ -12,5 +12,8 @@ tmp*
 *enkaidu*
 CLAUDE.md
 
+# Ignore accidental push of archives
+*.zip
+
 # Ignore all db-related files at root
 *.db*
