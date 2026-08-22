@@ -1,0 +1,32 @@
+{
+  "name": "ollama_anthropic_text",
+  "recorded_with": "wiretap/0.3.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "Content-Length": "192",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":4096,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
+        "body_digest": "cb53df83ffaa6f87ffb75eb071f47bfecd8f00922aa2f351b7096492a8642f43"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 17:35:24 GMT",
+          "Content-Length": "719"
+        },
+        "body": "{\"id\":\"msg_c42ad2e895608afca1d2b5b7\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Fact: Mount Everest is the tallest mountain on Earth (above sea level).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\" (Simple, direct, one sentence).\\n    *   \\\"The tallest mountain on Earth is Mount Everest.\\\" (Also good).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\"},{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":112}}\n"
+      },
+      "recorded_at": "2026-08-22T17:35:24Z"
+    }
+  ]
+}

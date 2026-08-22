@@ -236,6 +236,30 @@ type rather than per feature, and queryable by callers at runtime. A prose
 version would be a second statement of the same fact and would drift within a
 single phase.
 
+### Requests cannot declare tools
+
+No protocol's wire request carries a `tools` array. The mappers translate tool
+calls and results faithfully *in history*, but nothing tells a model which
+tools exist, so a live model will never emit a call. Every tool-bearing example
+in the conformance suite starts from a session that already contains a call —
+which is why 218 offline examples passed without exposing this.
+
+The consequence is that the turn loop in `DEVELOPMENT.md` cannot currently be
+driven end to end: it dispatches calls that nothing can provoke. It also means
+the live suite covers text and handoff only, since the tool half of the matrix
+is unreachable against a real server.
+
+This is an omission rather than a decision. It needs a shared MPSH tool
+definition — name, description, parameter schema — and four mappings from it,
+one per protocol, each with its own spelling (`tools[].function` on Chat
+Completions, flat `tools[]` on Responses and Anthropic,
+`tools[].functionDeclarations` on Gemini). `tool_choice` is a separate question
+and can wait; Ollama does not implement it on the Anthropic endpoint in any
+case.
+
+Deferred to the step after the live handoff, so that the first live evidence is
+not blocked on it.
+
 ### Out of scope for the current pass
 
 Session tree, branching, scatter/gather, provider bindings, stateful handles,

@@ -1,0 +1,57 @@
+{
+  "name": "ollama_handoff_chat_to_anthropic",
+  "recorded_with": "wiretap/0.3.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "193",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"messages\":[{\"role\":\"system\",\"content\":\"Answer in one short sentence.\"},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
+        "body_digest": "834487f5b506ee9bf0ed031191a5ef126275e9285988536b2dcd88ed1a6397ea"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 17:35:27 GMT",
+          "Content-Length": "871"
+        },
+        "body": "{\"id\":\"chatcmpl-527\",\"object\":\"chat.completion\",\"created\":1787420127,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the tallest mountain on Earth.\",\"reasoning\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Fact: Mount Everest is the tallest mountain on Earth (above sea level).\\n\\n    *   Attempt 1: Mount Everest is the tallest mountain on Earth. (Simple, accurate)\\n    *   Attempt 2: The tallest mountain is Mount Everest. (Simple, accurate)\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\" is a single, short sentence.\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":135,\"total_tokens\":165}}\n"
+      },
+      "recorded_at": "2026-08-22T17:35:27Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "Content-Length": "374",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":4096,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}]},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"And the deepest ocean?\"}]}]}",
+        "body_digest": "cf322de7bf189b4c6ed68d036cf215ff044de12866baf9f946d51fb819c186f0"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 17:35:31 GMT",
+          "Content-Length": "850"
+        },
+        "body": "{\"id\":\"msg_0a399240743a34997cae200e\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   User Question: \\\"And the deepest ocean?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The deepest part of the ocean is the Mariana Trench.\\n    *   Wait, the question asks for the deepest *ocean*.\\n    *   Strictly speaking, the Pacific Ocean contains the deepest part of any ocean.\\n    *   Common answer: The Pacific Ocean.\\n\\n    *   \\\"The Pacific Ocean is the deepest ocean.\\\"\\n    *   \\\"The Pacific Ocean is the deepest ocean on Earth.\\\"\\n\\n    *   Is it one short sentence? Yes.\\n\\n    *   \\\"The Pacific Ocean is the deepest ocean.\\\"\"},{\"type\":\"text\",\"text\":\"The Pacific Ocean is the deepest ocean.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":54,\"output_tokens\":149}}\n"
+      },
+      "recorded_at": "2026-08-22T17:35:31Z"
+    }
+  ]
+}

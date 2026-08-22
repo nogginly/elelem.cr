@@ -1,0 +1,31 @@
+{
+  "name": "ollama_responses_text",
+  "recorded_with": "wiretap/0.3.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "200",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"instructions\":\"Answer in one short sentence.\",\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
+        "body_digest": "5d2de939497043ed9771eb0b8fa000b2f07e316e66fa7e41c7f7e83c48d48d10"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 17:35:21 GMT",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\"id\":\"resp_785551\",\"object\":\"response\",\"created_at\":1787420121,\"completed_at\":1787420121,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gemma4:26b-mxfp8\",\"previous_response_id\":null,\"instructions\":\"Answer in one short sentence.\",\"output\":[{\"id\":\"rs_resp_785551\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The tallest mountain on Earth (above sea level) is Mount Everest.\\n\\n    *   *Draft 1:* Mount Everest is the tallest mountain on Earth.\\n    *   *Draft 2:* The tallest mountain on Earth is Mount Everest.\\n    *   *Draft 3:* Mount Everest. (Too short? The prompt asks for a sentence).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\" (Simple, direct, one short sentence).\\n\\n    *   One short sentence? Yes.\\n\\n    *   Mount Everest is the tallest mountain on Earth.\"}],\"encrypted_content\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The tallest mountain on Earth (above sea level) is Mount Everest.\\n\\n    *   *Draft 1:* Mount Everest is the tallest mountain on Earth.\\n    *   *Draft 2:* The tallest mountain on Earth is Mount Everest.\\n    *   *Draft 3:* Mount Everest. (Too short? The prompt asks for a sentence).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\" (Simple, direct, one short sentence).\\n\\n    *   One short sentence? Yes.\\n\\n    *   Mount Everest is the tallest mountain on Earth.\"},{\"id\":\"msg_124546\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\",\"annotations\":[],\"logprobs\":[]}]}],\"error\":null,\"tools\":[],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":null,\"usage\":{\"input_tokens\":30,\"output_tokens\":162,\"total_tokens\":192,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-08-22T17:35:21Z"
+    }
+  ]
+}

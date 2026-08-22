@@ -1,6 +1,16 @@
 require "spec"
+require "wiretap"
 require "../src/elelem"
 require "./fixtures/mpsh_fixtures"
+
+# Live specs record once against a real server and replay from disk thereafter.
+# Transcripts are committed: they are the evidence for the handoff milestone,
+# and they are what makes the suite offline and deterministic for everyone who
+# did not record them.
+Wiretap.configure do |c|
+  c.transcript_dir = "spec/transcripts"
+  c.record_mode = :once
+end
 
 # Shorthands shared by every spec file. Declared once here rather than in each
 # file, since specs reopen the same namespace and a repeated `alias` is a

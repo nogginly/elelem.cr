@@ -1,0 +1,57 @@
+{
+  "name": "ollama_handoff_anthropic_to_responses",
+  "recorded_with": "wiretap/0.3.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "Content-Length": "192",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":4096,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
+        "body_digest": "cb53df83ffaa6f87ffb75eb071f47bfecd8f00922aa2f351b7096492a8642f43"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 17:35:35 GMT",
+          "Content-Length": "788"
+        },
+        "body": "{\"id\":\"msg_ef59780312e0bc0415b78de1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The tallest mountain on Earth (above sea level) is Mount Everest.\\n\\n    *   Option 1: Mount Everest is the tallest mountain on Earth.\\n    *   Option 2: The tallest mountain on Earth is Mount Everest.\\n    *   Option 3: Mount Everest. (Technically a fragment, but very short).\\n\\n    *   \\\"The tallest mountain on Earth is Mount Everest.\\\" (Clear, concise, one sentence).\"},{\"type\":\"text\",\"text\":\"The tallest mountain on Earth is Mount Everest.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":134}}\n"
+      },
+      "recorded_at": "2026-08-22T17:35:35Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "991",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"instructions\":\"Answer in one short sentence.\",\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"What is the tallest mountain on Earth?\"}]},{\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The tallest mountain on Earth (above sea level) is Mount Everest.\\n\\n    *   Option 1: Mount Everest is the tallest mountain on Earth.\\n    *   Option 2: The tallest mountain on Earth is Mount Everest.\\n    *   Option 3: Mount Everest. (Technically a fragment, but very short).\\n\\n    *   \\\"The tallest mountain on Earth is Mount Everest.\\\" (Clear, concise, one sentence).\"}]},{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"The tallest mountain on Earth is Mount Everest.\"}]},{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"And the deepest ocean?\"}]}]}",
+        "body_digest": "f1edca123d9c17c920e66d791d40678ac647f455b1e708ba0607349051cf9509"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 17:35:39 GMT",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\"id\":\"resp_565010\",\"object\":\"response\",\"created_at\":1787420139,\"completed_at\":1787420139,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gemma4:26b-mxfp8\",\"previous_response_id\":null,\"instructions\":\"Answer in one short sentence.\",\"output\":[{\"id\":\"rs_resp_565010\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   Question: \\\"And the deepest ocean?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The deepest part of the ocean is the Mariana Trench.\\n    *   Wait, the question asks for the \\\"deepest ocean\\\" (meaning which ocean contains the deepest part).\\n    *   The Pacific Ocean is the deepest ocean.\\n\\n    *   \\\"The deepest ocean is the Pacific Ocean.\\\"\\n    *   \\\"The Pacific Ocean is the deepest ocean.\\\"\\n\\n    *   One short sentence? Yes.\\n    *   Accurate? Yes.\"}],\"encrypted_content\":\"*   Question: \\\"And the deepest ocean?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The deepest part of the ocean is the Mariana Trench.\\n    *   Wait, the question asks for the \\\"deepest ocean\\\" (meaning which ocean contains the deepest part).\\n    *   The Pacific Ocean is the deepest ocean.\\n\\n    *   \\\"The deepest ocean is the Pacific Ocean.\\\"\\n    *   \\\"The Pacific Ocean is the deepest ocean.\\\"\\n\\n    *   One short sentence? Yes.\\n    *   Accurate? Yes.\"},{\"id\":\"msg_92229\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"The Pacific Ocean is the deepest ocean.\",\"annotations\":[],\"logprobs\":[]}]}],\"error\":null,\"tools\":[],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":null,\"usage\":{\"input_tokens\":54,\"output_tokens\":132,\"total_tokens\":186,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-08-22T17:35:39Z"
+    }
+  ]
+}

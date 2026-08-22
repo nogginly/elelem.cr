@@ -1,0 +1,31 @@
+{
+  "name": "ollama_chat_completions_text",
+  "recorded_with": "wiretap/0.3.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "193",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"messages\":[{\"role\":\"system\",\"content\":\"Answer in one short sentence.\"},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
+        "body_digest": "834487f5b506ee9bf0ed031191a5ef126275e9285988536b2dcd88ed1a6397ea"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 17:35:16 GMT",
+          "Content-Length": "870"
+        },
+        "body": "{\"id\":\"chatcmpl-749\",\"object\":\"chat.completion\",\"created\":1787420116,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the tallest mountain on Earth.\",\"reasoning\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Mount Everest is the tallest mountain above sea level.\\n\\n    *   Option 1: Mount Everest is the tallest mountain on Earth. (Simple, accurate)\\n    *   Option 2: The tallest mountain on Earth is Mount Everest. (Simple, accurate)\\n    *   Option 3: Mount Everest. (Not a sentence)\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\" meets the constraint of being one short sentence.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":136,\"total_tokens\":166}}\n"
+      },
+      "recorded_at": "2026-08-22T17:35:16Z"
+    }
+  ]
+}

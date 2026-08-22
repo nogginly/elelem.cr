@@ -1,0 +1,31 @@
+{
+  "name": "ollama_model_not_found",
+  "recorded_with": "wiretap/0.3.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "190",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"no-such-model\",\"messages\":[{\"role\":\"system\",\"content\":\"Answer in one short sentence.\"},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}]}",
+        "body_digest": "c2f2a73c29ee9c72a4389cacc76f74d46f5377acda3c770e93d60654c4a4cbe9"
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sat, 22 Aug 2026 17:35:51 GMT",
+          "Content-Length": "106"
+        },
+        "body": "{\"error\":{\"message\":\"model 'no-such-model' not found\",\"type\":\"not_found_error\",\"param\":null,\"code\":null}}\n"
+      },
+      "recorded_at": "2026-08-22T17:35:51Z"
+    }
+  ]
+}
