@@ -92,5 +92,31 @@ module Elelem::Capability
     def accepts?(kind : MPSH::BlockKind, media_type : String) : Bool
       (set = @accepted_media[kind]?) ? set.includes?(media_type) : false
     end
+
+    # The same protocol, told that this deployment does not issue or honour the
+    # vendor's opaque data.
+    #
+    # Narrowing only, and only along this axis. `Resolver#own?` compares a
+    # block's `provider_metadata` against `metadata_key`, so reassigning the
+    # key is enough to make a foreign signature stop counting as native — the
+    # existing degradation path then reports it. Nothing else about the
+    # protocol changes, because nothing else about it has.
+    def with_metadata_key(metadata_key : String) : Profile
+      Profile.new(
+        @provider,
+        metadata_key: metadata_key,
+        accepted_media: @accepted_media,
+        binary_form: @binary_form,
+        tool_calls: @tool_calls,
+        tool_results: @tool_results,
+        reasoning: @reasoning,
+        server_executed: @server_executed,
+        refusal_channel: @refusal_channel,
+        can_synthesize_user_message: @can_synthesize_user_message,
+        alternation_required: @alternation_required,
+        first_message_must_be_user: @first_message_must_be_user,
+        system_placement: @system_placement,
+        string_shorthand: @string_shorthand)
+    end
   end
 end

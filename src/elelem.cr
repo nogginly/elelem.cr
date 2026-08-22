@@ -46,5 +46,13 @@ require "./elelem/protocol/gemini/wire/response"
 require "./elelem/protocol/gemini/mapper"
 require "./elelem/protocol/gemini/export"
 
+# The live layer: a deployment, the protocol it speaks, and one request per
+# send. Flat files for now — group them under a directory when there are five,
+# or when the first unambiguously-transport concern arrives.
+require "./elelem/server"
+require "./elelem/adapter"
+require "./elelem/provider"
+require "./elelem/client"
+
 module Elelem
 end

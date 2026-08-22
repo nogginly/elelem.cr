@@ -7,6 +7,12 @@ module Elelem::Protocol::Anthropic
   # Required by the protocol with no default. A caller may override per request.
   DEFAULT_MAX_TOKENS = 4096
 
+  # Sent as `anthropic-version` on every request; the endpoint rejects calls
+  # without it. Pinned rather than tracking latest, because a version bump can
+  # change response shapes and this shard's readers are written against this
+  # one.
+  API_VERSION = "2023-06-01"
+
   # The most capable target and the strictest validator at once.
   #
   # `tool_results: Blocks` is the capability that forced the union rule: a tool
