@@ -260,6 +260,48 @@ case.
 Deferred to the step after the live handoff, so that the first live evidence is
 not blocked on it.
 
+### Requests carry no generation parameters
+
+Only the Anthropic request has `max_tokens`, and only because the protocol
+refuses without it. No protocol can express an output limit otherwise, a
+temperature, or a reasoning budget — `reasoning_effort` on Chat Completions,
+the `thinking` object on Anthropic, the `reasoning` object on Responses. Three
+spellings of one idea, and none of them expressible.
+
+This is the same omission as the missing tool declarations above, and the two
+belong to one piece of work: the wire requests model *conversation* faithfully
+and *generation* not at all. Both need a shared MPSH type and four mappings
+from it.
+
+It has already cost real time. A small hyperactive model, given no output cap,
+spent 4,096 tokens reasoning without reaching an answer — a live interrupted
+turn — and an earlier run stalled for twelve minutes on an uncapped request. A
+cap is not a nicety on a local endpoint; it is the difference between a fast
+suite and an unbounded one.
+
+One thing to reclaim when it lands: an interrupted turn should be a
+*deliberate* fixture. A tiny cap produces truncation on demand and
+deterministically, which is a better test than waiting for a model to
+over-think.
+
+### Reading a protocol is not knowing a server
+
+Ollama spells the Chat Completions reasoning field `reasoning`; vLLM and
+DeepSeek spell it `reasoning_content`. The reader accepted only the second, so
+every reasoning trace from Ollama was dropped — no error, no annotation, and a
+green suite, because the offline fixtures had been written from the same
+assumption as the reader and therefore agreed with it.
+
+Recording against a real server found it in one run. The general lesson is
+cheap to state and easy to forget: a fixture written by the same hand as the
+code tests the hand, not the wire. Every protocol this shard supports is served
+by implementations that disagree with its specification in small ways, and only
+a transcript is evidence.
+
+Both spellings are now read, as `inlineData` and `inline_data` both are on
+Gemini. Expect more of these, and expect each to arrive with a green suite
+already in place.
+
 ### Out of scope for the current pass
 
 Session tree, branching, scatter/gather, provider bindings, stateful handles,

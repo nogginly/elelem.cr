@@ -88,6 +88,16 @@ describe "response export" do
       reply.content[0].should be_a M::ReasoningBlock
     end
 
+    # Both spellings, because both are real: `reasoning_content` from vLLM and
+    # DeepSeek, bare `reasoning` from Ollama. The second was found by recording
+    # live, not by reasoning about the protocol.
+    it "reads the bare reasoning field that Ollama emits" do
+      reply = chat_reply(RF::CHAT_REASONING_BARE)
+
+      reply.content.select(M::ReasoningBlock).size.should eq 1
+      reply.content[0].should be_a M::ReasoningBlock
+    end
+
     it "reads a refusal as a refusal, not as text" do
       reply = chat_reply(RF::CHAT_REFUSAL)
 

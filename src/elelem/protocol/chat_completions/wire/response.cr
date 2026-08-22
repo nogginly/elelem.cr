@@ -105,10 +105,18 @@ module Elelem::Protocol::ChatCompletions
           content: any["content"]?.try(&.as_s?),
           tool_calls: tool_calls(any["tool_calls"]?),
           refusal: any["refusal"]?.try(&.as_s?),
-          # Not in OpenAI's own specification. vLLM, Ollama and others emit it
-          # for reasoning models over this protocol, which is exactly the set
-          # of servers this protocol reaches.
-          reasoning_content: any["reasoning_content"]?.try(&.as_s?))
+          # Not in OpenAI's own specification, and spelled differently by
+          # everyone who implements it. vLLM and DeepSeek emit
+          # `reasoning_content`; Ollama emits the bare `reasoning`. Both are
+          # read, for the same reason Gemini's reader takes `inlineData` and
+          # `inline_data`: insisting on one spelling silently drops the trace
+          # from every server that chose the other, with no error to notice.
+          #
+          # Found by recording against Ollama — the offline fixtures used the
+          # spelling this reader already expected, which is what a fixture
+          # written from the same assumption as the code will always do.
+          reasoning_content: any["reasoning_content"]?.try(&.as_s?) ||
+                             any["reasoning"]?.try(&.as_s?))
       end
 
       private def self.tool_calls(any : JSON::Any?) : Array(ToolCall)?

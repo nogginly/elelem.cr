@@ -108,6 +108,30 @@ module Elelem::ResponseFixtures
     }
     JSON
 
+  # Ollama's spelling, recorded live. Kept alongside the `reasoning_content`
+  # fixture above rather than replacing it, because both are real and a reader
+  # that handles only one loses the trace from half the servers it will meet.
+  CHAT_REASONING_BARE = <<-JSON
+    {
+      "id": "chatcmpl-reason2",
+      "object": "chat.completion",
+      "created": 1741570283,
+      "model": "gemma4:26b-mxfp8",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "reasoning": "The user asks for the highest peak. Everest, 8,849 m.",
+            "content": "Mount Everest."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {"prompt_tokens": 14, "completion_tokens": 40, "total_tokens": 54}
+    }
+    JSON
+
   CHAT_REFUSAL = <<-JSON
     {
       "id": "chatcmpl-refusal1",

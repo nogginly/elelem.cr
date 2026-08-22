@@ -143,6 +143,45 @@ describe "Ollama" do
     end
   end
 
+  # All three of Ollama's endpoints return reasoning, in three spellings. These
+  # exist because the offline fixtures could not have found the divergence:
+  # they were written from the same assumption as the readers, so they agreed
+  # with them. Only a recording disagrees.
+  describe "reasoning" do
+    it "reads the bare `reasoning` field from Chat Completions" do
+      Wiretap.intercept(TEXT_CHAT) do
+        reply, _ = client(Elelem::ProtocolKind::ChatCompletions).send(asked, MODEL)
+
+        # Ollama spells this `reasoning`; vLLM and DeepSeek spell it
+        # `reasoning_content`. Reading only the latter dropped the trace here
+        # silently — no error, no annotation, just a missing block.
+        reply.content.select(M::ReasoningBlock).should_not be_empty
+      end
+    end
+
+    it "reads a thinking block from the Anthropic endpoint" do
+      Wiretap.intercept(TEXT_ANTHROPIC) do
+        reply, _ = client(Elelem::ProtocolKind::Anthropic).send(asked, MODEL)
+
+        reply.content.select(M::ReasoningBlock).should_not be_empty
+      end
+    end
+
+    it "reads a reasoning item, with its opaque payload, from the Responses API" do
+      Wiretap.intercept(TEXT_RESPONSES) do
+        reply, _ = client(Elelem::ProtocolKind::Responses).send(asked, MODEL)
+        key = Elelem::Protocol::Responses::METADATA_KEY
+
+        blocks = reply.content.select(M::ReasoningBlock)
+        blocks.should_not be_empty
+        # Ollama does send `encrypted_content` here. It is namespaced under
+        # `ollama`, not `openai`, because this deployment is not that vendor —
+        # so it will never be replayed to OpenAI, which could not read it.
+        blocks[0].meta?(key, "encrypted_content").should_not be_nil
+      end
+    end
+  end
+
   # The milestone. A question answered by one protocol, continued on another,
   # against a real server — the thing every offline spec so far has only
   # rehearsed.
