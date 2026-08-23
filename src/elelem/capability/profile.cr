@@ -91,6 +91,19 @@ module Elelem::Capability
     getter? first_message_must_be_user : Bool
     getter system_placement : SystemPlacement
     getter? string_shorthand : Bool
+    # Whether this protocol's native reasoning form is only valid carrying a
+    # replayable payload the vendor itself issued — a `signature` or
+    # equivalent opaque field — rather than text alone.
+    #
+    # Declared false everywhere except Anthropic, and declared from a live
+    # 400 rather than documentation: a `thinking` block with no `signature`
+    # is not merely unauthenticated, it fails Anthropic's own request schema
+    # (`messages.N.content.M.thinking.signature: Field required`). Without
+    # this flag, `Resolver#own?`'s "empty metadata is portable by
+    # construction" rule — correct for a protocol with no signature concept
+    # — called this block `Exact` and sent an invalid request. See
+    # `spec/live/anthropic_spec.cr` and `SCOPE.md`'s "Known gap".
+    getter? reasoning_signature_required : Bool
 
     def initialize(
       @provider : String,
@@ -108,6 +121,7 @@ module Elelem::Capability
       @first_message_must_be_user : Bool = false,
       @system_placement : SystemPlacement = SystemPlacement::InMessages,
       @string_shorthand : Bool = true,
+      @reasoning_signature_required : Bool = false,
     )
       @metadata_key = metadata_key || @provider
     end
@@ -140,7 +154,8 @@ module Elelem::Capability
         alternation_required: @alternation_required,
         first_message_must_be_user: @first_message_must_be_user,
         system_placement: @system_placement,
-        string_shorthand: @string_shorthand)
+        string_shorthand: @string_shorthand,
+        reasoning_signature_required: @reasoning_signature_required)
     end
 
     # The same protocol, told which of its two reasoning units this deployment
@@ -177,7 +192,8 @@ module Elelem::Capability
         alternation_required: @alternation_required,
         first_message_must_be_user: @first_message_must_be_user,
         system_placement: @system_placement,
-        string_shorthand: @string_shorthand)
+        string_shorthand: @string_shorthand,
+        reasoning_signature_required: @reasoning_signature_required)
     end
   end
 end

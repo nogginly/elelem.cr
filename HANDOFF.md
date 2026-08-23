@@ -59,15 +59,17 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-1. **Anthropic live.** The only endpoint that can falsify the narrowing
-   default, because it actually validates signatures. Ollama ignores them, so a
-   correctly pessimistic provider and a wrongly optimistic one both pass.
+1. **Anthropic live, reasoning numbers.** The narrowing default is settled: a
+   real 400 confirmed a `thinking` block requires a signature, `Resolver`
+   now checks for one before `own?` ever gets asked, and the fix is covered
+   offline in `spec/conformance/anthropic_spec.cr` — nothing further needs the
+   network to prove it. See `docs/protocols/ANTHROPIC.md`.
 
-   Reasoning controls made this reachable: a signed thinking block only comes
-   back when the request asks the model to think, so `Reasoning::Effort` is the
-   precondition for the test, not merely the item before it. The same run also
-   settles the numbers in `Protocol::Anthropic::REASONING_BUDGETS` and whether
-   the budget clamp behaves as the documentation says.
+   What that recording did not settle: whether `Protocol::Anthropic::REASONING_BUDGETS`
+   and the budget clamp behave as the documentation says, and whether the
+   own-vendor signature-replay path actually works end to end rather than
+   merely being unrejected. `Reasoning::Effort` against a budget-only model,
+   two turns, is the next recording — still needs a paid call.
 2. **Gemini live.** The only live coverage that protocol will get — and the
    only way to confirm that a budget of 0 disables thinking on the series that
    prefers levels, which the mapper currently assumes.
@@ -81,8 +83,9 @@ honours *less* than its protocol allows, never more.
 
 What it serves, where it diverges, and what a green run there does *not* prove:
 `docs/servers/ollama.md`. Read it before treating any live green as having
-closed a `SCOPE.md` item — the signature questions in particular remain open,
-because Ollama has no signature to validate.
+closed an open question — Ollama has no signature to validate, which is
+exactly why the narrowing default needed a real Anthropic recording rather
+than a green run here to settle it. See `docs/protocols/ANTHROPIC.md`.
 
 ## How to work on this
 

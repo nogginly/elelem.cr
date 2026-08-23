@@ -21,12 +21,12 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sun, 23 Aug 2026 07:20:17 GMT",
+          "Date": "Sun, 23 Aug 2026 16:20:02 GMT",
           "Content-Length": "257"
         },
-        "body": "{\"id\":\"msg_e7640d9beda2157707e23b7b\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":32,\"output_tokens\":9}}\n"
+        "body": "{\"id\":\"msg_2cfeb045c84790aad390002c\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":32,\"output_tokens\":9}}\n"
       },
-      "recorded_at": "2026-08-23T07:20:17Z"
+      "recorded_at": "2026-08-23T16:20:02Z"
     }
   ]
 }

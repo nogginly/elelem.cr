@@ -60,9 +60,17 @@ module Elelem::Capability
       # it belongs to that vendor. Implementing the mapper is what exposed this
       # — the matrix had reasoning Exact for its own vendor on all four
       # protocols, and Chat Completions has no standard field for it.
-      if profile.reasoning.none?
-        return MPSH::Outcome::Refused if nesting.mid_tool_call?
-        return MPSH::Outcome::Degraded
+      return degrade_or_refuse(nesting) if profile.reasoning.none?
+
+      # A protocol whose native reasoning form requires a replayable payload
+      # cannot accept text alone, whatever `own?` says. This is the case
+      # `own?`'s "empty metadata is portable" rule gets wrong: metadata this
+      # sparse is exactly what a reasoning block with nothing to replay looks
+      # like, on its own vendor's protocol or anyone else's. Confirmed by a
+      # live 400 — Anthropic's own schema requires the field, not merely
+      # validates it. See `Profile#reasoning_signature_required?`.
+      if profile.reasoning_signature_required? && !replayable?(block, profile)
+        return degrade_or_refuse(nesting)
       end
 
       # A message-level field carries text and nothing else. Redacted reasoning
@@ -71,12 +79,22 @@ module Elelem::Capability
       # save it. Found by round-tripping the fixture: the block vanished
       # entirely while the matrix claimed Exact.
       if block.redacted? && block.text.nil? && profile.reasoning.field?
-        return MPSH::Outcome::Refused if nesting.mid_tool_call?
-        return MPSH::Outcome::Degraded
+        return degrade_or_refuse(nesting)
       end
 
       return MPSH::Outcome::Exact if own?(block, profile)
       nesting.mid_tool_call? ? MPSH::Outcome::Refused : MPSH::Outcome::Restructured
+    end
+
+    # Shared by every branch above that cannot carry a reasoning block on this
+    # wire: the block is lost either way, and only whether it sits mid-tool-call
+    # decides whether that is recoverable. A dangling call with no reasoning
+    # ahead of it is not obviously wrong the way a dangling call with no result
+    # is, but some providers require the reasoning item replayed unmodified
+    # between a call and its result, and dropping one there breaks the turn
+    # rather than trimming it.
+    private def degrade_or_refuse(nesting : Nesting) : MPSH::Outcome
+      nesting.mid_tool_call? ? MPSH::Outcome::Refused : MPSH::Outcome::Degraded
     end
 
     # Does this block belong to the protocol being mapped to?
@@ -99,6 +117,18 @@ module Elelem::Capability
       metadata = block.provider_metadata
       return true if metadata.empty?
       metadata.has_key?(profile.metadata_key)
+    end
+
+    # Does this reasoning block actually carry what this protocol's own
+    # signature-bearing form needs to replay it — a `signature` or an
+    # equivalent opaque payload such as `redacted_data`? Deliberately looked
+    # up under `profile.metadata_key` rather than any key: metadata namespaced
+    # to a different vendor is exactly as unreplayable here as no metadata at
+    # all, which is why this subsumes `own?` rather than running alongside it.
+    private def replayable?(block : MPSH::ReasoningBlock, profile : Profile) : Bool
+      meta = block.meta_for(profile.metadata_key)
+      return false unless meta
+      meta.has_key?("signature") || meta.has_key?("redacted_data")
     end
 
     private def binary_outcome(block : MPSH::BinaryBlock, profile : Profile,

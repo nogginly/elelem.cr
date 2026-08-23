@@ -55,8 +55,9 @@ private def ollama : Elelem::Server
   Elelem::Server.new("ollama", "http://localhost:11434")
 end
 
-private def client(protocol : Elelem::ProtocolKind) : Elelem::Client
-  Elelem::Client.new(Elelem::Provider.for(ollama, protocol))
+private def client(protocol : Elelem::ProtocolKind,
+                   policy : Elelem::Capability::Policy = Elelem::Capability::Policy::Compensating) : Elelem::Client
+  Elelem::Client.new(Elelem::Provider.for(ollama, protocol), policy)
 end
 
 private def asked : M::Session
@@ -225,7 +226,14 @@ describe "Ollama" do
         session << first
         session << M::Message.user("And the deepest ocean?")
 
-        second, report = client(Elelem::ProtocolKind::Anthropic).send(session, MODEL)
+        # Ollama's Chat Completions endpoint returns a `reasoning` trace
+        # unbidden, with no metadata attaching it to anyone — and Anthropic's
+        # own `thinking` block requires a signature nothing here has. Lenient,
+        # deliberately: the loss is real (`Outcome::Degraded`, not `Refused`)
+        # and this test is about the handoff completing, not about carrying
+        # a foreign reasoning trace unscathed. See `spec/live/anthropic_spec.cr`.
+        second, report = client(Elelem::ProtocolKind::Anthropic, Elelem::Capability::Policy::Lenient)
+          .send(session, MODEL)
         session << second
 
         # Four turns, two protocols, one session that was never in either's
@@ -265,7 +273,11 @@ describe "Ollama" do
         session << responses
         session << M::Message.user("And the longest river?")
 
-        anthropic, report = client(Elelem::ProtocolKind::Anthropic).send(session, MODEL)
+        # Same reason as the two-protocol handoff above: whichever leg fed
+        # this session incidental reasoning with no replayable signature, the
+        # Anthropic leg cannot carry it. Lenient, deliberately.
+        anthropic, report = client(Elelem::ProtocolKind::Anthropic, Elelem::Capability::Policy::Lenient)
+          .send(session, MODEL)
         session << anthropic
 
         session.messages.size.should eq 6
@@ -314,7 +326,11 @@ describe "Ollama" do
     it "calls a declared tool and accepts the result, over Anthropic" do
       Wiretap.intercept("ollama_tools_anthropic") do
         session = tool_question
-        turn = client(Elelem::ProtocolKind::Anthropic)
+        # Ollama's Anthropic-compatible endpoint returns a `thinking` block
+        # with no signature on every reply (docs/servers/OLLAMA.md) — so the
+        # second call here has to replay one, and cannot. Lenient,
+        # deliberately: the drop is real and recorded, not silent.
+        turn = client(Elelem::ProtocolKind::Anthropic, Elelem::Capability::Policy::Lenient)
 
         reply, _ = turn.send(session, MODEL, options: armed)
         session << reply
@@ -353,8 +369,11 @@ describe "Ollama" do
         end)
 
         # Different protocol, same conversation, including the call and its
-        # answer.
-        answer, report = client(Elelem::ProtocolKind::Anthropic)
+        # answer. Lenient on the Anthropic leg for the same reason as the
+        # other handoffs above: the tool call and its result carry over
+        # exactly (that is what this test proves), but Chat Completions'
+        # incidental reasoning trace has no signature to carry over with it.
+        answer, report = client(Elelem::ProtocolKind::Anthropic, Elelem::Capability::Policy::Lenient)
           .send(session, MODEL, options: armed)
 
         answer.content.select(M::TextBlock).should_not be_empty

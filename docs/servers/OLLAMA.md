@@ -47,12 +47,15 @@ before assuming a compatibility layer omits what it cannot fully support.
 ### Thinking blocks carry no signature
 
 The recorded `thinking` blocks have no `signature` field at all. So nothing here
-tests whether a signature replays, and the signature questions in `SCOPE.md`
-stay open regardless of how green this suite is.
+tested whether a signature replays — that answer had to come from a real
+Anthropic recording, which found `signature` is a required field on
+Anthropic's own schema. See `docs/protocols/ANTHROPIC.md`.
 
-It also means the vendor-narrowing default cannot be falsified here: Ollama
+It also means the vendor-narrowing default could not be falsified here: Ollama
 ignores signatures, so a correctly pessimistic provider and a wrongly optimistic
-one both pass. Only an endpoint that *validates* can tell them apart.
+one both pass. Only an endpoint that *validates* can tell them apart — which is
+exactly why this server's green runs, however thorough, could not close that
+question on their own.
 
 ### `encrypted_content` is namespaced to `ollama`
 

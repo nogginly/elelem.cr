@@ -70,6 +70,10 @@ module Elelem::Protocol::Anthropic
     alternation_required: true,
     first_message_must_be_user: true,
     system_placement: Capability::SystemPlacement::Parameter,
-    string_shorthand: true
+    string_shorthand: true,
+    # Confirmed live, not assumed: a `thinking` block with no `signature` is
+    # a 400 here — `messages.N.content.M.thinking.signature: Field required`
+    # — regardless of where the block came from. See `spec/live/anthropic_spec.cr`.
+    reasoning_signature_required: true
   )
 end

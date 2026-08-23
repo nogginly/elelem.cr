@@ -126,35 +126,51 @@ One consequence worth knowing before prompt caching arrives: **changing either
 control between turns invalidates cached prefixes**, because the value is
 rendered into the prompt.
 
-## Known gap: thinking without a signature
+## Reasoning requires a replayable signature
 
 A `thinking` block must carry the signature the provider issued, replayed
-unmodified. Signatures are preserved correctly where they exist — but nothing
-stops a reasoning block that arrived from *another* vendor being mapped here,
-producing a `thinking` block with no signature, which this protocol will reject
-at request time.
+unmodified — and confirmed live rather than assumed: `signature` is a
+**required field on Anthropic's own request schema**, not merely validated
+when present. A block with none fails outright
+(`messages.N.content.M.thinking.signature: Field required`), whether the
+block is genuinely foreign or simply carries no `provider_metadata` at all —
+the two are indistinguishable on the wire, and this protocol is the only one
+of the four where that distinction matters.
 
-The resolver calls foreign reasoning **Restructured**, which is right in the
-abstract. This protocol turns it into a hard rejection rather than a graceful
-drop. Likely correct answer is **Degraded**, dropping the block from the wire
-rather than emitting an invalid one — but confirm against a live call first.
-Tracked in `../../SCOPE.md`.
+`Profile#reasoning_signature_required?` records this, true only here. The
+resolver checks it — via a `replayable?` lookup under this protocol's own
+`metadata_key` — ahead of the general `own?` rule, whose "empty metadata is
+portable" default is right everywhere else and wrong for exactly this reason.
+A block that fails the check is **Degraded**: dropped from the wire, kept in
+MPSH, same treatment as any other information this protocol cannot carry.
 
-This is exactly the class of thing structural verification cannot settle.
+Consequence worth knowing: `Policy::Compensating`, the client's own default,
+refuses any Degraded outcome. So a session carrying an unattributed or
+foreign reasoning trace into this protocol now raises `RefusedError` unless
+the caller opts into `Policy::Lenient` — correctly, since the trace really is
+being dropped, but a caller who does not expect a refusal here will find one.
+
+See `spec/transcripts/anthropic_thinking_no_signature.json` for the error body
+this was settled with, and `spec/conformance/anthropic_spec.cr` ("declared
+divergences") for where it is now guarded — offline, since the fix makes the
+request that produced that transcript one the client no longer builds.
+Tracked as closed in `../../SCOPE.md`.
 
 ## Conformance
 
 `spec/conformance/anthropic_spec.cr`. Ten fixtures round-trip untouched.
 
-Fixture                   |Expected                                                
---------------------------|--------------------------------------------------------
-`tool_call_image_result`  |**Exact**, and passes under strict policy               
-`consecutive_same_role`   |Compensated — 3 messages become 2, declared             
-`assistant_first`         |Compensated — placeholder prepended, discarded on export
-`audio_with_transcript`   |Degraded to the transcript                              
-`audio_without_transcript`|**Refuses**                                             
-`server_executed_tool`    |Flag survives; `tool_name` metadata dropped and named   
-`empty_message`           |Degraded, and recorded                                  
+Fixture                          |Expected                                                
+---------------------------------|--------------------------------------------------------
+`tool_call_image_result`         |**Exact**, and passes under strict policy               
+`consecutive_same_role`          |Compensated — 3 messages become 2, declared             
+`assistant_first`                |Compensated — placeholder prepended, discarded on export
+`audio_with_transcript`          |Degraded to the transcript                              
+`audio_without_transcript`       |**Refuses**                                             
+`server_executed_tool`           |Flag survives; `tool_name` metadata dropped and named   
+`empty_message`                  |Degraded, and recorded                                  
+`reasoning_with_text`            |Degraded — no signature to replay, dropped              
+`reasoning_with_provider_payload`|Degraded here, Restructured on Gemini — see above       
 
 ## Not yet built
 

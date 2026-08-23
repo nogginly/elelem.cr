@@ -20,12 +20,12 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sun, 23 Aug 2026 07:20:16 GMT",
+          "Date": "Sun, 23 Aug 2026 16:20:02 GMT",
           "Content-Length": "337"
         },
-        "body": "{\"id\":\"chatcmpl-163\",\"object\":\"chat.completion\",\"created\":1787469616,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the tallest mountain on Earth.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":32,\"completion_tokens\":9,\"total_tokens\":41}}\n"
+        "body": "{\"id\":\"chatcmpl-653\",\"object\":\"chat.completion\",\"created\":1787502002,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the tallest mountain on Earth.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":32,\"completion_tokens\":9,\"total_tokens\":41}}\n"
       },
-      "recorded_at": "2026-08-23T07:20:16Z"
+      "recorded_at": "2026-08-23T16:20:02Z"
     }
   ]
 }

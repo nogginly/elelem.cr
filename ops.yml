@@ -30,6 +30,7 @@ actions:
   test_specs:
     command: crystal spec
     description: Run all test specs
+    load_secrets: true
   test:
     command: ops test_specs && ops lint
     description: Run all tests, including linting

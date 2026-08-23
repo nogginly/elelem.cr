@@ -131,20 +131,43 @@ describe "capability resolution" do
       outcome_of(session, 1, 0, CHAT).should eq(M::Outcome::Degraded)
     end
 
-    it "restructures for a foreign provider rather than counting as loss" do
-      # The block stays in MPSH and only the unreadable payload is shed. Were
-      # this Degraded, strict policy would refuse every cross-provider handoff
-      # of a reasoning-model session.
+    it "restructures for a foreign provider whose payload it can still hold" do
+      # Gemini has nowhere signature-shaped to check, so a foreign opaque
+      # payload is still Restructured there: the block stays in MPSH and only
+      # the unreadable payload is shed. Were this Degraded on every protocol,
+      # strict policy would refuse every cross-provider handoff of a
+      # reasoning-model session — precisely the move this shard exists to
+      # perform.
+      #
+      # Not true for Anthropic, and not from principle — from a live 400
+      # (`spec/live/anthropic_spec.cr`). This fixture is `redacted: true` with
+      # no text at all, so "shed the payload, keep the block" would have sent
+      # `{"type":"thinking","thinking":""}` with no `signature`: an empty,
+      # invalid block, arguably worse than the unattributed case beside this
+      # test. Whether Gemini has the same requirement is genuinely open —
+      # nothing here has tested it live yet, unlike Anthropic.
       session = Elelem::Fixtures.reasoning_with_provider_payload
-      outcome_of(session, 1, 0, CLAUDE).should eq(M::Outcome::Restructured)
+      outcome_of(session, 1, 0, CLAUDE).should eq(M::Outcome::Degraded)
       outcome_of(session, 1, 0, GEMINI).should eq(M::Outcome::Restructured)
     end
 
-    it "treats unattributed reasoning as portable" do
+    it "treats unattributed reasoning as portable, except where the wire requires a signature to say so" do
       session = Elelem::Fixtures.reasoning_with_text
-      ALL_PROFILES.each do |profile|
+
+      # True for three of four: no metadata to lose means nothing foreign to
+      # shed, so the block maps straight through.
+      [CHAT, RESPONSES, GEMINI].each do |profile|
         outcome_of(session, 1, 0, profile).should eq(M::Outcome::Exact)
       end
+
+      # Not true for Anthropic. Confirmed live, not assumed: a `thinking`
+      # block with no `signature` fails Anthropic's own request schema
+      # outright (`spec/live/anthropic_spec.cr`), so "unattributed" cannot
+      # mean "portable" here the way it does everywhere else — there is
+      # nothing to replay, which is indistinguishable on the wire from a
+      # foreign signature that was stripped. See
+      # `Profile#reasoning_signature_required?`.
+      outcome_of(session, 1, 0, CLAUDE).should eq(M::Outcome::Degraded)
     end
 
     it "refuses to drop a foreign reasoning item mid-tool-call" do

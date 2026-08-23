@@ -63,14 +63,18 @@ describe "the live layer" do
     end
 
     # The consequence, and the reason the default is pessimistic. Replaying a
-    # signature to an endpoint that cannot validate it risks a rejected turn;
-    # withholding it costs fidelity, which is recoverable and recorded.
+    # signature to an endpoint that cannot validate it risks a rejected turn —
+    # and confirmed live (`spec/live/anthropic_spec.cr`), that risk is not
+    # hypothetical: a `thinking` block with no `signature` fails Anthropic's
+    # own request schema outright. So narrowing cannot merely strip the
+    # signature and send the block anyway, the way this test used to assert;
+    # a `thinking` block this protocol cannot replay is one it cannot send at
+    # all, and the only options left are drop it (`Degraded`) or break the
+    # turn (`Refused`, reserved for mid-tool-call).
     #
-    # Note what is *not* withheld: the thinking text travels. Narrowing sheds
-    # the opaque payload by namespacing, not by dropping the block — which is
-    # why this is `Restructured` rather than a loss, and why `strict` does not
-    # refuse a cross-provider handoff of a reasoning session.
-    it "withholds a foreign signature but keeps the reasoning it explains" do
+    # The answer beside it is untouched — dropping is scoped to the one block
+    # that cannot travel, not the turn that contains it.
+    it "drops a foreign reasoning block it cannot replay, keeping the rest of the turn" do
       session = signed_session
       ollama = Elelem::Provider.for(
         Elelem::Server.new("ollama", "http://localhost:11434"),
@@ -79,12 +83,13 @@ describe "the live layer" do
       exchange = ollama.adapter.prepare(session, "llama3.2",
         C::Policy::Lenient, C::ReasoningRetention::All, 1024)
 
-      blocks = thinking_parts(exchange.body)
-      blocks.size.should eq 1
-      blocks[0]["thinking"].as_s.should contain "Everest"
-      blocks[0]["signature"]?.should be_nil
+      thinking_parts(exchange.body).should be_empty
+      JSON.parse(exchange.body)["messages"].as_a
+        .flat_map(&.["content"].as_a)
+        .any? { |block| block["text"]?.try(&.as_s?) == "Mount Everest." }
+        .should be_true
 
-      exchange.report.worst.should be >= M::Outcome::Restructured
+      exchange.report.worst.should eq M::Outcome::Degraded
     end
 
     it "replays the signature to the vendor's own endpoint" do

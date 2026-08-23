@@ -35,7 +35,6 @@ ANTHROPIC_EXACT = %w[
   unsupported_media_type
   tool_call_text_result
   tool_result_error
-  reasoning_with_text
 ]
 
 describe "Anthropic round trip" do
@@ -141,6 +140,20 @@ describe "Anthropic round trip" do
       found, _, _ = diverges("unsupported_media_type")
       found.map(&.to_s).should be_empty
     end
+
+    # `reasoning_with_text` was Exact here until a live 400 said otherwise —
+    # see `spec/live/anthropic_spec.cr` and `Profile#reasoning_signature_required?`.
+    # A `thinking` block with no `signature` fails Anthropic's own request
+    # schema, and this fixture's reasoning block carries no provider metadata
+    # at all, so it never had one to replay. Degraded and dropped, same as
+    # any other information this protocol cannot carry — the answer beside it
+    # survives untouched.
+    it "degrades reasoning with no replayable signature" do
+      found, report, _ = diverges("reasoning_with_text")
+
+      report.annotations.map(&.outcome).should contain(M::Outcome::Degraded)
+      found.map(&.change).should contain(Conformance::Change::BlockCount)
+    end
   end
 
   # Provider-run tools are a distinct block type here — `server_tool_use` and a
@@ -184,13 +197,47 @@ describe "Anthropic round trip" do
       found.map(&.change).should contain(Conformance::Change::BlockKind)
     end
 
-    it "keeps foreign provider metadata off the wire and says so" do
-      found, _, _ = diverges("reasoning_with_provider_payload")
-      found.map(&.change).should contain(Conformance::Change::ProviderMetadata)
+    it "drops a foreign reasoning item rather than sending it broken" do
+      # Was "keeps foreign provider metadata off the wire and says so" —
+      # ProviderMetadata was the wrong divergence to expect. This fixture has
+      # no text at all, so shedding only the metadata would have sent
+      # `{"type":"thinking","thinking":""}` with no signature: a 400 waiting
+      # to happen (`spec/live/anthropic_spec.cr`). The whole block drops now,
+      # which is a `BlockCount` divergence — the position it occupied is gone,
+      # not merely lighter.
+      found, report, _ = diverges("reasoning_with_provider_payload")
+      report.annotations.map(&.outcome).should contain(M::Outcome::Degraded)
+      found.map(&.change).should contain(Conformance::Change::BlockCount)
     end
 
     it "cannot carry a reference payload without a blob store" do
       expect_raises(C::RefusedError, /blob store/) { diverges("reference_payload") }
+    end
+
+    # This is the guard, and it is what makes the live falsifying test
+    # obsolete rather than merely passing: `Policy::Compensating` — the
+    # client's own default, not something a caller has to opt into — refuses
+    # a signature-less `thinking` block before a request is ever built. The
+    # 400 this was originally proven against lives in
+    # `spec/transcripts/anthropic_thinking_no_signature.json`; nothing here
+    # replays it, because the client no longer sends the request that
+    # produced it. See `spec/live/anthropic_spec.cr`.
+    it "refuses a signature-less thinking block under the default policy" do
+      session = Elelem::Fixtures.reasoning_with_text
+
+      expect_raises(C::RefusedError, /thinking/) do
+        rt(session, C::Policy::Compensating)
+      end
+    end
+
+    # The opt-in. A caller who has decided the loss is acceptable — this
+    # test's own purpose elsewhere is proving portability, not reasoning
+    # fidelity — gets a clean drop instead of a raise.
+    it "drops it instead under a policy that permits Degraded" do
+      found, report, _ = diverges("reasoning_with_text", C::Policy::Lenient)
+
+      report.annotations.map(&.outcome).should contain(M::Outcome::Degraded)
+      found.map(&.change).should contain(Conformance::Change::BlockCount)
     end
   end
 end

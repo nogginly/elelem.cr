@@ -78,29 +78,6 @@ are per-call concerns that deliberately never enter one. But the omission should
 be a recorded decision rather than an accident, so a future reader does not
 assume the spec ruled on it. Resolve when the spec is next revised.
 
-### Thinking blocks without a signature will be rejected at request time
-
-**The Ollama run did not touch this**, and cannot. Its recorded `thinking`
-blocks carry no `signature` field at all, so a block without one passes
-trivially. This stays open until a real Anthropic endpoint is recorded — see
-`docs/servers/ollama.md`.
-
-
-Anthropic requires a `thinking` block to carry the signature it issued, replayed
-unmodified. We carry signatures correctly when they exist — but nothing stops a
-reasoning block that arrived from *another* vendor being mapped here, producing
-a `thinking` block with no signature.
-
-The resolver calls foreign reasoning **Restructured**, which is right in the
-abstract: the block survives in MPSH and only the unreadable payload is shed.
-This protocol turns that into a hard rejection rather than a graceful drop.
-
-Likely correct answer: foreign reasoning mapped to a protocol requiring a
-replayable signature should be **Degraded**, dropping the block from the wire
-rather than emitting an invalid one. Confirm against a live call before
-changing the matrix — this is precisely the class of thing structural
-verification cannot settle.
-
 ---
 
 ## WILL FIX
