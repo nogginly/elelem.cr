@@ -61,6 +61,31 @@ Ollama does emit it on the Responses endpoint. Because the provider's vendor is
 replayed to a real OpenAI endpoint that could not read it. The pessimistic
 default doing its job, on real data.
 
+### Reasoning controls: `none` is translated, rungs are not
+
+**Switching thinking off is honoured, on both endpoints and in both spellings.**
+`reasoning_effort: "none"` on Chat Completions returns no `reasoning` field, and
+`thinking: {type: "disabled"}` on the Anthropic endpoint returns no thinking
+block. So `Off` is genuinely exercised here and a regression would be visible —
+the only part of this axis a compatibility layer can falsify for us.
+
+**A rung is accepted and ignored.** `reasoning_effort: "low"` produced a full
+reasoning trace, and `output_config: {effort: "low"}` on the Anthropic endpoint
+produced a 149-token one. Indistinguishable from an unknown key being dropped;
+this server is permissive about fields it does not recognise. The rung examples
+in `spec/live/ollama_spec.cr` therefore assert acceptance and nothing more.
+
+The acceptance is worth a recording of its own even so. An unknown model narrows
+to `Effort` under the catalog's optimistic default, so `output_config` is what
+every rung-setting caller sends to this endpoint. Had it been rejected, the
+default would have been wrong on the first server it met.
+
+One trap, seen immediately. A 64-token cap with reasoning enabled spent every
+token on reasoning and returned empty content with `finish_reason: "length"` —
+the same shape as the runaway that put a cap on every live request in this
+suite. Reasoning and answer share one ceiling, so a request that asks for
+thinking needs headroom for both.
+
 ## Operational notes
 
 **Always cap output.** An uncapped small model spent 4,096 tokens reasoning
@@ -81,7 +106,10 @@ Cheap to re-record, and well behaved.
 ## What a green run here does not prove
 
 A compatibility layer proves the shape is *accepted*, not that the vendor whose
-protocol it imitates would accept it. Ollama is permissive about alternation,
+protocol it imitates would accept it. Reasoning controls are the clearest case:
+`output_config` is accepted here and ignored, which says nothing about whether
+Anthropic would accept it, and a budget — which this server never sees, because
+no Ollama model is in the catalog — is untested entirely. Ollama is permissive about alternation,
 first-user ordering and required parameters where a real endpoint may not be.
 And a non-Claude model behind an Anthropic-shaped API inherits none of Claude's
 capabilities.

@@ -1,0 +1,31 @@
+{
+  "name": "ollama_reasoning_off_chat_completions",
+  "recorded_with": "wiretap/0.4.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "236",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"messages\":[{\"role\":\"system\",\"content\":\"Answer in one short sentence.\"},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}],\"max_tokens\":256,\"reasoning_effort\":\"none\"}",
+        "body_digest": "3339576d883c6ebc7b2c90d28fdaa65414db879a10bfa90db3b6767ebdbd22ed"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Sun, 23 Aug 2026 07:20:16 GMT",
+          "Content-Length": "337"
+        },
+        "body": "{\"id\":\"chatcmpl-163\",\"object\":\"chat.completion\",\"created\":1787469616,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the tallest mountain on Earth.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":32,\"completion_tokens\":9,\"total_tokens\":41}}\n"
+      },
+      "recorded_at": "2026-08-23T07:20:16Z"
+    }
+  ]
+}

@@ -47,6 +47,10 @@ private TEXT_CHAT      = "ollama_chat_completions_text"
 private TEXT_RESPONSES = "ollama_responses_text"
 private TEXT_ANTHROPIC = "ollama_anthropic_text"
 
+private REASONING_OFF_CHAT       = "ollama_reasoning_off_chat_completions"
+private REASONING_OFF_ANTHROPIC  = "ollama_reasoning_off_anthropic"
+private REASONING_RUNG_ANTHROPIC = "ollama_reasoning_rung_anthropic"
+
 private def ollama : Elelem::Server
   Elelem::Server.new("ollama", "http://localhost:11434")
 end
@@ -362,6 +366,74 @@ describe "Ollama" do
   # An interrupted turn, on purpose. The first time this appeared it was an
   # accident — a small model reasoning past its ceiling — and an accident is a
   # poor fixture.
+  # Reasoning controls, against a server that was not written to agree with us.
+  #
+  # What these can and cannot prove is unusually lopsided, so it is worth being
+  # explicit. Ollama honours `reasoning_effort: none` — the response comes back
+  # with no reasoning at all — so `Off` is genuinely falsifiable here. It gives
+  # no sign of honouring a *rung*: `low` produced a full reasoning trace, which
+  # is indistinguishable from an unknown field being dropped. So the rung
+  # examples assert that the request is *accepted*, and nothing about what the
+  # model did with it. See `docs/servers/OLLAMA.md`.
+  #
+  # The caps are deliberately generous. Reasoning and answer share one ceiling,
+  # and a request that spends the lot thinking returns empty content with
+  # `finish_reason: length` — the same shape as the runaway that put `CAP` in
+  # this file, one layer down.
+  describe "reasoning controls" do
+    it "switches thinking off over Chat Completions" do
+      Wiretap.intercept(REASONING_OFF_CHAT) do
+        reply, report = client(Elelem::ProtocolKind::ChatCompletions).send(
+          asked, MODEL,
+          options: Elelem::Options.new(max_output_tokens: 256,
+            reasoning: Elelem::Reasoning::Off.new))
+
+        # The claim: asking for no thinking produced none. Ollama translates
+        # this one, so a regression here is real rather than a dropped field.
+        reply.content.select(M::ReasoningBlock).should be_empty
+        reply.content.select(M::TextBlock).should_not be_empty
+        report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
+      end
+    end
+
+    # Honoured here too, and by a different spelling: `Off` renders as
+    # `thinking: {type: "disabled"}` rather than as a rung, because disabling
+    # is not a point on the effort scale. Both spellings of the same request,
+    # both obeyed — which is more than this server does for the rungs
+    # themselves.
+    it "switches thinking off over the Anthropic Messages API" do
+      Wiretap.intercept(REASONING_OFF_ANTHROPIC) do
+        reply, report = client(Elelem::ProtocolKind::Anthropic).send(
+          asked, MODEL,
+          options: Elelem::Options.new(max_output_tokens: 256,
+            reasoning: Elelem::Reasoning::Off.new))
+
+        reply.content.select(M::ReasoningBlock).should be_empty
+        reply.content.select(M::TextBlock).should_not be_empty
+        report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
+      end
+    end
+
+    # The optimistic default meeting a real server. An unknown model narrows to
+    # `Effort`, which renders `output_config` — a parameter this endpoint has
+    # no reason to know. It is accepted rather than rejected, which is the only
+    # thing this example claims, and the thing that would have broken every
+    # Anthropic-endpoint caller who set a rung.
+    # Recorded: the rung was accepted and a full thinking block came back
+    # anyway, so this asserts acceptance and nothing about obedience.
+    it "has its rung accepted over the Anthropic Messages API" do
+      Wiretap.intercept(REASONING_RUNG_ANTHROPIC) do
+        reply, report = client(Elelem::ProtocolKind::Anthropic).send(
+          asked, MODEL,
+          options: Elelem::Options.new(max_output_tokens: 256,
+            reasoning: Elelem::Reasoning::Effort::Low))
+
+        reply.content.select(M::TextBlock).should_not be_empty
+        report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
+      end
+    end
+  end
+
   describe "truncation" do
     it "reports a turn cut short by the cap" do
       Wiretap.intercept("ollama_truncated_anthropic") do
