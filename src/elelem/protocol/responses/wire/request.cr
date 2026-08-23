@@ -238,10 +238,15 @@ module Elelem::Protocol::Responses
       getter input : Array(Item)
       getter tools : Array(ToolDeclaration)
       getter max_output_tokens : Int32?
+      # Nested under a `reasoning` object rather than sitting at the top level
+      # as on Chat Completions — the same value, one wrapper deeper, which is
+      # this protocol's habit throughout.
+      getter reasoning_effort : String?
 
       def initialize(@model : String, @input : Array(Item), @instructions : String? = nil,
                      @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
-                     @max_output_tokens : Int32? = nil)
+                     @max_output_tokens : Int32? = nil,
+                     @reasoning_effort : String? = nil)
       end
 
       def to_json(json : JSON::Builder)
@@ -257,6 +262,9 @@ module Elelem::Protocol::Responses
           # `max_output_tokens` here, `max_tokens` on the other three. One idea,
           # four spellings.
           @max_output_tokens.try { |value| json.field "max_output_tokens", value }
+          @reasoning_effort.try do |value|
+            json.field("reasoning") { json.object { json.field "effort", value } }
+          end
         end
       end
 

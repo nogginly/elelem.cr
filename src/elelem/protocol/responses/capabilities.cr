@@ -33,6 +33,10 @@ module Elelem::Protocol::Responses
       MPSH::BlockKind::Document => Set{"application/pdf"},
     },
     binary_form: Capability::BinaryForm::DataUri,
+    # `reasoning.effort`, the same ladder as Chat Completions in a nested
+    # spelling. The family that agrees with itself about units, having
+    # disagreed about everything else.
+    reasoning_unit: Capability::ReasoningUnit::Effort,
     tool_calls: Capability::ToolCallForm::Field,
     tool_results: Capability::ToolResultForm::TextOnly,
     server_executed: true,

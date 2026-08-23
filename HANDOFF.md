@@ -31,6 +31,14 @@ protocol and continued on another, including a tool call minted on one and
 replayed on the next. Transcripts are committed under `spec/transcripts/` and
 replay offline, so the suite needs no server.
 
+Request options are complete: tool declarations, output caps and reasoning
+controls, the last of which introduced `Capability::Catalog` — the fourth
+identity, opened one axis wide. Two protocols spell reasoning control in two
+units and reject being handed both, and which unit a deployment wants is a fact
+about the *model*, so the catalog resolves it per call by narrowing the same
+`Profile`. Read *A model catalog* in `SCOPE.md` before adding a second axis to
+it.
+
 **Gemini has never been executed.** Ollama does not serve it, so that mapper
 remains structurally verified and unrun — the checkpoint working as designed.
 
@@ -51,16 +59,18 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-1. **Reasoning controls.** The remaining half of the request-options work.
-   Every protocol has one; no two agree on the unit — a named effort level on
-   three, a token budget on Anthropic. Anthropic's own product presents
-   Low/Medium/High, so a shared enum adopts a vendor's abstraction rather than
-   inventing one. `Profile` should gain a field here: the answer is genuinely
-   trichotomous (effort, budget, none) and a mapper must branch on it.
-2. **Anthropic live.** The only endpoint that can falsify the narrowing
+1. **Anthropic live.** The only endpoint that can falsify the narrowing
    default, because it actually validates signatures. Ollama ignores them, so a
    correctly pessimistic provider and a wrongly optimistic one both pass.
-3. **Gemini live.** The only live coverage that protocol will get.
+
+   Reasoning controls made this reachable: a signed thinking block only comes
+   back when the request asks the model to think, so `Reasoning::Effort` is the
+   precondition for the test, not merely the item before it. The same run also
+   settles the numbers in `Protocol::Anthropic::REASONING_BUDGETS` and whether
+   the budget clamp behaves as the documentation says.
+2. **Gemini live.** The only live coverage that protocol will get — and the
+   only way to confirm that a budget of 0 disables thinking on the series that
+   prefers levels, which the mapper currently assumes.
 4. **Azure will amend the design.** It speaks Chat Completions but embeds a
    deployment name and `api-version` in the path and authenticates with
    `api-key`, not `Bearer`. `Adapter` currently assumes path and auth are

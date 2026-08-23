@@ -12,11 +12,14 @@ require "./elelem/mpsh/turns"
 require "./elelem/mpsh/translation"
 
 # Capability layer. Depends on the canonical layer; never the reverse.
+require "./elelem/reasoning"
 require "./elelem/capability/profile"
 require "./elelem/capability/policy"
 require "./elelem/capability/resolver"
 require "./elelem/capability/structural"
 require "./elelem/capability/retention"
+require "./elelem/capability/reasoning_control"
+require "./elelem/capability/catalog"
 
 # Protocol layer. One directory per protocol: capabilities, wire vocabulary
 # (request out, response in), mapper and exporter.

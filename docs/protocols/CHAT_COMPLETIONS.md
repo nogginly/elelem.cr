@@ -15,6 +15,7 @@ Binary content |`DataUri`   |Fused at map time, split again on export. Never sto
 Tool calls     |`Field`     |Hoisted onto the assistant message as `tool_calls`                                             
 Tool results   |`TextOnly`  |A `role: "tool"` message whose content is a string. **The constraint that forces compensation**
 Reasoning      |`Field`     |See below — this one is a judgement call                                                       
+Reasoning unit |`Effort`    |`reasoning_effort`, a bare top-level string. See *Two axes, one word* below                    
 Server-executed|`false`     |No concept of provider-run tools                                                               
 Refusal channel|`true`      |A distinct `refusal` field, which Anthropic and Gemini lack                                    
 Alternation    |not required|Consecutive same-role messages are accepted                                                    
@@ -33,6 +34,23 @@ declare `None`, and reasoning would degrade rather than replay.
 This is the clearest evidence so far that a `Profile` describes a **wire shape**,
 not an endpoint — and it is the same observation from the other direction as
 Ollama, LM Studio and vLLM all sharing this one profile.
+
+### Two axes, one word
+
+`reasoning` and `reasoning_unit` answer different questions, and the protocol is
+the clearest proof they are independent. `reasoning: Field` is about **replaying
+thinking from a past turn**; `reasoning_unit: Effort` is about **asking for
+thinking on this request**. A profile targeting OpenAI's own endpoint strictly
+would declare `ReasoningForm::None` and `ReasoningUnit::Effort` together — no
+way to carry a past reasoning item, and a perfectly good way to ask for a new
+one.
+
+The unit never changes here, so unlike Anthropic and Gemini there is nothing for
+the model catalog to resolve. The *values* still vary by model — `none`,
+`minimal`, `low`, `medium`, `high`, `xhigh`, `max` are all spelled somewhere, and
+no model takes all of them — so a rung this shard serializes may still be
+rejected by the model behind the endpoint. That is left to fail loudly rather
+than be guessed at; see `SCOPE.md`.
 
 ### Redacted reasoning does not survive
 

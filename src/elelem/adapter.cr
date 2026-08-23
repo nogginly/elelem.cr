@@ -1,5 +1,6 @@
 require "http/headers"
 require "./options"
+require "./capability/catalog"
 require "./protocol/chat_completions/mapper"
 require "./protocol/chat_completions/export"
 require "./protocol/responses/mapper"
@@ -30,9 +31,14 @@ module Elelem
     # The vendor this deployment honours opaque data for. See `narrowed`.
     getter vendor : String?
 
+    # Which reasoning unit this deployment wants, where the protocol spells
+    # both. Set only to overrule the catalog — see `narrowed(model)`.
+    getter reasoning_unit : Capability::ReasoningUnit?
+
     # Declared once here; every adapter inherits it, since the vendor question
     # is the same one for all four protocols.
-    def initialize(@vendor : String? = nil)
+    def initialize(@vendor : String? = nil,
+                   @reasoning_unit : Capability::ReasoningUnit? = nil)
     end
 
     # A prepared request and the means to read its reply.
@@ -98,6 +104,25 @@ module Elelem
       profile.with_metadata_key(key)
     end
 
+    # The same profile, narrowed for one model.
+    #
+    # Two protocols spell reasoning control both ways and reject being handed
+    # both, and which unit a deployment wants is a fact about the model rather
+    # than the protocol. So the last narrowing happens here, per call, because
+    # here is the first place the model name is known.
+    #
+    # Precedence: an explicit unit on the provider wins, since it is a claim
+    # the operator made deliberately; otherwise the catalog answers; otherwise
+    # the optimistic default stands. A no-op on the two protocols whose unit
+    # was never ambiguous.
+    def narrowed(model : String) : Capability::Profile
+      base = narrowed
+      if unit = @reasoning_unit
+        return base.reasoning_unit.either? ? base.with_reasoning_unit(unit) : base
+      end
+      Capability::Catalog.narrow(base, model)
+    end
+
     private def bearer(credential : String?) : HTTP::Headers
       headers = HTTP::Headers{"content-type" => "application/json"}
       credential.try { |value| headers["authorization"] = "Bearer #{value}" }
@@ -132,7 +157,7 @@ module Elelem
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
                 retention : Capability::ReasoningRetention, max_tokens : Int32,
                 options : Options = Options.new) : Exchange
-      mapper = Protocol::ChatCompletions::Mapper.new(narrowed)
+      mapper = Protocol::ChatCompletions::Mapper.new(narrowed(model))
       request, report = mapper.map(session, model, policy, retention, options)
       exporter = Protocol::ChatCompletions::Exporter.new(mapper.calls)
 
@@ -160,7 +185,7 @@ module Elelem
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
                 retention : Capability::ReasoningRetention, max_tokens : Int32,
                 options : Options = Options.new) : Exchange
-      mapper = Protocol::Responses::Mapper.new(narrowed)
+      mapper = Protocol::Responses::Mapper.new(narrowed(model))
       request, report = mapper.map(session, model, policy, retention, options)
       exporter = Protocol::Responses::Exporter.new(mapper.calls)
 
@@ -196,7 +221,7 @@ module Elelem
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
                 retention : Capability::ReasoningRetention, max_tokens : Int32,
                 options : Options = Options.new) : Exchange
-      mapper = Protocol::Anthropic::Mapper.new(narrowed)
+      mapper = Protocol::Anthropic::Mapper.new(narrowed(model))
       request, report = mapper.map(session, model, policy, retention, max_tokens, options)
       exporter = Protocol::Anthropic::Exporter.new(mapper.calls)
 
@@ -232,7 +257,7 @@ module Elelem
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
                 retention : Capability::ReasoningRetention, max_tokens : Int32,
                 options : Options = Options.new) : Exchange
-      mapper = Protocol::Gemini::Mapper.new(narrowed)
+      mapper = Protocol::Gemini::Mapper.new(narrowed(model))
       request, report = mapper.map(session, model, policy, retention, options)
       exporter = Protocol::Gemini::Exporter.new(mapper.calls)
 

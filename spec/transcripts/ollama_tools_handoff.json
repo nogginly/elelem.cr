@@ -1,6 +1,6 @@
 {
   "name": "ollama_tools_handoff",
-  "recorded_with": "wiretap/0.3.0",
+  "recorded_with": "wiretap/0.4.0",
   "interactions": [
     {
       "request": {
@@ -20,12 +20,12 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 19:33:52 GMT",
-          "Content-Length": "622"
+          "Date": "Sun, 23 Aug 2026 06:51:56 GMT",
+          "Content-Length": "620"
         },
-        "body": "{\"id\":\"chatcmpl-821\",\"object\":\"chat.completion\",\"created\":1787427232,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"The user is asking for the weather in Paris and explicitly instructs to use the `get_weather` tool. I should call the `get_weather` function with the argument `city='Paris'`.\",\"tool_calls\":[{\"id\":\"call_xg2vivke\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":90,\"completion_tokens\":59,\"total_tokens\":149}}\n"
+        "body": "{\"id\":\"chatcmpl-615\",\"object\":\"chat.completion\",\"created\":1787467916,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"The user is asking for the weather in Paris and specifically requested to use the `get_weather` tool. I should call the `get_weather` tool with the argument `city='Paris'`.\",\"tool_calls\":[{\"id\":\"call_m1kja7gk\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":90,\"completion_tokens\":59,\"total_tokens\":149}}\n"
       },
-      "recorded_at": "2026-08-22T19:33:52Z"
+      "recorded_at": "2026-08-23T06:51:56Z"
     },
     {
       "request": {
@@ -34,24 +34,24 @@
         "headers": {
           "content-type": "application/json",
           "anthropic-version": "2023-06-01",
-          "Content-Length": "896",
+          "Content-Length": "894",
           "Host": "localhost:11434",
           "User-Agent": "Crystal",
           "Accept-Encoding": "gzip, deflate"
         },
-        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user is asking for the weather in Paris and explicitly instructs to use the `get_weather` tool. I should call the `get_weather` function with the argument `city='Paris'`.\"},{\"type\":\"tool_use\",\"id\":\"mc_1787427232308_2\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"mc_1787427232308_2\",\"content\":[{\"type\":\"text\",\"text\":\"18C, light rain\"}]}]}],\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}",
-        "body_digest": "188c4f9e99156f838af51a3ce0acf92f5fa26ae0359d7b45cbead36675fd9448"
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user is asking for the weather in Paris and specifically requested to use the `get_weather` tool. I should call the `get_weather` tool with the argument `city='Paris'`.\"},{\"type\":\"tool_use\",\"id\":\"mc_1787467916022_2\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"mc_1787467916022_2\",\"content\":[{\"type\":\"text\",\"text\":\"18C, light rain\"}]}]}],\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}",
+        "body_digest": "d57e3df371a776dadc74b4a25c0a731c45109602c36bc44402a33a1c9e565252"
       },
       "response": {
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 19:33:54 GMT",
-          "Content-Length": "428"
+          "Date": "Sun, 23 Aug 2026 06:51:57 GMT",
+          "Content-Length": "433"
         },
-        "body": "{\"id\":\"msg_30379b5265e2732743090106\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The tool `get_weather` returned the weather for Paris as \\\"18C, light rain\\\". I should now relay this information to the user.\"},{\"type\":\"text\",\"text\":\"The weather in Paris is currently 18°C with light rain.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":172,\"output_tokens\":48}}\n"
+        "body": "{\"id\":\"msg_b095f64f6cfbbbbcffa4b601\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The tool `get_weather` returned the weather in Paris as \\\"18C, light rain\\\". I should now communicate this information to the user.\"},{\"type\":\"text\",\"text\":\"The weather in Paris is currently 18°C with light rain.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":172,\"output_tokens\":48}}\n"
       },
-      "recorded_at": "2026-08-22T19:33:54Z"
+      "recorded_at": "2026-08-23T06:51:57Z"
     }
   ]
 }

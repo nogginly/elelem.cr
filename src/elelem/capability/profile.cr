@@ -29,6 +29,25 @@ module Elelem::Capability
     None  # no home at all; replaying reasoning is impossible
   end
 
+  # Which unit a *request* may use to ask for reasoning. A different question
+  # from `ReasoningForm`, which asks where a reasoning item from a past turn can
+  # be replayed. The two are independent: a profile targeting OpenAI's endpoint
+  # strictly carries no past reasoning at all (`ReasoningForm::None`) while
+  # accepting `reasoning_effort` on the same request.
+  #
+  # `Either` is not indecision. Two protocols genuinely accept both units and
+  # reject being handed both at once, and which one a given deployment wants is
+  # a fact about the *model*, not the protocol — Claude 4.7 rejects a budget,
+  # Claude Sonnet 4.5 has no effort parameter, and Gemini splits at the 2.5/3
+  # line. `Either` is the honest protocol-level declaration, narrowed per call
+  # by `Catalog`.
+  enum ReasoningUnit
+    None   # no control at all; a request cannot ask
+    Effort # a named rung
+    Budget # a token count
+    Either # both are spelled; the deployment decides which
+  end
+
   enum SystemPlacement
     InMessages   # Chat Completions `role: system` / `developer`
     Instructions # Responses API
@@ -59,6 +78,9 @@ module Elelem::Capability
     getter tool_calls : ToolCallForm
     getter tool_results : ToolResultForm
     getter reasoning : ReasoningForm
+    # What a request may ask of the model's reasoning. Distinct from
+    # `reasoning` above, which governs replaying a past reasoning item.
+    getter reasoning_unit : ReasoningUnit
     # Whether the protocol has a notion of provider-run tools at all. Whether a
     # *given* call is one of this provider's own is a property of the block, not
     # of the profile — see `Resolver#own?`.
@@ -78,6 +100,7 @@ module Elelem::Capability
       @tool_calls : ToolCallForm = ToolCallForm::Block,
       @tool_results : ToolResultForm = ToolResultForm::Blocks,
       @reasoning : ReasoningForm = ReasoningForm::Block,
+      @reasoning_unit : ReasoningUnit = ReasoningUnit::None,
       @server_executed : Bool = false,
       @refusal_channel : Bool = false,
       @can_synthesize_user_message : Bool = true,
@@ -110,6 +133,44 @@ module Elelem::Capability
         tool_calls: @tool_calls,
         tool_results: @tool_results,
         reasoning: @reasoning,
+        reasoning_unit: @reasoning_unit,
+        server_executed: @server_executed,
+        refusal_channel: @refusal_channel,
+        can_synthesize_user_message: @can_synthesize_user_message,
+        alternation_required: @alternation_required,
+        first_message_must_be_user: @first_message_must_be_user,
+        system_placement: @system_placement,
+        string_shorthand: @string_shorthand)
+    end
+
+    # The same protocol, told which of its two reasoning units this deployment
+    # wants.
+    #
+    # Narrowing only, along the same lines as `with_metadata_key` and for the
+    # same reason: only `Either` may be resolved, and only into one of the two
+    # units it already spelled. Widening `None` into a control the wire does not
+    # have, or swapping a declared unit for the other one, would be a profile
+    # claiming a capability the protocol lacks — the one direction this model
+    # does not offer, because being wrongly optimistic here is a 400 rather than
+    # a recorded loss.
+    def with_reasoning_unit(unit : ReasoningUnit) : Profile
+      return self if unit == @reasoning_unit
+
+      unless @reasoning_unit.either? && (unit.effort? || unit.budget?)
+        raise ArgumentError.new(
+          "#{@provider}: cannot narrow reasoning unit #{@reasoning_unit} to #{unit}; " \
+          "only Either may be narrowed, and only to Effort or Budget")
+      end
+
+      Profile.new(
+        @provider,
+        metadata_key: @metadata_key,
+        accepted_media: @accepted_media,
+        binary_form: @binary_form,
+        tool_calls: @tool_calls,
+        tool_results: @tool_results,
+        reasoning: @reasoning,
+        reasoning_unit: unit,
         server_executed: @server_executed,
         refusal_channel: @refusal_channel,
         can_synthesize_user_message: @can_synthesize_user_message,

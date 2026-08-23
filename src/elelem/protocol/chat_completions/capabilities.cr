@@ -31,6 +31,19 @@ module Elelem::Protocol::ChatCompletions
     # targeting OpenAI's endpoint strictly would declare `None`, and reasoning
     # would degrade rather than replay.
     reasoning: Capability::ReasoningForm::Field,
+    # `reasoning_effort` is a request-level control this protocol does spell,
+    # and it is a separate question from the `reasoning` form above: one asks
+    # the model to think, the other replays thinking it already did. A strict
+    # OpenAI-endpoint profile would declare `ReasoningForm::None` here and
+    # still declare `Effort`, which is the clearest evidence the two axes are
+    # independent.
+    #
+    # Accepted values are model-dependent — `none`, `minimal`, `low`, `medium`,
+    # `high`, `xhigh`, `max` — so a rung this protocol will happily serialize
+    # may still be rejected by the model behind it. Unlike Anthropic and
+    # Gemini, though, the *unit* never changes, so the declaration is not
+    # ambiguous and the catalog has nothing to narrow.
+    reasoning_unit: Capability::ReasoningUnit::Effort,
     server_executed: false,
     refusal_channel: true,
     can_synthesize_user_message: true,

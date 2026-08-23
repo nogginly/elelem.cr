@@ -1,4 +1,5 @@
 require "json"
+require "./reasoning"
 
 module Elelem
   # A tool the model may call.
@@ -46,10 +47,6 @@ module Elelem
   # model is asked to do next. Two different questions that happen to travel on
   # the same call.
   #
-  # Deliberately not yet here: reasoning controls. Every protocol has one and
-  # no two agree on the unit — a named effort level on three, a token budget on
-  # Anthropic — and that ruling deserves its own pass rather than being smuggled
-  # in beside two settled things. See `SCOPE.md`.
   struct Options
     getter tools : Array(Tool)
 
@@ -59,8 +56,21 @@ module Elelem
     # failure this suite has already met.
     getter max_output_tokens : Int32?
 
+    # How hard to think, in whichever of two units the caller prefers. Unlike
+    # the output cap, this is the one request option no two protocols agree
+    # about: three take a named rung, two take a token budget, and the ones
+    # that take both reject being given both.
+    #
+    # **Absent means absent.** Nothing is emitted on any protocol, and the
+    # provider's own default stands. That is load-bearing rather than tidy: it
+    # keeps every request body that does not ask for reasoning byte-identical
+    # to what it was before this option existed, so no recorded transcript is
+    # re-cut by adding it.
+    getter reasoning : Reasoning::Request?
+
     def initialize(@tools : Array(Tool) = [] of Tool,
-                   @max_output_tokens : Int32? = nil)
+                   @max_output_tokens : Int32? = nil,
+                   @reasoning : Reasoning::Request? = nil)
     end
 
     def tools? : Bool

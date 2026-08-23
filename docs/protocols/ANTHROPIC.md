@@ -28,6 +28,7 @@ Binary content |`Native`   |Media type and base64 stay separate, as MPSH stores 
 Tool calls     |`Block`    |`tool_use`, a content block                                       
 Tool results   |`Blocks`   |**Nested block array — the capability that forced the union rule**
 Reasoning      |`Block`    |`thinking`, carrying a signature                                  
+Reasoning unit |`Either`   |**Both, and the model decides which.** See below                  
 Server-executed|`true`     |Distinct block types, not a flag                                  
 Refusal channel|`false`    |A refusal is carried as text                                      
 Media accepted |images, PDF|**No audio at all**                                               
@@ -96,6 +97,34 @@ has none.
 Note that `unsupported_media_type` (a WEBP image) is **exact** here. WEBP is
 accepted; the fixture name describes the OpenAI case that motivated it, not a
 universal fact. Read declarations, not fixture names.
+
+## Two controls, two homes, and a 400 for the wrong one
+
+This protocol asks for reasoning in two units, and which one it accepts depends
+on the **model**, not the protocol.
+
+Mode                                       |Where            |Accepted on                           
+-------------------------------------------|-----------------|--------------------------------------
+`thinking: {type: enabled, budget_tokens:}`|`thinking`       |4.5 and earlier only; **400 from 4.7**
+`output_config: {effort:}`                 |its own parameter|4.5 onward, and the current default   
+
+So `reasoning_unit` is declared `Either` and `Capability::Catalog` resolves it
+per call. Declaring whichever unit today's models want would be a profile
+describing a moment rather than a protocol, and the failure is loud: a budget
+sent to a current model is a rejected request, not a degraded one.
+
+Two rules the budget path must obey, both from the vendor's documentation: the
+budget is **at least 1,024** and **strictly below `max_tokens`**, because
+thinking tokens count against the same ceiling as the answer. The mapper clamps
+to fit and, where the clamp would fall under the floor, drops the control and
+records it — it never raises the caller's cap to make a budget fit.
+
+`effort` is deliberately not inside `thinking`: it shapes the whole response,
+tool calls included, and works whether or not thinking is enabled.
+
+One consequence worth knowing before prompt caching arrives: **changing either
+control between turns invalidates cached prefixes**, because the value is
+rendered into the prompt.
 
 ## Known gap: thinking without a signature
 

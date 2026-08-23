@@ -28,10 +28,34 @@ Binary content  |`Native`                                        |`inline_data` 
 Tool calls      |`Block`                                         |A `functionCall` part                                
 Tool results    |`TextOnly`                                      |Conservative — see *The response shape* below        
 Reasoning       |`Block`                                         |Thought parts, with a signature                      
+Reasoning unit  |`Either`                                        |`thinkingLevel` or `thinkingBudget`; **never both**  
 Server-executed |`true`                                          |Code execution exists; no part is emitted for one yet
 Refusal channel |`false`                                         |Carried as text                                      
 Media accepted  |widest of the four, **including audio natively**|                                                     
 String shorthand|**none**                                        |Every message is `{role, parts}`, always             
+
+## Reasoning control: two units in one object
+
+`thinkingConfig` holds both `thinkingLevel` and `thinkingBudget`, and setting
+both is a **400 rather than a precedence rule** — the sharpest argument in the
+suite for resolving the unit before anything is rendered. The 2.5 series takes a
+budget and has no levels; levels arrived with Gemini 3, where a budget is
+accepted only for backwards compatibility. `Capability::Catalog` decides which
+per model.
+
+Two smaller divergences follow from it:
+
+- **Three rungs, not five.** `xhigh` and `max` have no spelling here, so they
+  clamp to `HIGH` and the mapper records the loss — the same treatment a media
+  type outside the accepted set receives, one axis over.
+- **No clamp against the output cap.** Anthropic documents that its budget must
+  sit below `max_tokens`; this protocol documents no such relationship, so none
+  is invented. A budget of 0 disables thinking and -1 asks for dynamic thinking,
+  which is the protocol's own idiom for "no constraint" and better than any
+  number this shard could pick.
+
+Unconfirmed, and flagged in `SCOPE.md`: whether a budget of 0 reliably disables
+thinking on the levels-preferring series, which has no `off` rung of its own.
 
 ## Structural divergences
 

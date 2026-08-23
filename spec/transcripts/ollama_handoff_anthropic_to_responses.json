@@ -1,6 +1,6 @@
 {
   "name": "ollama_handoff_anthropic_to_responses",
-  "recorded_with": "wiretap/0.3.0",
+  "recorded_with": "wiretap/0.4.0",
   "interactions": [
     {
       "request": {
@@ -21,12 +21,12 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 19:33:31 GMT",
-          "Content-Length": "671"
+          "Date": "Sun, 23 Aug 2026 06:51:31 GMT",
+          "Content-Length": "930"
         },
-        "body": "{\"id\":\"msg_2b08ac4dc79b6c4d3e6a0c29\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Mount Everest is the tallest mountain above sea level.\\n\\n    *   Option 1: Mount Everest is the tallest mountain on Earth.\\n    *   Option 2: The tallest mountain on Earth is Mount Everest.\\n\\n    *   Both are one short sentence. Option 1 is more direct.\"},{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":104}}\n"
+        "body": "{\"id\":\"msg_d6b3002ac5da1adbd138d991\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Mount Everest is the highest mountain above sea level.\\n    *   Mauna Kea is the tallest from base to peak (but mostly underwater).\\n    *   Usually, when people ask this, they mean Everest.\\n\\n    *   Option 1: Mount Everest is the tallest mountain on Earth.\\n    *   Option 2: The tallest mountain on Earth is Mount Everest.\\n    *   Option 3: Mount Everest is the highest mountain above sea level.\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\\n\\n    *   One sentence? Yes.\\n    *   Short? Yes.\"},{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":171}}\n"
       },
-      "recorded_at": "2026-08-22T19:33:31Z"
+      "recorded_at": "2026-08-23T06:51:31Z"
     },
     {
       "request": {
@@ -34,24 +34,24 @@
         "url": "http://localhost:11434/v1/responses",
         "headers": {
           "content-type": "application/json",
-          "Content-Length": "874",
+          "Content-Length": "1133",
           "Host": "localhost:11434",
           "User-Agent": "Crystal",
           "Accept-Encoding": "gzip, deflate"
         },
-        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"instructions\":\"Answer in one short sentence.\",\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"What is the tallest mountain on Earth?\"}]},{\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Mount Everest is the tallest mountain above sea level.\\n\\n    *   Option 1: Mount Everest is the tallest mountain on Earth.\\n    *   Option 2: The tallest mountain on Earth is Mount Everest.\\n\\n    *   Both are one short sentence. Option 1 is more direct.\"}]},{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}]},{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"And the deepest ocean?\"}]}]}",
-        "body_digest": "af5ba84da70afa5fe96655ebd77bba3b245b55982ddac224e449dda8635a01e3"
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"instructions\":\"Answer in one short sentence.\",\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"What is the tallest mountain on Earth?\"}]},{\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Mount Everest is the highest mountain above sea level.\\n    *   Mauna Kea is the tallest from base to peak (but mostly underwater).\\n    *   Usually, when people ask this, they mean Everest.\\n\\n    *   Option 1: Mount Everest is the tallest mountain on Earth.\\n    *   Option 2: The tallest mountain on Earth is Mount Everest.\\n    *   Option 3: Mount Everest is the highest mountain above sea level.\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\\n\\n    *   One sentence? Yes.\\n    *   Short? Yes.\"}]},{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}]},{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"And the deepest ocean?\"}]}]}",
+        "body_digest": "cd57e379a9e41d6c0e025e3eb86e5b61b318c8d972e9d4dc0ba0577ef661195c"
       },
       "response": {
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 19:33:34 GMT",
-          "Content-Length": "2015"
+          "Date": "Sun, 23 Aug 2026 06:51:34 GMT",
+          "Content-Length": "1945"
         },
-        "body": "{\"id\":\"resp_122348\",\"object\":\"response\",\"created_at\":1787427214,\"completed_at\":1787427214,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gemma4:26b-mxfp8\",\"previous_response_id\":null,\"instructions\":\"Answer in one short sentence.\",\"output\":[{\"id\":\"rs_resp_122348\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   User asks: \\\"And the deepest ocean?\\\"\\n    *   Constraint: Answer in one short sentence.\\n\\n    *   The deepest ocean is the Pacific Ocean.\\n    *   Specifically, the deepest part is the Mariana Trench within the Pacific Ocean.\\n\\n    *   Option 1: The Pacific Ocean is the deepest ocean.\\n    *   Option 2: The Pacific Ocean is the deepest ocean on Earth.\\n\\n    *   \\\"The Pacific Ocean is the deepest ocean.\\\"\\n\\n    *   One short sentence? Yes.\"}],\"encrypted_content\":\"*   User asks: \\\"And the deepest ocean?\\\"\\n    *   Constraint: Answer in one short sentence.\\n\\n    *   The deepest ocean is the Pacific Ocean.\\n    *   Specifically, the deepest part is the Mariana Trench within the Pacific Ocean.\\n\\n    *   Option 1: The Pacific Ocean is the deepest ocean.\\n    *   Option 2: The Pacific Ocean is the deepest ocean on Earth.\\n\\n    *   \\\"The Pacific Ocean is the deepest ocean.\\\"\\n\\n    *   One short sentence? Yes.\"},{\"id\":\"msg_209725\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"The Pacific Ocean is the deepest ocean.\",\"annotations\":[],\"logprobs\":[]}]}],\"error\":null,\"tools\":[],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":null,\"usage\":{\"input_tokens\":54,\"output_tokens\":122,\"total_tokens\":176,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+        "body": "{\"id\":\"resp_176381\",\"object\":\"response\",\"created_at\":1787467894,\"completed_at\":1787467894,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gemma4:26b-mxfp8\",\"previous_response_id\":null,\"instructions\":\"Answer in one short sentence.\",\"output\":[{\"id\":\"rs_resp_176381\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   Question: \\\"And the deepest ocean?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The deepest ocean is the Pacific Ocean.\\n\\n    *   \\\"The Pacific Ocean is the deepest ocean.\\\"\\n\\n    *   \\\"The Pacific Ocean is the deepest.\\\" (Short and direct)\\n    *   \\\"The Pacific Ocean is the deepest ocean on Earth.\\\" (Full sentence)\\n\\n\\\"The Pacific Ocean is the deepest ocean.\\\" (One short sentence).\"}],\"encrypted_content\":\"*   Question: \\\"And the deepest ocean?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The deepest ocean is the Pacific Ocean.\\n\\n    *   \\\"The Pacific Ocean is the deepest ocean.\\\"\\n\\n    *   \\\"The Pacific Ocean is the deepest.\\\" (Short and direct)\\n    *   \\\"The Pacific Ocean is the deepest ocean on Earth.\\\" (Full sentence)\\n\\n\\\"The Pacific Ocean is the deepest ocean.\\\" (One short sentence).\"},{\"id\":\"msg_915103\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"The Pacific Ocean is the deepest ocean.\",\"annotations\":[],\"logprobs\":[]}]}],\"error\":null,\"tools\":[],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":null,\"usage\":{\"input_tokens\":54,\"output_tokens\":111,\"total_tokens\":165,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
       },
-      "recorded_at": "2026-08-22T19:33:34Z"
+      "recorded_at": "2026-08-23T06:51:34Z"
     }
   ]
 }

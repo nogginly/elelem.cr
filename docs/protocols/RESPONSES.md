@@ -24,6 +24,7 @@ Binary content |`DataUri`     |Fused at map time, split on export
 Tool calls     |`Field`       |A `function_call` item, not a message field                     
 Tool results   |`TextOnly`    |`function_call_output.output` is a string — compensation applies
 Reasoning      |`Item`        |**Carries an opaque payload**, unlike a text field              
+Reasoning unit |`Effort`      |`reasoning.effort` — the same rungs as Chat Completions, nested 
 Server-executed|`true`        |Built-in tools exist; no item is emitted for one yet            
 Refusal channel|`true`        |A distinct refusal content type                                 
 System prompt  |`Instructions`|A top-level parameter, not a message                            

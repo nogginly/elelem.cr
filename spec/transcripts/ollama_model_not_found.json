@@ -1,6 +1,6 @@
 {
   "name": "ollama_model_not_found",
-  "recorded_with": "wiretap/0.3.0",
+  "recorded_with": "wiretap/0.4.0",
   "interactions": [
     {
       "request": {
@@ -20,12 +20,12 @@
         "status": 404,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 19:33:54 GMT",
+          "Date": "Sun, 23 Aug 2026 06:51:58 GMT",
           "Content-Length": "106"
         },
         "body": "{\"error\":{\"message\":\"model 'no-such-model' not found\",\"type\":\"not_found_error\",\"param\":null,\"code\":null}}\n"
       },
-      "recorded_at": "2026-08-22T19:33:54Z"
+      "recorded_at": "2026-08-23T06:51:58Z"
     }
   ]
 }

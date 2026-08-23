@@ -33,8 +33,14 @@ module Elelem
     # a claim about someone else's infrastructure, so it is deliberate — and
     # the cost of being wrong is a rejected turn, where the cost of being
     # needlessly cautious is only a recorded loss.
+    # `reasoning_unit` overrules the model catalog, and exists for the case the
+    # catalog cannot answer: a deployment name that carries no model identity.
+    # Azure is the example — `prod-reasoning-2` says nothing about which model
+    # answers — and it is the same fact that will later prove path and auth are
+    # protocol-*plus*-deployment concerns.
     def self.for(server : Server, protocol : ProtocolKind, vendor : String? = nil,
-                 default_max_tokens : Int32 = Elelem::Protocol::Anthropic::DEFAULT_MAX_TOKENS) : Provider
+                 default_max_tokens : Int32 = Elelem::Protocol::Anthropic::DEFAULT_MAX_TOKENS,
+                 reasoning_unit : Capability::ReasoningUnit? = nil) : Provider
       canonical = case protocol
                   in ProtocolKind::ChatCompletions then Elelem::Protocol::ChatCompletions::METADATA_KEY
                   in ProtocolKind::Responses       then Elelem::Protocol::Responses::METADATA_KEY
@@ -45,11 +51,23 @@ module Elelem
       resolved = vendor || (server.name == canonical ? canonical : server.name)
 
       adapter = case protocol
-                in ProtocolKind::ChatCompletions then ChatCompletionsAdapter.new(resolved)
-                in ProtocolKind::Responses       then ResponsesAdapter.new(resolved)
-                in ProtocolKind::Anthropic       then AnthropicAdapter.new(resolved)
-                in ProtocolKind::Gemini          then GeminiAdapter.new(resolved)
+                in ProtocolKind::ChatCompletions then ChatCompletionsAdapter.new(resolved, reasoning_unit)
+                in ProtocolKind::Responses       then ResponsesAdapter.new(resolved, reasoning_unit)
+                in ProtocolKind::Anthropic       then AnthropicAdapter.new(resolved, reasoning_unit)
+                in ProtocolKind::Gemini          then GeminiAdapter.new(resolved, reasoning_unit)
                 end
+
+      # Loud, and at construction rather than at request time: an override
+      # naming a unit the protocol never spelled is a claim about the wire that
+      # the wire does not support, which is the direction narrowing refuses.
+      if unit = reasoning_unit
+        declared = adapter.profile.reasoning_unit
+        unless declared.either? || declared == unit
+          raise ArgumentError.new(
+            "#{declared} is the reasoning unit #{adapter.profile.provider} spells; " \
+            "#{unit} cannot be requested of it")
+        end
+      end
 
       new(server, adapter, default_max_tokens)
     end
@@ -62,6 +80,13 @@ module Elelem
     # before a handoff: it is the honest answer to "what will I lose".
     def profile : Capability::Profile
       @adapter.narrowed
+    end
+
+    # The same answer for one model, which is the form worth asking before a
+    # handoff: on two protocols the reasoning unit is not settled until a model
+    # is named.
+    def profile(model : String) : Capability::Profile
+      @adapter.narrowed(model)
     end
 
     def vendor : String?

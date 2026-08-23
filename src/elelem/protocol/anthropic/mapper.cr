@@ -4,6 +4,7 @@ require "./capabilities"
 require "../../capability/resolver"
 require "../../capability/policy"
 require "../../capability/retention"
+require "../../capability/reasoning_control"
 require "../../capability/structural"
 require "../../mpsh/session"
 require "../../mpsh/translation"
@@ -58,8 +59,73 @@ module Elelem::Protocol::Anthropic
       # `options.max_output_tokens` wins when set. The positional `max_tokens`
       # stays because this protocol requires a value and had one before options
       # existed; it is the fallback, not a second way to say the same thing.
-      {Wire::Request.new(model, messages, options.max_output_tokens || max_tokens,
-        session.system_prompt, declarations(options)), report}
+      cap = options.max_output_tokens || max_tokens
+      budget, effort, disabled = reasoning(options, cap, report)
+
+      {Wire::Request.new(model, messages, cap,
+        session.system_prompt, declarations(options),
+        thinking_budget: budget, effort: effort, thinking_disabled: disabled), report}
+    end
+
+    # Returns the thinking budget, the effort rung and whether thinking is
+    # switched off — at most one of which is ever set, because the deployment's
+    # unit was resolved before this mapper ran.
+    private def reasoning(options : Options, cap : Int32,
+                          report : Capability::Report) : {Int32?, String?, Bool}
+      request = options.reasoning
+      return {nil, nil, false} unless request
+
+      unit = profile.reasoning_unit
+      rendering, outcome = Capability::ReasoningControl.resolve(request, unit)
+      report.record(outcome, Capability::ReasoningControl.detail(request, rendering, unit))
+
+      case rendering
+      in Capability::ReasoningControl::Rendering::AsEffort
+        level = case request
+                in Reasoning::Effort then request.wire_name
+                in Reasoning::Budget then request.to_effort.wire_name
+                in Reasoning::Off    then nil
+                end
+        {nil, level, false}
+      in Capability::ReasoningControl::Rendering::AsBudget
+        {clamped_budget(request, cap, report), nil, false}
+      in Capability::ReasoningControl::Rendering::Disable
+        {nil, nil, true}
+      in Capability::ReasoningControl::Rendering::Drop
+        {nil, nil, false}
+      end
+    end
+
+    # Two hard rules from this protocol, and a third from this shard.
+    #
+    # The budget must be at least 1,024, and strictly less than `max_tokens` —
+    # thinking tokens count against the same ceiling as the answer, so a budget
+    # that fills it leaves the model nothing to answer with. Hence the clamp,
+    # and hence `Max` resolving to one token under the cap rather than to a
+    # number.
+    #
+    # The third rule is ours: **never raise the caller's cap to make a budget
+    # fit.** A caller who set an output cap set it for a reason, and quietly
+    # spending more of their money than they asked for is exactly the silent
+    # behaviour this model exists to prevent. Where the clamp falls below the
+    # floor there is no legal request to send, so the control is dropped and
+    # recorded — a request without thinking, rather than a request the endpoint
+    # rejects.
+    private def clamped_budget(request : Reasoning::Request, cap : Int32,
+                               report : Capability::Report) : Int32?
+      wanted = case request
+               in Reasoning::Effort then REASONING_BUDGETS[request]
+               in Reasoning::Budget then request.tokens
+               in Reasoning::Off    then return nil
+               end
+
+      budget = {wanted, cap - 1}.min
+      return budget if budget >= MIN_THINKING_BUDGET
+
+      report.record(MPSH::Outcome::Degraded,
+        "reasoning control: a cap of #{cap} leaves no room for the " \
+        "#{MIN_THINKING_BUDGET}-token minimum budget; thinking not requested")
+      nil
     end
 
     # Tool declarations and generation options, translated per protocol.

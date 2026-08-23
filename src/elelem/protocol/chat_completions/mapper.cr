@@ -4,6 +4,7 @@ require "./capabilities"
 require "../../capability/resolver"
 require "../../capability/policy"
 require "../../capability/retention"
+require "../../capability/reasoning_control"
 require "../../mpsh/session"
 require "../../mpsh/translation"
 
@@ -58,7 +59,39 @@ module Elelem::Protocol::ChatCompletions
       end
 
       flush_compensation(wire, pending, report)
-      {Wire::Request.new(model, wire, declarations(options), options.max_output_tokens), report}
+      {Wire::Request.new(model, wire, declarations(options), options.max_output_tokens,
+        reasoning_effort(options, report)), report}
+    end
+
+    # The named rung, lowercase, or nothing at all.
+    #
+    # A caller who named a token budget gets it bucketed to the nearest rung
+    # and told so: the resolver classifies that direction Degraded, because the
+    # number cannot be recovered and a rung is a behavioural signal rather than
+    # a cap. `Off` is spelled `none` here.
+    private def reasoning_effort(options : Options,
+                                 report : Capability::Report) : String?
+      request = options.reasoning
+      return nil unless request
+
+      rendering, outcome = Capability::ReasoningControl.resolve(request, profile.reasoning_unit)
+      report.record(outcome,
+        Capability::ReasoningControl.detail(request, rendering, profile.reasoning_unit))
+
+      case rendering
+      in Capability::ReasoningControl::Rendering::AsEffort
+        case request
+        in Reasoning::Effort then request.wire_name
+        in Reasoning::Budget then request.to_effort.wire_name
+        in Reasoning::Off    then "none"
+        end
+      in Capability::ReasoningControl::Rendering::Disable
+        "none"
+      in Capability::ReasoningControl::Rendering::AsBudget
+        nil
+      in Capability::ReasoningControl::Rendering::Drop
+        nil
+      end
     end
 
     # Emits the buffered carrier, if any, and clears the buffer.

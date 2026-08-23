@@ -165,11 +165,21 @@ module Elelem::Protocol::Gemini
       getter system_instruction : String?
       getter tools : Array(ToolDeclaration)
       getter max_output_tokens : Int32?
+      # `thinkingConfig`, inside `generationConfig`. Both units live in the
+      # same object and **must not both be set** — that is a 400, not a
+      # precedence rule — so the unit is resolved per model by
+      # `Capability::Catalog` before anything is rendered. A budget of 0
+      # disables thinking; -1 asks for dynamic thinking, which is what an
+      # unconstrained request means here.
+      getter thinking_budget : Int32?
+      getter thinking_level : String?
 
       def initialize(@model : String, @contents : Array(Content),
                      @system_instruction : String? = nil,
                      @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
-                     @max_output_tokens : Int32? = nil)
+                     @max_output_tokens : Int32? = nil,
+                     @thinking_budget : Int32? = nil,
+                     @thinking_level : String? = nil)
       end
 
       def path : String
@@ -201,10 +211,25 @@ module Elelem::Protocol::Gemini
             end
           end
           # The only protocol to put generation parameters in their own object
-          # rather than at the top level.
-          @max_output_tokens.try do |value|
+          # rather than at the top level — so the object appears once and every
+          # generation setting has to be written inside it, rather than each
+          # being emitted independently as on the other three.
+          cap = @max_output_tokens
+          budget = @thinking_budget
+          level = @thinking_level
+          if cap || budget || level
             json.field("generationConfig") do
-              json.object { json.field "maxOutputTokens", value }
+              json.object do
+                cap.try { |value| json.field "maxOutputTokens", value }
+                if budget || level
+                  json.field("thinkingConfig") do
+                    json.object do
+                      budget.try { |value| json.field "thinkingBudget", value }
+                      level.try { |value| json.field "thinkingLevel", value }
+                    end
+                  end
+                end
+              end
             end
           end
         end

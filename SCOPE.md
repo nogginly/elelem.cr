@@ -65,39 +65,13 @@ streaming is not purely additive later.
 
 No fixture covers this. Build alongside the client.
 
-### Reasoning controls are not expressible
-
-Tool declarations and the output cap landed in `Options`; reasoning controls did
-not. Every protocol has one and no two agree on the *unit*:
-
-Protocol        |Spelling                |Unit  
-----------------|------------------------|------
-Chat Completions|`reasoning_effort`      |Level 
-Responses       |`reasoning.effort`      |Level 
-Anthropic       |`thinking.budget_tokens`|Tokens
-Gemini          |`thinkingConfig`        |Both  
-
-A shared enum is not inventing an abstraction: Anthropic's own product presents
-Low/Medium/High, so mapping a level onto a budget is adopting a vendor's
-abstraction rather than guessing at equivalence. Callers wanting exactness
-should still be able to pass a budget directly.
-
-This is the one request option that **should** add a `Profile` field. The answer
-is genuinely trichotomous — effort, budget, or no control at all — and a mapper
-must branch on it. Contrast tools and the output cap, which every protocol
-expresses and which therefore needed no declaration.
-
-Where a protocol has no control, the request loses something the caller asked
-for, and that should be annotated. Note this stretches `Report` from describing
-*history* fidelity to describing *request* fidelity. Probably right — silence is
-the failure the capability model exists to prevent — but it is a second concept
-in one bag, and worth revisiting if it reads badly.
-
 ### The specification is silent on request parameters
 
 `docs/MPSH_SPECIFICATION.md` covers tool *calls and results* in detail and says
 nothing about tool *definitions*, output caps or reasoning controls. `Options`
-was built past the edge of the spec rather than against it.
+is now complete and every part of it was built past the edge of the spec rather
+than against it — reasoning controls most of all, since they also drove a new
+`Profile` field and the first model catalog.
 
 That is not obviously wrong — the spec describes a portable *session*, and these
 are per-call concerns that deliberately never enter one. But the omission should
@@ -131,33 +105,85 @@ verification cannot settle.
 
 ## WILL FIX
 
+### Reasoning controls: the unit is keyed on the model
+
+**Built, and the trichotomy held — but not the table that predicted it.** The
+worklist recorded three units keyed on protocol (level, level, tokens, both).
+Current documentation says something sharper: two protocols spell *both* units
+and reject being handed both, and which one a deployment wants depends on the
+**model**.
+
+Protocol        |Spelling                                         |Unit  
+----------------|-------------------------------------------------|------
+Chat Completions|`reasoning_effort`                               |Rung  
+Responses       |`reasoning.effort`                               |Rung  
+Anthropic       |`output_config.effort` / `thinking.budget_tokens`|Either
+Gemini          |`thinkingConfig.thinkingLevel` / `thinkingBudget`|Either
+
+`Profile` gained `reasoning_unit` as predicted; `Capability::Catalog` resolves
+`Either` per model. What remains open is only what a live call can settle:
+
+- **Rungs are model-dependent on the OpenAI protocols too.** `xhigh` and `max`
+  serialize happily and may still be rejected by the model behind the endpoint.
+  A protocol-level declaration cannot know, and a per-model rung list is a
+  catalog axis nobody has yet needed. Wait for a rejection.
+- **Gemini's `Off` is unconfirmed.** A budget of 0 disables thinking, and is
+  documented on the series that takes budgets; the series that prefers levels
+  accepts a budget only for backwards compatibility, and has no `off` rung.
+- **No budget clamp on Gemini.** Anthropic documents that the budget must sit
+  below `max_tokens`; Gemini documents no such relationship, so none is
+  invented. Revisit the first time a live call disagrees.
+- **A Restructured request option is never annotated, by design.** `Report`
+  files an annotation only for Degraded, Refused and Compensated, so a caller
+  whose rung became a token budget learns it from `report.worst` moving off
+  Exact and nowhere else. Annotating Restructured would make the channel mean
+  "something was translated" rather than "something was lost" — `Resolver`
+  returns it from five places and the mappers record it at two dozen sites, so
+  a long session would annotate roughly in proportion to its length, and the
+  `reasoning_dropped` counter exists precisely to keep that noise out.
+
+  The pre-request answer is better placed anyway: `provider.profile(model)`
+  reports the unit *before* the call. Revisit if a second request option wants
+  the same confirmation, at which point there is enough evidence to design a
+  path rather than guess at one.
+- **Reasoning controls invalidate prompt caching.** Both vendors render the
+  value into the prompt, so changing it mid-conversation misses the cache.
+  `spec/conformance/determinism_spec.cr` asserts prefix stability for exactly
+  this reason; nothing to fix, but the guidance belongs beside it before prompt
+  caching arrives.
+
 ### A model catalog, keyed independently of protocol
 
-The third identity is built — `Server`, `Provider` and the vendor axis are in
-`DEVELOPMENT.md` — but the part that attached to it is not. `Provider` answers
-"where is it sent and whose opaque data does it honour". It does not answer
-"what can *this model* do".
+**One axis exists.** `Capability::Catalog` resolves an ambiguous reasoning unit
+per model, and it is deliberately the smallest thing that could work: exact
+spellings, no patterns, one field narrowed, an optimistic default, and an
+explicit override for the deployments whose model name says nothing about the
+model.
 
-`ReasoningRetention::CompletedTurns` exists for a requirement keyed on **model**,
-not protocol: one model family asks that reasoning be dropped once a turn
-closes. Declared media support has the same problem in miniature — both OpenAI
-profiles list audio media types, but audio support is model-gated in practice,
-and a self-hosted server speaking Chat Completions may support none of it.
+It passes the test set below — an entry may only resolve `Either` into a unit
+the protocol already spelled, so it cannot add a capability or overturn a
+refusal — and it follows the precedent vendor narrowing set: reassign one
+`Profile` field and let the existing resolver do the work.
 
-Open questions:
+The default is optimistic where the rest of this shard is pessimistic, and the
+reason is specific rather than a change of heart: **the exception list is closed
+and shrinking.** Budget-only models are the legacy ones, every model since takes
+a rung, so a stale table fails safe. That argument does not transfer to the
+axes below, and reusing it there without checking would be the mistake.
 
-- Should a catalog exist as its own layer, or is it a property of a provider?
-- What is the minimal preference set it carries? Reasoning retention is one.
-  Media support narrowing is a likely second.
-- **The trap**: a catalog is a second place where "what this endpoint wants" is
-  decided. A preference may only ask for *less* than the protocol can carry.
-  One that can *add* capability, or override a refusal, is a back door around
-  the capability model. Any candidate failing that test does not belong.
+Still open, and the reason this stays in WILL FIX:
 
-Note the precedent now set by vendor narrowing, which solves the same shape of
-problem: it reassigns one `Profile` field and lets the existing resolver do the
-work, rather than adding a parallel decision path. A catalog should look like
-that or it is probably wrong.
+- Should the catalog become a layer, or stay a lookup returning a narrowed
+  `Profile`? The lookup is right so far, on one axis.
+- `ReasoningRetention::CompletedTurns` exists for a requirement keyed on model
+  and is still applied by hand. Declared media support has the same problem in
+  miniature — both OpenAI profiles list audio media types, but audio support is
+  model-gated in practice.
+- Per-model *rung* support, if a rejection ever demands it. A second axis on
+  the same entry, not a second mechanism.
+- **The trap, unchanged**: a preference may only ask for *less* than the
+  protocol can carry. One that can *add* capability, or override a refusal, is
+  a back door around the capability model.
 
 ### Carrier deferral is reimplemented per protocol
 
@@ -282,6 +308,23 @@ A small model with no output cap spent 4,096 tokens reasoning without reaching
 an answer, and an earlier run stalled twelve minutes with every later request
 queued behind it — Ollama processes serially, so one runaway blocks the rest.
 Live requests now always carry a cap.
+
+### A suite that re-records is not a suite that replays
+
+The three tool specs had never once replayed. Every run under wiretap's `:once`
+mode re-recorded any transcript that failed to match, so they asserted against a
+recording the code under test had made moments earlier — the same shape as the
+fixture lesson above, one layer down, and just as green.
+
+The cause was a request body carrying a freshly minted, timestamped call
+identifier, which could not digest the same way twice. That was a five-minute
+fix. What cost the time was that the failure had been invisible for as long as
+anyone kept deleting transcripts to make it go away.
+
+Now: `:none` under CI, `Wiretap.verify!` after every suite, and `RECORD=1` for
+the runs where recording is the point. **The run after a re-record is the one
+that proves anything.** This matters more, not less, as the Anthropic and Gemini
+transcripts arrive, since those cost money to cut and will be re-cut reluctantly.
 
 ### Record transcripts; never hand-write them
 

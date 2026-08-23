@@ -1,6 +1,6 @@
 {
   "name": "ollama_chat_completions_text",
-  "recorded_with": "wiretap/0.3.0",
+  "recorded_with": "wiretap/0.4.0",
   "interactions": [
     {
       "request": {
@@ -20,12 +20,12 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 19:33:12 GMT",
-          "Content-Length": "696"
+          "Date": "Sun, 23 Aug 2026 06:51:13 GMT",
+          "Content-Length": "857"
         },
-        "body": "{\"id\":\"chatcmpl-963\",\"object\":\"chat.completion\",\"created\":1787427192,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the tallest mountain on Earth.\",\"reasoning\":\"The user is asking for the tallest mountain on Earth.\\nThe answer is Mount Everest.\\nConstraint: \\\"Answer in one short sentence.\\\"\\n\\nDrafting the response:\\n- Mount Everest is the tallest mountain on Earth.\\n- The tallest mountain on Earth is Mount Everest.\\n\\n\\\"Mount Everest is the tallest mountain on Earth.\\\" is a perfect short sentence.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":86,\"total_tokens\":116}}\n"
+        "body": "{\"id\":\"chatcmpl-561\",\"object\":\"chat.completion\",\"created\":1787467873,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the tallest mountain on Earth.\",\"reasoning\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The tallest mountain on Earth is Mount Everest.\\n\\n    *   Option 1: Mount Everest is the tallest mountain on Earth. (Standard)\\n    *   Option 2: Mount Everest is the tallest mountain. (Short)\\n    *   Option 3: The tallest mountain on Earth is Mount Everest. (Standard)\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\" is direct, accurate, and one short sentence.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":134,\"total_tokens\":164}}\n"
       },
-      "recorded_at": "2026-08-22T19:33:12Z"
+      "recorded_at": "2026-08-23T06:51:13Z"
     }
   ]
 }

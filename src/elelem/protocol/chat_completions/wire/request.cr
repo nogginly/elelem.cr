@@ -195,10 +195,14 @@ module Elelem::Protocol::ChatCompletions
       getter messages : Array(Message)
       getter tools : Array(ToolDeclaration)
       getter max_tokens : Int32?
+      # A bare string at the top level: the flattest of the four spellings of
+      # this idea. `nil` omits the field, leaving the model's own default.
+      getter reasoning_effort : String?
 
       def initialize(@model : String, @messages : Array(Message),
                      @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
-                     @max_tokens : Int32? = nil)
+                     @max_tokens : Int32? = nil,
+                     @reasoning_effort : String? = nil)
       end
 
       def to_json(json : JSON::Builder)
@@ -209,6 +213,7 @@ module Elelem::Protocol::ChatCompletions
             json.field("tools") { json.array { @tools.each(&.to_json(json)) } }
           end
           @max_tokens.try { |value| json.field "max_tokens", value }
+          @reasoning_effort.try { |value| json.field "reasoning_effort", value }
         end
       end
 

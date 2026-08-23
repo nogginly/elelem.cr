@@ -235,10 +235,25 @@ module Elelem::Protocol::Anthropic
       getter messages : Array(Message)
       getter max_tokens : Int32
       getter tools : Array(ToolDeclaration)
+      # The only protocol here that spells reasoning control two ways, in two
+      # different places, and rejects the wrong one outright.
+      #
+      # A budget goes in `thinking`, and is the older mode: the only one on
+      # Claude 4.5 and earlier, deprecated on 4.6, and a 400 from 4.7 onward. A
+      # rung goes in `output_config`, alongside adaptive thinking. Which of the
+      # two a deployment wants is a fact about the model, resolved by
+      # `Capability::Catalog` before the mapper renders anything — so at most
+      # one of these is ever set.
+      getter thinking_budget : Int32?
+      getter effort : String?
+      getter? thinking_disabled : Bool
 
       def initialize(@model : String, @messages : Array(Message),
                      @max_tokens : Int32, @system : String? = nil,
-                     @tools : Array(ToolDeclaration) = [] of ToolDeclaration)
+                     @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
+                     @thinking_budget : Int32? = nil,
+                     @effort : String? = nil,
+                     @thinking_disabled : Bool = false)
       end
 
       def to_json(json : JSON::Builder)
@@ -253,6 +268,22 @@ module Elelem::Protocol::Anthropic
           json.field("messages") { json.array { @messages.each(&.to_json(json)) } }
           unless @tools.empty?
             json.field("tools") { json.array { @tools.each(&.to_json(json)) } }
+          end
+          if budget = @thinking_budget
+            json.field("thinking") do
+              json.object do
+                json.field "type", "enabled"
+                json.field "budget_tokens", budget
+              end
+            end
+          elsif @thinking_disabled
+            json.field("thinking") { json.object { json.field "type", "disabled" } }
+          end
+          if level = @effort
+            # Not inside `thinking`: effort shapes the whole response — text,
+            # tool calls and thinking alike — which is why it has a home of its
+            # own and works whether or not thinking is on.
+            json.field("output_config") { json.object { json.field "effort", level } }
           end
         end
       end

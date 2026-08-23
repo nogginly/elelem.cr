@@ -4,6 +4,7 @@ require "./capabilities"
 require "../../capability/resolver"
 require "../../capability/policy"
 require "../../capability/retention"
+require "../../capability/reasoning_control"
 require "../../capability/structural"
 require "../../mpsh/session"
 require "../../mpsh/translation"
@@ -54,7 +55,37 @@ module Elelem::Protocol::Responses
       end
 
       flush_compensation(items, pending, report)
-      {Wire::Request.new(model, items, session.system_prompt, declarations(options), options.max_output_tokens), report}
+      {Wire::Request.new(model, items, session.system_prompt, declarations(options),
+        options.max_output_tokens, reasoning_effort(options, report)), report}
+    end
+
+    # Identical to Chat Completions in unit and vocabulary, differing only in
+    # where the value lands in the body — which is this family's pattern
+    # everywhere, and the reason passing both protocols proves less than it
+    # looks.
+    private def reasoning_effort(options : Options,
+                                 report : Capability::Report) : String?
+      request = options.reasoning
+      return nil unless request
+
+      rendering, outcome = Capability::ReasoningControl.resolve(request, profile.reasoning_unit)
+      report.record(outcome,
+        Capability::ReasoningControl.detail(request, rendering, profile.reasoning_unit))
+
+      case rendering
+      in Capability::ReasoningControl::Rendering::AsEffort
+        case request
+        in Reasoning::Effort then request.wire_name
+        in Reasoning::Budget then request.to_effort.wire_name
+        in Reasoning::Off    then "none"
+        end
+      in Capability::ReasoningControl::Rendering::Disable
+        "none"
+      in Capability::ReasoningControl::Rendering::AsBudget
+        nil
+      in Capability::ReasoningControl::Rendering::Drop
+        nil
+      end
     end
 
     # Carriers are deferred here for the same reason as on Chat Completions:

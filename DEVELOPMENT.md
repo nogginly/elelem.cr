@@ -73,10 +73,15 @@ flowchart TB
         R["Resolver<br/>one algorithm, four declarations"]
         ST["Structural<br/>sequence-level adaptations"]
         PO["Policy · Report · RefusedError"]
+        RC["ReasoningControl<br/>request-option axis"]
+        CT["Catalog<br/>resolves a model-keyed unit"]
         PR --> R
         PR --> ST
+        PR --> RC
+        CT --> PR
         R --> PO
         ST --> PO
+        RC --> PO
     end
 
     subgraph PROTO["protocol/ — one directory per protocol"]
@@ -92,7 +97,7 @@ flowchart TB
         PV["Provider<br/>server + protocol + vendor"]
         AD["Adapter<br/>path · headers · prepare/read"]
         CL["Client<br/>send → (Message, Report)"]
-        OP["Options<br/>tools · output cap"]
+        OP["Options<br/>tools · output cap · reasoning"]
         SV --> PV --> AD --> CL
         OP --> AD
     end
@@ -104,7 +109,7 @@ flowchart TB
     PROTO -.driven by.-> AD
 
     classDef built stroke:#2e7d32,stroke-width:3px
-    class S,M,B,P,T,PR,R,ST,PO,C1,C2,C3,C4,W,SV,PV,AD,CL,OP built
+    class S,M,B,P,T,PR,R,ST,PO,RC,CT,C1,C2,C3,C4,W,SV,PV,AD,CL,OP built
 ```
 
 ```
@@ -121,7 +126,8 @@ src/elelem/
   provider.cr   a server speaking one protocol, plus its vendor claim
   adapter.cr    per protocol: path, headers, prepare/read
   client.cr     send(session, model) → (Message, Report)
-  options.cr    tools and output cap — per call, never stored in a session
+  options.cr    tools, output cap, reasoning — per call, never stored
+  reasoning.cr  the caller's reasoning request: a rung, a budget, or off
 ```
 
 Flat files rather than a directory, because a directory here *is* a namespace
@@ -156,12 +162,18 @@ Axis    |Question                                    |Where it lives
 Protocol|Which wire shape?                           |`Capability::Profile`      
 Server  |Which deployment?                           |`Server`                   
 Vendor  |Whose opaque data does this endpoint honour?|`Provider` → `metadata_key`
-Model   |Which capabilities within a protocol?       |**Unmodelled, parked**     
+Model   |Which capabilities within a protocol?       |`Capability::Catalog`      
 
 Ollama forces them apart: one server, three protocols, none of them its own
 vendor. A gateway forces them apart the other way — OpenRouter fronting Claude
 is `server: openrouter, vendor: anthropic`, and the opaque data really does
 replay.
+
+The fourth identity is now open one axis wide. Two protocols spell reasoning
+control in two units and reject being handed both, and which unit a deployment
+wants is a fact about the model — so `Capability::Catalog` resolves it per call,
+by narrowing the same `Profile` rather than by adding a decision path. Any
+further axis should look like that or it is probably wrong.
 
 `Provider` narrows a `Profile` when server and vendor disagree, by reassigning
 `metadata_key` so `Resolver#own?` stops recognising foreign opaque data.
@@ -171,6 +183,12 @@ names rather than needing a flag, because the two errors are not symmetric:
 wrongly optimistic replays a signature a real endpoint rejects and breaks the
 turn, while wrongly pessimistic costs fidelity that is recorded and
 recoverable.
+
+**The reasoning unit is the one deliberate exception**, and the exception is
+argued rather than assumed: its budget-only models are a closed, shrinking set,
+so an unknown model is far likelier to be new than ancient and the optimistic
+default is right by construction. Where that argument does not hold — every
+other axis so far — the pessimistic default stands.
 
 ## Conventions
 
@@ -418,6 +436,18 @@ abstraction is the first protocol from a different family.
 5. **Write the request options.** Tool declarations and the output cap, in this
    protocol's spelling. All four differ; see `options.cr` and
    `spec/conformance/options_spec.cr`.
+
+   Then reasoning control, which is the awkward one, because protocols disagree
+   about the *unit* and not merely the spelling. Declare `reasoning_unit` — and
+   declare `Either` honestly if the protocol spells both, rather than picking
+   the one today's models happen to want. `Capability::ReasoningControl` decides
+   the rendering and the outcome; the mapper only spells it, and any numbers it
+   needs are that protocol's own constants, because vendor figures drift exactly
+   as capabilities do. See `spec/conformance/reasoning_controls_spec.cr`.
+
+   **Absent must emit nothing.** A request that asks for no reasoning control
+   must be byte-identical to one built before the option existed, or every
+   committed transcript is re-cut.
 6. **Write an `Adapter`.** Path, headers, error-body decoding. This is the only
    place an endpoint is named, which is what keeps `Client` protocol-agnostic.
 7. **Run the shared conformance suite.** Same fixtures, every protocol.
@@ -454,7 +484,25 @@ real server and writes `spec/transcripts/<name>.json`, every run after replays
 from disk. Transcripts are committed. They are the evidence, and they are what
 makes the suite offline for everyone who did not record them.
 
-Four things learned the hard way:
+**Green is not the same as replayed.** Under `:once` a missing transcript is
+recorded rather than failed, so a suite can pass while asserting against a
+recording made seconds earlier by the code under test. Three tool specs did this
+for as long as anyone looked at them. Two guards, both in `spec_helper.cr`:
+`record_mode` is `:none` when `CI` is set, and `Spec.after_suite` calls
+`Wiretap.verify!`, which raises if anything was recorded.
+
+So a run that is *meant* to record needs `RECORD=1`:
+
+```
+rm spec/transcripts/ollama_tools_handoff.json
+RECORD=1 crystal spec spec/live/ollama_spec.cr   # cuts it
+crystal spec                                     # proves it replays
+```
+
+The second command is the one that matters. It is the first time the new
+transcript is exercised as a recording rather than produced as one.
+
+Five things learned the hard way:
 
 - **Record, never hand-write.** Both times a transcript was guessed at rather
   than captured, the guess was wrong and cost a debugging round.
@@ -470,6 +518,13 @@ Four things learned the hard way:
   the model said at turn *n*, and a model is not a pure function — so a
   re-record changes every turn after the first even when nothing in the code
   moved.
+- **Anything minted at run time breaks matching.** Wiretap matches on a digest
+  of the request body, and MPSH call identifiers embed a timestamp, so any
+  transcript replaying one could never match. `spec_helper.cr` normalises them
+  for matching only; from wiretap 0.4.0 the transcript still stores what went
+  over the wire. Anything else non-deterministic in a request body needs the
+  same treatment, and the symptom is a miss reported as *matched method and URL,
+  body differed*.
 
 Always cap output on a live request. An uncapped local model cost this suite a
 twelve-minute stall and a turn that spent 4,096 tokens reasoning without

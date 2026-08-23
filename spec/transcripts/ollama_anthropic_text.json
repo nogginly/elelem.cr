@@ -1,6 +1,6 @@
 {
   "name": "ollama_anthropic_text",
-  "recorded_with": "wiretap/0.3.0",
+  "recorded_with": "wiretap/0.4.0",
   "interactions": [
     {
       "request": {
@@ -21,12 +21,12 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sat, 22 Aug 2026 19:33:19 GMT",
-          "Content-Length": "886"
+          "Date": "Sun, 23 Aug 2026 06:51:19 GMT",
+          "Content-Length": "719"
         },
-        "body": "{\"id\":\"msg_d7b27d011a87eb7b9552a1b2\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Fact: Mount Everest is the tallest mountain on Earth (above sea level).\\n\\n    *   Draft 1: Mount Everest is the tallest mountain on Earth. (Simple, direct)\\n    *   Draft 2: The tallest mountain on Earth is Mount Everest. (Also simple)\\n    *   Draft 3: Mount Everest is the highest mountain above sea level. (A bit more technical, but still one sentence)\\n\\n    *   Draft 1 is the most concise and direct.\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\"},{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":158}}\n"
+        "body": "{\"id\":\"msg_7d503d531838f0b6cdc5c0b0\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   The tallest mountain on Earth (above sea level) is Mount Everest.\\n\\n    *   Mount Everest is the tallest mountain on Earth.\\n    *   The tallest mountain on Earth is Mount Everest.\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\" (Short, one sentence).\\n\\n    *   One short sentence? Yes.\"},{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":30,\"output_tokens\":113}}\n"
       },
-      "recorded_at": "2026-08-22T19:33:19Z"
+      "recorded_at": "2026-08-23T06:51:19Z"
     }
   ]
 }

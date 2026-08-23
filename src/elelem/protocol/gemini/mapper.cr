@@ -4,6 +4,7 @@ require "./capabilities"
 require "../../capability/resolver"
 require "../../capability/policy"
 require "../../capability/retention"
+require "../../capability/reasoning_control"
 require "../../capability/structural"
 require "../../mpsh/session"
 require "../../mpsh/translation"
@@ -70,7 +71,65 @@ module Elelem::Protocol::Gemini
       end
 
       flush_compensation(contents, pending, report)
-      {Wire::Request.new(model, contents, session.system_prompt, declarations(options), options.max_output_tokens), report}
+      budget, level = reasoning(options, report)
+
+      {Wire::Request.new(model, contents, session.system_prompt, declarations(options),
+        options.max_output_tokens, thinking_budget: budget, thinking_level: level), report}
+    end
+
+    # At most one of the two is ever returned. Setting both in one
+    # `thinkingConfig` is a 400 here, not a precedence rule, so the deployment's
+    # unit is resolved before this runs and the other stays `nil`.
+    #
+    # No clamp against the output cap, unlike Anthropic: this protocol
+    # documents no relationship between a thinking budget and
+    # `maxOutputTokens`, and inventing one would be a rule of ours dressed up as
+    # a rule of theirs. Worth revisiting the first time a live call disagrees.
+    private def reasoning(options : Options,
+                          report : Capability::Report) : {Int32?, String?}
+      request = options.reasoning
+      return {nil, nil} unless request
+
+      unit = profile.reasoning_unit
+      rendering, outcome = Capability::ReasoningControl.resolve(request, unit)
+      report.record(outcome, Capability::ReasoningControl.detail(request, rendering, unit))
+
+      case rendering
+      in Capability::ReasoningControl::Rendering::AsEffort
+        {nil, level_for(request, report)}
+      in Capability::ReasoningControl::Rendering::AsBudget
+        budget = case request
+                 in Reasoning::Effort then REASONING_BUDGETS[request]
+                 in Reasoning::Budget then request.tokens
+                 in Reasoning::Off    then 0
+                 end
+        {budget, nil}
+      in Capability::ReasoningControl::Rendering::Disable
+        # A budget of zero switches thinking off, and is documented on the
+        # series that takes budgets. Accepted for compatibility on the series
+        # that prefers levels, which have no "off" rung of their own — the one
+        # rendering here that a live call should confirm before it is trusted.
+        {0, nil}
+      in Capability::ReasoningControl::Rendering::Drop
+        {nil, nil}
+      end
+    end
+
+    # Three rungs where the caller has five. Clamping down is a loss the caller
+    # did not ask for, so it is recorded rather than done quietly.
+    private def level_for(request : Reasoning::Request,
+                          report : Capability::Report) : String?
+      asked = case request
+              in Reasoning::Effort then request
+              in Reasoning::Budget then request.to_effort
+              in Reasoning::Off    then return nil
+              end
+
+      if asked.x_high? || asked.max?
+        report.record(MPSH::Outcome::Degraded,
+          "reasoning control: #{asked.wire_name} clamped to the highest rung this protocol spells")
+      end
+      REASONING_LEVELS[asked]
     end
 
     # `model`, not `assistant`. The single most common source of a silently
