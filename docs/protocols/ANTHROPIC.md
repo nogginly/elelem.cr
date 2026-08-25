@@ -119,6 +119,12 @@ thinking tokens count against the same ceiling as the answer. The mapper clamps
 to fit and, where the clamp would fall under the floor, drops the control and
 records it — it never raises the caller's cap to make a budget fit.
 
+Confirmed live rather than assumed, against `claude-haiku-4-5`: a budget of
+exactly 1,024 — `REASONING_BUDGETS[Low]`, the floor itself — is accepted, and
+the model spent 95 of those tokens rather than the full budget; nothing here
+suggested a minimum spend is enforced, only a minimum offer. See
+`spec/transcripts/anthropic_thinking_signature_replay.json`.
+
 `effort` is deliberately not inside `thinking`: it shapes the whole response,
 tool calls included, and works whether or not thinking is enabled.
 
@@ -155,6 +161,17 @@ this was settled with, and `spec/conformance/anthropic_spec.cr` ("declared
 divergences") for where it is now guarded — offline, since the fix makes the
 request that produced that transcript one the client no longer builds.
 Tracked as closed in `../../SCOPE.md`.
+
+The other half — that a *genuine* signature really does replay — is not
+something the rejection proves, only implies. Confirmed separately:
+`spec/transcripts/anthropic_thinking_signature_replay.json` requests a real
+`thinking` block, then replays it verbatim as history on the next turn. The
+signature string in that transcript's second request is byte-identical to the
+one the first response returned. `own?` and `replayable?` agree this is Exact
+for the block itself; the turn as a whole reads Restructured only because a
+system prompt is present, which is `MoveSystemPrompt`'s doing and unrelated to
+reasoning entirely — see `spec/live/anthropic_spec.cr` for why the test checks
+annotations rather than `report.worst` for this reason.
 
 ## Conformance
 

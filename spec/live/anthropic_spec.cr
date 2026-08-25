@@ -42,4 +42,53 @@ end
 # `REASONING_BUDGETS` clamp is shaped right — both still genuinely need a
 # paid call, and neither changed when the fix above landed.
 describe "Anthropic" do
+  # `claude-haiku-4-5` is in `Catalog::BUDGET_ONLY`, so `Effort::Low` resolves
+  # to `thinking.budget_tokens: 1024` — the floor, and the cheapest way to
+  # exercise both the clamp and the budget spelling in one call. `cap: 1536`
+  # leaves room above the 1024 floor for an actual answer, since thinking and
+  # answer tokens share one ceiling (`mapper.cr`'s `clamped_budget`).
+  describe "a real signed thinking block" do
+    it "is requested, accepted, and replays clean on the next turn" do
+      Wiretap.intercept("anthropic_thinking_signature_replay") do
+        session = M::Session.new("You are terse.")
+        session << M::Message.user("What is the tallest mountain on Earth?")
+
+        first, first_report = client.send(session, MODEL,
+          options: Elelem::Options.new(
+            reasoning: Elelem::Reasoning::Effort::Low,
+            max_output_tokens: 1536))
+        session << first
+
+        # Restructured, not Exact — two independent reasons, both by design.
+        # `REASONING_BUDGETS` renders a rung as a token count
+        # (`reasoning_control.cr`: `Effort → AsBudget` is Restructured even
+        # for the vendor's own rung), and separately, `MoveSystemPrompt` is
+        # unconditionally Restructured whenever a system prompt exists here —
+        # `structural.cr`'s `outcome` does not check whether the destination's
+        # own native placement is exactly where it's going. Either alone caps
+        # this turn below Exact; nothing here says the budget path failed.
+        first_report.worst.should eq M::Outcome::Restructured
+        reasoning = first.content.select(M::ReasoningBlock).first?
+        reasoning.should_not be_nil
+        reasoning.not_nil!.meta?("anthropic", "signature").should_not be_nil
+
+        session << M::Message.user("And the deepest ocean trench?")
+
+        # The point of the second call: not a fresh request, a *replay* of the
+        # signature Anthropic itself just issued. Own-vendor, default policy.
+        #
+        # `report.worst` cannot be the check here — this turn's `system` field
+        # alone already caps it at Restructured, same as turn one, and for the
+        # same unconditional `MoveSystemPrompt` reason, nothing to do with
+        # reasoning. What actually proves the replay: no Degraded or Refused
+        # annotation anywhere in this turn. If `replayable?` had rejected the
+        # signature, dropping the block would be exactly that.
+        second, second_report = client.send(session, MODEL)
+
+        second_report.annotations.map(&.outcome).should_not contain(M::Outcome::Degraded)
+        second_report.annotations.map(&.outcome).should_not contain(M::Outcome::Refused)
+        second.content.select(M::TextBlock).should_not be_empty
+      end
+    end
+  end
 end

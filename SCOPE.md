@@ -201,15 +201,3 @@ already lapsed, this note just hadn't caught up. The quick-start example is
 the handoff — start on Chat Completions, export, resume on Responses — and
 that example can be written honestly now. Not written yet; do it next, not
 "later."
-
----
-
-## Explicitly not doing
-
-### No `UNSUPPORTED.md`
-
-The capability matrix is that document, in a better form: derived from each
-protocol's declared `Profile` rather than written by hand, expressed per media
-type rather than per feature, and queryable by callers at runtime. A prose
-version would be a second statement of the same fact and would drift within a
-single phase.

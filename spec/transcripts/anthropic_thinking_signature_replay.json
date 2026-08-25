@@ -1,0 +1,108 @@
+{
+  "name": "anthropic_thinking_signature_replay",
+  "recorded_with": "wiretap/0.4.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "x-api-key": "[FILTERED]",
+          "Content-Length": "228",
+          "Host": "api.anthropic.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5\",\"max_tokens\":1536,\"system\":\"You are terse.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}],\"thinking\":{\"type\":\"enabled\",\"budget_tokens\":1024}}",
+        "body_digest": "0e8e9747b9a704936a6b41b365837ceabaf1c23e898947f3d4edbdf90e9b7abb"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Date": "Tue, 25 Aug 2026 05:22:27 GMT",
+          "Content-Type": "application/json",
+          "Transfer-Encoding": "chunked",
+          "Connection": "keep-alive",
+          "anthropic-ratelimit-input-tokens-limit": "500000",
+          "anthropic-ratelimit-input-tokens-remaining": "500000",
+          "anthropic-ratelimit-input-tokens-reset": "2026-08-25T05:22:26Z",
+          "anthropic-ratelimit-output-tokens-limit": "80000",
+          "anthropic-ratelimit-output-tokens-remaining": "80000",
+          "anthropic-ratelimit-output-tokens-reset": "2026-08-25T05:22:27Z",
+          "anthropic-ratelimit-requests-limit": "1000",
+          "anthropic-ratelimit-requests-remaining": "999",
+          "anthropic-ratelimit-requests-reset": "2026-08-25T05:22:26Z",
+          "anthropic-ratelimit-tokens-limit": "580000",
+          "anthropic-ratelimit-tokens-remaining": "580000",
+          "anthropic-ratelimit-tokens-reset": "2026-08-25T05:22:26Z",
+          "request-id": "req_011CeNuYLsVSogSdwgqxHLYu",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "anthropic-organization-id": "73a57cec-8684-4a17-8a8a-236663eb1dd3",
+          "anthropic-workspace-id": "wrkspc_01TZaSJ9Q4GT9s3KXaMsNH6P",
+          "traceresponse": "00-59a6145380dd4e8d9350ce6b09ea4745-ad2a952ac460758e-01",
+          "Server": "cloudflare",
+          "vary": "Accept-Encoding",
+          "X-Robots-Tag": "none",
+          "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+          "cf-cache-status": "DYNAMIC",
+          "CF-RAY": "a30828b1fb602544-YUL"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CeNuYMVwKFawZTp36nYg4\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user is asking about the tallest mountain on Earth. This is a straightforward factual question. The answer is Mount Everest, which is located in the Himalayas on the Nepal-Tibet border. It has an elevation of 8,849 meters (29,032 feet) above sea level.\\n\\nThe user also said I should be terse, so I should keep my answer brief and to the point.\",\"signature\":\"EtgECpoBCBEYAipAlPBSPuXmZ/nDLuLWbAtrsB/AJAc2z5U9M8Mrb7mJ42IHnsJxMIHNnDX9cFv06HQWh9z+/5fWPGMFgZTVcUB+cTIZY2xhdWRlLWhhaWt1LTQtNS0yMDI1MTAwMTgAQgh0aGlua2luZ1okNzNhNTdjZWMtODY4NC00YTE3LThhOGEtMjM2NjYzZWIxZGQzqAGTzbTUBhIMYa0hHE8gQqeMFDJuGgxLiuTbeJLWUOv5NJYiMOTftcYKaQEn3arq+r9BFqxHoPp0WFRLAtP5f5QxUO3UFG9061dJr8j6zm2D2rTDeSrqArLWSbH4LyQ23vEYtHXrqXxD8SLz8MsovUKmyqoJcTXagcCeE9OTpUBQ3GvzI5rQtI1s12MwBeOIqih09fg9bMnPPWnPjIJpBa2QRHRtLdok5qaQSjmKEwZaUzrfsC+/ojahuDsVAZSpWrd+GZy6wYxmtqEA9nwJv5oHq9aOP2Xo/uhyTPe7aeO9Nyapp7KMp+932HnQV+gPwdJT8pbhX8tP8YJgJqGbxZmD+ARSeHjMCjmrWNVg+CpUmI3mmoWBEMnRJLCVMTmbrABSHsezjr4qyKm/CxmqLn2GI1e+0WPojn3nv4e0KF+ND3EhWbJ2BQO4977aEn6Srz4CA+9JkhCWmihXs21bROEYv494Ahsrdln3QoxZZ8jjnRCTHxARKoWvbRpIVT9uY9/b4UsanLVEFZG3xy8blPI06zTKEX+TzYQOzA/7Gv3vVKpYrODbAb8QvRewkHhw2dNl4UpmmDUyXF97BJSOU/ycGAE=\"},{\"type\":\"text\",\"text\":\"Mount Everest, at 8,849 meters (29,032 feet) above sea level.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":51,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":124,\"output_tokens_details\":{\"thinking_tokens\":95},\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}"
+      },
+      "recorded_at": "2026-08-25T05:22:27Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "x-api-key": "[FILTERED]",
+          "Content-Length": "1585",
+          "Host": "api.anthropic.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5\",\"max_tokens\":4096,\"system\":\"You are terse.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user is asking about the tallest mountain on Earth. This is a straightforward factual question. The answer is Mount Everest, which is located in the Himalayas on the Nepal-Tibet border. It has an elevation of 8,849 meters (29,032 feet) above sea level.\\n\\nThe user also said I should be terse, so I should keep my answer brief and to the point.\",\"signature\":\"EtgECpoBCBEYAipAlPBSPuXmZ/nDLuLWbAtrsB/AJAc2z5U9M8Mrb7mJ42IHnsJxMIHNnDX9cFv06HQWh9z+/5fWPGMFgZTVcUB+cTIZY2xhdWRlLWhhaWt1LTQtNS0yMDI1MTAwMTgAQgh0aGlua2luZ1okNzNhNTdjZWMtODY4NC00YTE3LThhOGEtMjM2NjYzZWIxZGQzqAGTzbTUBhIMYa0hHE8gQqeMFDJuGgxLiuTbeJLWUOv5NJYiMOTftcYKaQEn3arq+r9BFqxHoPp0WFRLAtP5f5QxUO3UFG9061dJr8j6zm2D2rTDeSrqArLWSbH4LyQ23vEYtHXrqXxD8SLz8MsovUKmyqoJcTXagcCeE9OTpUBQ3GvzI5rQtI1s12MwBeOIqih09fg9bMnPPWnPjIJpBa2QRHRtLdok5qaQSjmKEwZaUzrfsC+/ojahuDsVAZSpWrd+GZy6wYxmtqEA9nwJv5oHq9aOP2Xo/uhyTPe7aeO9Nyapp7KMp+932HnQV+gPwdJT8pbhX8tP8YJgJqGbxZmD+ARSeHjMCjmrWNVg+CpUmI3mmoWBEMnRJLCVMTmbrABSHsezjr4qyKm/CxmqLn2GI1e+0WPojn3nv4e0KF+ND3EhWbJ2BQO4977aEn6Srz4CA+9JkhCWmihXs21bROEYv494Ahsrdln3QoxZZ8jjnRCTHxARKoWvbRpIVT9uY9/b4UsanLVEFZG3xy8blPI06zTKEX+TzYQOzA/7Gv3vVKpYrODbAb8QvRewkHhw2dNl4UpmmDUyXF97BJSOU/ycGAE=\"},{\"type\":\"text\",\"text\":\"Mount Everest, at 8,849 meters (29,032 feet) above sea level.\"}]},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"And the deepest ocean trench?\"}]}]}",
+        "body_digest": "ebbdae96c9ac4df08a73832badcb023d873697ec8fbf20ec830a75d9bc1a78f3"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Date": "Tue, 25 Aug 2026 05:22:28 GMT",
+          "Content-Type": "application/json",
+          "Transfer-Encoding": "chunked",
+          "Connection": "keep-alive",
+          "anthropic-ratelimit-input-tokens-limit": "500000",
+          "anthropic-ratelimit-input-tokens-remaining": "500000",
+          "anthropic-ratelimit-input-tokens-reset": "2026-08-25T05:22:28Z",
+          "anthropic-ratelimit-output-tokens-limit": "80000",
+          "anthropic-ratelimit-output-tokens-remaining": "80000",
+          "anthropic-ratelimit-output-tokens-reset": "2026-08-25T05:22:28Z",
+          "anthropic-ratelimit-requests-limit": "1000",
+          "anthropic-ratelimit-requests-remaining": "999",
+          "anthropic-ratelimit-requests-reset": "2026-08-25T05:22:28Z",
+          "anthropic-ratelimit-tokens-limit": "580000",
+          "anthropic-ratelimit-tokens-remaining": "580000",
+          "anthropic-ratelimit-tokens-reset": "2026-08-25T05:22:28Z",
+          "request-id": "req_011CeNuYTtAiBawoGPxnuNPD",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "anthropic-organization-id": "73a57cec-8684-4a17-8a8a-236663eb1dd3",
+          "anthropic-workspace-id": "wrkspc_01TZaSJ9Q4GT9s3KXaMsNH6P",
+          "traceresponse": "00-ab12acb749e46b1bf041cb2406035349-33ed4166e1e0378e-01",
+          "Server": "cloudflare",
+          "vary": "Accept-Encoding",
+          "X-Robots-Tag": "none",
+          "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+          "cf-cache-status": "DYNAMIC",
+          "CF-RAY": "a30828bc3c9b5933-YUL"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CeNuYUFjkqLFyu4BEEi32\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The Mariana Trench, at approximately 10,994 meters (36,070 feet) below sea level at its deepest point (Challenger Deep).\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":58,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":39,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}"
+      },
+      "recorded_at": "2026-08-25T05:22:28Z"
+    }
+  ]
+}

@@ -24,12 +24,20 @@ Completions, Responses, Anthropic, Gemini — each with a mapper, an exporter, a
 response reader, and a wire request that can declare tools and cap output.
 Zero runtime dependencies; `wiretap` is development-only.
 
-Three of the four protocols have been exercised against a real server. Ollama
-serves Chat Completions, Responses and an Anthropic-compatible endpoint from
-one port, and `spec/live/ollama_spec.cr` records a session answered by one
+Three of the four protocols have been exercised against Ollama's compatible
+port — Chat Completions, Responses, and an Anthropic-compatible endpoint from
+one port. `spec/live/ollama_spec.cr` records a session answered by one
 protocol and continued on another, including a tool call minted on one and
-replayed on the next. Transcripts are committed under `spec/transcripts/` and
-replay offline, so the suite needs no server.
+replayed on the next. But a compatibility port proves the shape is accepted,
+not that the vendor whose protocol it imitates would accept it. The real
+Anthropic endpoint has now also been called directly, and settled two things
+Ollama structurally could not: a `thinking` block with no signature is a
+genuine 400 (`spec/transcripts/anthropic_thinking_no_signature.json`), and a
+real signature genuinely replays on the next turn while the budget path and
+its 1,024-token floor are accepted as documented
+(`spec/transcripts/anthropic_thinking_signature_replay.json`). Detail in
+`docs/protocols/ANTHROPIC.md`. All transcripts are committed under
+`spec/transcripts/` and replay offline, so the suite needs no server.
 
 Request options are complete: tool declarations, output caps and reasoning
 controls, the last of which introduced `Capability::Catalog` — the fourth
@@ -59,21 +67,10 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-1. **Anthropic live, reasoning numbers.** The narrowing default is settled: a
-   real 400 confirmed a `thinking` block requires a signature, `Resolver`
-   now checks for one before `own?` ever gets asked, and the fix is covered
-   offline in `spec/conformance/anthropic_spec.cr` — nothing further needs the
-   network to prove it. See `docs/protocols/ANTHROPIC.md`.
-
-   What that recording did not settle: whether `Protocol::Anthropic::REASONING_BUDGETS`
-   and the budget clamp behave as the documentation says, and whether the
-   own-vendor signature-replay path actually works end to end rather than
-   merely being unrejected. `Reasoning::Effort` against a budget-only model,
-   two turns, is the next recording — still needs a paid call.
-2. **Gemini live.** The only live coverage that protocol will get — and the
+1. **Gemini live.** The only live coverage that protocol will get — and the
    only way to confirm that a budget of 0 disables thinking on the series that
    prefers levels, which the mapper currently assumes.
-4. **Azure will amend the design.** It speaks Chat Completions but embeds a
+2. **Azure will amend the design.** It speaks Chat Completions but embeds a
    deployment name and `api-version` in the path and authenticates with
    `api-key`, not `Bearer`. `Adapter` currently assumes path and auth are
    *protocol* facts; Azure proves they are protocol-plus-deployment facts. Do
@@ -104,8 +101,9 @@ than a green run here to settle it. See `docs/protocols/ANTHROPIC.md`.
   wire.** One recording found a bug that hundreds of green offline examples
   could not. See *Live specs* in `DEVELOPMENT.md` for the rules that follow
   from it.
-- **`SCOPE.md` "Explicitly not doing" is a decision**, not an oversight to
-  helpfully correct.
+- **A settled "won't do" is a decision**, not an oversight to helpfully
+  correct. `DEVELOPMENT.md`'s "No `UNSUPPORTED.md`" and this file's *Deferred,
+  and staying deferred*, below, are both this.
 - Diagrams are Mermaid, fenced inline in Markdown so they render on GitHub.
 - Nothing under `mpsh/` may know that HTTP or any provider exists, and no
   canonical type may serialize into a request body.
