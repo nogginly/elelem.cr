@@ -57,6 +57,10 @@ Two smaller divergences follow from it:
 Unconfirmed, and flagged in `SCOPE.md`: whether a budget of 0 reliably disables
 thinking on the levels-preferring series, which has no `off` rung of its own.
 
+One consequence worth knowing before prompt caching arrives: like Anthropic,
+this protocol renders the reasoning control into the prompt, so changing
+either unit between turns invalidates cached prefixes.
+
 ## Structural divergences
 
 Individually mechanical; collectively the reason this protocol is a real test.

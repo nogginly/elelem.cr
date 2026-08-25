@@ -205,6 +205,15 @@ only guard against a mapper silently forgetting a block kind, and it is why no
 block has a common superclass. Adding a block kind therefore breaks every mapper
 until each says what it does — as intended.
 
+**`tool_result.content` is a nested block list, not a flat string.** Prior art
+in Python uses a flat `output : String` plus an `attachments` sidecar —
+simpler, but cannot express interleaved content and needs assembly when
+mapping to Anthropic, whose own `tool_result` takes nested blocks natively.
+Revisit only on evidence the recursive type is awkward in Crystal, with
+specifics; quietly flattening it is the failure mode to avoid, since it makes
+image-returning tools unrepresentable even for providers that support them
+natively.
+
 **Provider-specific data is namespaced, never special-cased.** Anything a
 provider needs echoed back but nobody else can read goes under
 `provider_metadata["<provider>"]`. A mapper reads only its own key, so
@@ -291,6 +300,11 @@ a caller queries would drift from the branch a mapper takes. When a protocol
 behaves unexpectedly, fix its `Profile` — not the resolver, unless the rule
 itself is wrong for everyone.
 
+There is deliberately no separate `UNSUPPORTED.md`: the matrix above *is* that
+document, in a better form. Queryable at runtime, expressed per media type
+rather than per feature, and incapable of drifting from what a mapper actually
+does, which a hand-maintained prose version would not survive one phase.
+
 **Capability is declared per media type, not per block kind.** "Supports images"
 is too coarse for a model that takes PNG but not WEBP.
 
@@ -299,6 +313,17 @@ Annotations are a category borrowed from `docs/PSR_BRANCHING_AND_SCATTER_GATHER.
 **Annotations record loss the caller did not ask for.** Requested trimming — for
 instance `ReasoningRetention` — is counted, not annotated. Mixing the two makes
 the channel worthless, since a reader can no longer tell damage from choice.
+
+The same principle is why a **Restructured** request option is never
+annotated. `Report` files an annotation only for Degraded, Refused and
+Compensated, so a caller whose reasoning rung became a token budget learns it
+from `report.worst` moving off `Exact` and nowhere else — annotating
+Restructured would make the channel mean "something was translated" rather
+than "something was lost." `Resolver` returns Restructured from five places
+and the mappers record it at two dozen sites; a long session would annotate
+roughly in proportion to its length, and the `reasoning_dropped` counter
+exists precisely to keep that noise out. The pre-request answer is better
+placed anyway: `provider.profile(model)` reports the unit *before* the call.
 
 **Refusal is a real outcome.** The alternative to explicit outcomes is not
 refusal; it is silence, and silence is a model answering confidently about

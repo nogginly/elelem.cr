@@ -84,21 +84,9 @@ assume the spec ruled on it. Resolve when the spec is next revised.
 
 ### Reasoning controls: the unit is keyed on the model
 
-**Built, and the trichotomy held — but not the table that predicted it.** The
-worklist recorded three units keyed on protocol (level, level, tokens, both).
-Current documentation says something sharper: two protocols spell *both* units
-and reject being handed both, and which one a deployment wants depends on the
-**model**.
-
-Protocol        |Spelling                                         |Unit  
-----------------|-------------------------------------------------|------
-Chat Completions|`reasoning_effort`                               |Rung  
-Responses       |`reasoning.effort`                               |Rung  
-Anthropic       |`output_config.effort` / `thinking.budget_tokens`|Either
-Gemini          |`thinkingConfig.thinkingLevel` / `thinkingBudget`|Either
-
-`Profile` gained `reasoning_unit` as predicted; `Capability::Catalog` resolves
-`Either` per model. What remains open is only what a live call can settle:
+`Profile` gained `reasoning_unit`, `Capability::Catalog` resolves `Either` per
+model — see each protocol's own `docs/protocols/*.md` for the spelling.
+What remains open is only what a live call can settle:
 
 - **Rungs are model-dependent on the OpenAI protocols too.** `xhigh` and `max`
   serialize happily and may still be rejected by the model behind the endpoint.
@@ -110,45 +98,12 @@ Gemini          |`thinkingConfig.thinkingLevel` / `thinkingBudget`|Either
 - **No budget clamp on Gemini.** Anthropic documents that the budget must sit
   below `max_tokens`; Gemini documents no such relationship, so none is
   invented. Revisit the first time a live call disagrees.
-- **A Restructured request option is never annotated, by design.** `Report`
-  files an annotation only for Degraded, Refused and Compensated, so a caller
-  whose rung became a token budget learns it from `report.worst` moving off
-  Exact and nowhere else. Annotating Restructured would make the channel mean
-  "something was translated" rather than "something was lost" — `Resolver`
-  returns it from five places and the mappers record it at two dozen sites, so
-  a long session would annotate roughly in proportion to its length, and the
-  `reasoning_dropped` counter exists precisely to keep that noise out.
-
-  The pre-request answer is better placed anyway: `provider.profile(model)`
-  reports the unit *before* the call. Revisit if a second request option wants
-  the same confirmation, at which point there is enough evidence to design a
-  path rather than guess at one.
-- **Reasoning controls invalidate prompt caching.** Both vendors render the
-  value into the prompt, so changing it mid-conversation misses the cache.
-  `spec/conformance/determinism_spec.cr` asserts prefix stability for exactly
-  this reason; nothing to fix, but the guidance belongs beside it before prompt
-  caching arrives.
 
 ### A model catalog, keyed independently of protocol
 
-**One axis exists.** `Capability::Catalog` resolves an ambiguous reasoning unit
-per model, and it is deliberately the smallest thing that could work: exact
-spellings, no patterns, one field narrowed, an optimistic default, and an
-explicit override for the deployments whose model name says nothing about the
-model.
-
-It passes the test set below — an entry may only resolve `Either` into a unit
-the protocol already spelled, so it cannot add a capability or overturn a
-refusal — and it follows the precedent vendor narrowing set: reassign one
-`Profile` field and let the existing resolver do the work.
-
-The default is optimistic where the rest of this shard is pessimistic, and the
-reason is specific rather than a change of heart: **the exception list is closed
-and shrinking.** Budget-only models are the legacy ones, every model since takes
-a rung, so a stale table fails safe. That argument does not transfer to the
-axes below, and reusing it there without checking would be the mistake.
-
-Still open, and the reason this stays in WILL FIX:
+`Capability::Catalog` resolves an ambiguous reasoning unit per model — see
+its own doc comment for the shape and the reasoning behind the optimistic
+default. Still open, and the reason this stays in WILL FIX:
 
 - Should the catalog become a layer, or stay a lookup returning a narrowed
   `Profile`? The lookup is right so far, on one axis.
@@ -158,9 +113,6 @@ Still open, and the reason this stays in WILL FIX:
   model-gated in practice.
 - Per-model *rung* support, if a rejection ever demands it. A second axis on
   the same entry, not a second mechanism.
-- **The trap, unchanged**: a preference may only ask for *less* than the
-  protocol can carry. One that can *add* capability, or override a refusal, is
-  a back door around the capability model.
 
 ### Carrier deferral is reimplemented per protocol
 
@@ -242,72 +194,15 @@ they take different parameters and return different shapes, so the mapping
 cannot be right by construction. It is the same class of problem as the model
 catalog, one layer up.
 
-### `tool_result.content` as a nested block list
-
-Specified and implemented as nested blocks. Prior art in Python uses a flat
-`output : String` plus an `attachments` sidecar — simpler, but cannot express
-interleaved content and needs assembly when mapping to Anthropic.
-
-Revisit **only on evidence** that the recursive type is awkward in Crystal, with
-specifics. Quietly flattening it is the failure mode to avoid: it makes
-image-returning tools unrepresentable even for providers that support them
-natively.
-
 ### README.md
 
-Deferred to a named moment rather than "later": **when Phase 2 passes.** The
-quick-start example is the handoff — start on Chat Completions, export, resume
-on Responses — and that example cannot be written honestly before then. A
-placeholder now would say nothing.
+Was deferred to "when Phase 2 passes." Phase 3 is done now — the deferral
+already lapsed, this note just hadn't caught up. The quick-start example is
+the handoff — start on Chat Completions, export, resume on Responses — and
+that example can be written honestly now. Not written yet; do it next, not
+"later."
 
 ---
-
-## Lessons that changed how this is built
-
-Not tasks. Recorded because each cost something and each will recur.
-
-### A fixture written by the same hand as the code tests the hand, not the wire
-
-Ollama spells the Chat Completions reasoning field `reasoning`; vLLM and
-DeepSeek spell it `reasoning_content`. The reader required the second, so every
-Ollama reasoning trace was dropped — silently, with no error and no annotation,
-while 218 offline examples stayed green. They stayed green *because* the
-fixtures had been written from the same assumption as the reader.
-
-One recording found it. Every protocol here is served by implementations that
-disagree with its specification in small ways, and only a transcript is
-evidence. Both spellings are now read, as Gemini already read `inlineData` and
-`inline_data`.
-
-### An uncapped request is unbounded
-
-A small model with no output cap spent 4,096 tokens reasoning without reaching
-an answer, and an earlier run stalled twelve minutes with every later request
-queued behind it — Ollama processes serially, so one runaway blocks the rest.
-Live requests now always carry a cap.
-
-### A suite that re-records is not a suite that replays
-
-The three tool specs had never once replayed. Every run under wiretap's `:once`
-mode re-recorded any transcript that failed to match, so they asserted against a
-recording the code under test had made moments earlier — the same shape as the
-fixture lesson above, one layer down, and just as green.
-
-The cause was a request body carrying a freshly minted, timestamped call
-identifier, which could not digest the same way twice. That was a five-minute
-fix. What cost the time was that the failure had been invisible for as long as
-anyone kept deleting transcripts to make it go away.
-
-Now: `:none` under CI, `Wiretap.verify!` after every suite, and `RECORD=1` for
-the runs where recording is the point. **The run after a re-record is the one
-that proves anything.** This matters more, not less, as the Anthropic and Gemini
-transcripts arrive, since those cost money to cut and will be re-cut reluctantly.
-
-### Record transcripts; never hand-write them
-
-Both times a transcript was guessed at rather than captured, the guess was wrong
-and cost a debugging round. A real server produces the real error body, which is
-what the decoder actually has to survive.
 
 ## Explicitly not doing
 
@@ -318,17 +213,3 @@ protocol's declared `Profile` rather than written by hand, expressed per media
 type rather than per feature, and queryable by callers at runtime. A prose
 version would be a second statement of the same fact and would drift within a
 single phase.
-
-### Out of scope for the current pass
-
-Session tree, branching, scatter/gather, provider bindings, stateful handles,
-streaming, tool execution and dispatch, prompt caching, compaction. See
-`docs/IMPLEMENTATION_PLAN.md` §7. The stateful-session design is deliberately **not** in `docs/` — it describes
-bindings, drift markers and provider handles, none of which exist here, and
-committing it invites a contributor to start building them. It arrives with
-Phase 5. `docs/PSR_BRANCHING_AND_SCATTER_GATHER.md` *is* present, despite also
-being Phase 5 material, because it is the source of the annotation concept
-Phase 0 already implements and of the view seam that keeps mappers
-branch-unaware. It carries a deferred-status banner. `MPSH::CallIdTable` exists because ID translation
-is needed for round-trip conformance now; it is shaped like what a binding will
-later hold, and is the only part of the deferred layer present.
