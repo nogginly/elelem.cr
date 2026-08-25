@@ -21,12 +21,12 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sun, 23 Aug 2026 16:19:59 GMT",
-          "Content-Length": "482"
+          "Date": "Tue, 25 Aug 2026 21:03:16 GMT",
+          "Content-Length": "475"
         },
-        "body": "{\"id\":\"msg_65a830d502ac109fa1855dc3\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user is asking for the weather in Paris and specifically requested to use the `get_weather` tool. I should call the `get_weather` function with the argument `city='Paris'`.\"},{\"type\":\"tool_use\",\"id\":\"call_pdx92hme\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":90,\"output_tokens\":59}}\n"
+        "body": "{\"id\":\"msg_f36f01738d1a088810c4ee0e\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user is asking for the weather in Paris and explicitly requests to use the `get_weather` tool. I should call the `get_weather` tool with the argument `city='Paris'`.\"},{\"type\":\"tool_use\",\"id\":\"call_5yq1q2wa\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}],\"stop_reason\":\"tool_use\",\"usage\":{\"input_tokens\":90,\"output_tokens\":59}}\n"
       },
-      "recorded_at": "2026-08-23T16:19:59Z"
+      "recorded_at": "2026-08-25T21:03:16Z"
     },
     {
       "request": {
@@ -40,19 +40,19 @@
           "User-Agent": "Crystal",
           "Accept-Encoding": "gzip, deflate"
         },
-        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"mc_1787501999227_1\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"mc_1787501999227_1\",\"content\":[{\"type\":\"text\",\"text\":\"18C, light rain\"}]}]}],\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}",
-        "body_digest": "1902920d492ce66a3b95cb8c60ec9db752a0b0b7ed93ef342deb1ae5117a8956"
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"mc_1787691796813_1\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"mc_1787691796813_1\",\"content\":[{\"type\":\"text\",\"text\":\"18C, light rain\"}]}]}],\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}",
+        "body_digest": "dc74dd3487756dea5807dc9b03e1e5cba7c4e83c582aef4ddf43e1ed104ae7a6"
       },
       "response": {
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sun, 23 Aug 2026 16:19:59 GMT",
-          "Content-Length": "266"
+          "Date": "Tue, 25 Aug 2026 21:03:17 GMT",
+          "Content-Length": "258"
         },
-        "body": "{\"id\":\"msg_9e2e2ab4c3122a6cea262082\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"text\",\"text\":\"The current weather in Paris is 18°C with light rain.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":126,\"output_tokens\":16}}\n"
+        "body": "{\"id\":\"msg_98d24c0f1a026b99ccd4db45\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"text\",\"text\":\"The weather in Paris is 18°C with light rain.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":126,\"output_tokens\":15}}\n"
       },
-      "recorded_at": "2026-08-23T16:19:59Z"
+      "recorded_at": "2026-08-25T21:03:17Z"
     }
   ]
 }

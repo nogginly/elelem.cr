@@ -15,19 +15,37 @@ Wiretap.configure do |c|
   # network — which on the paid endpoints would also be a bill.
   c.record_mode = ENV["CI"]? ? :none : :once
 
-  # Minted call identifiers carry a timestamp — `mc_<epoch-ms>_<counter>` — so
-  # a request replaying one can never digest the same way twice, and any
-  # multi-turn transcript containing a tool call would be unreplayable. Worse,
-  # it would look fixed after every re-record, since re-recording is what hid
-  # the problem in the first place.
+  # Minted call identifiers carry a timestamp and a process-wide counter —
+  # `mc_<epoch-ms>_<counter>` — so the same body can never digest identically
+  # twice, and any multi-turn transcript containing a tool call would be
+  # unreplayable as recorded.
   #
-  # Normalised rather than made deterministic: the identifiers only have to be
-  # unique within a session, and a process-wide counter would be stable only
-  # while example order never changed — trading a replay problem for an
-  # ordering dependency. From wiretap 0.4.0 this affects matching only, so the
-  # committed transcript still records the identifier that actually went over
-  # the wire.
-  c.normalize_body = ->(body : String) { body.gsub(/mc_\d+_(\d+)/, "mc_MINTED_\\1") }
+  # Relabelled by first-occurrence order within each body, not merely
+  # stripped: identifiers only have to be unique *within a session*, so what
+  # must match between record and replay is which occurrences share an
+  # identifier, not what the identifier's literal value was. A regex that kept
+  # the counter digits looked like it satisfied this but didn't — the counter
+  # is process-wide, so its value depends on how many identifiers every
+  # *other* example minted first, which depends on spec execution order,
+  # which is not guaranteed identical across platforms. That surfaced as
+  # Ubuntu x86 and Windows failing in CI while three other platforms stayed
+  # green, from a transcript that had not changed at all.
+  #
+  # This normalization is a pure function of one body's own content — no
+  # counter, no execution order, nothing external — so going forward it stays
+  # stable across platforms regardless of spec execution order.
+  #
+  # It is not retroactive, though: `Transcript#find_interaction` compares
+  # against `body_digest` as stored in the transcript file, frozen at record
+  # time under whatever `normalize_body` was in effect then — it never
+  # recomputes from the stored `body`. Changing this function invalidates the
+  # stored digest of any transcript containing an `mc_` id, on every platform,
+  # deterministically. Those need one re-record; see `spec/transcripts/` for
+  # which ones (`grep -l mc_`).
+  c.normalize_body = ->(body : String) {
+    seen = {} of String => Int32
+    body.gsub(/mc_\d+_\d+/) { |match| "mc_MINTED_#{seen[match] ||= seen.size}" }
+  }
 end
 
 # Green is not the same as replayed.

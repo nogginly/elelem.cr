@@ -20,12 +20,12 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sun, 23 Aug 2026 16:20:01 GMT",
-          "Content-Length": "617"
+          "Date": "Tue, 25 Aug 2026 21:03:17 GMT",
+          "Content-Length": "621"
         },
-        "body": "{\"id\":\"chatcmpl-65\",\"object\":\"chat.completion\",\"created\":1787502001,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"The user is asking for the weather in Paris and explicitly requested to use the `get_weather` tool. I should call the `get_weather` tool with the argument `city='Paris'`.\",\"tool_calls\":[{\"id\":\"call_9j8japl2\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":90,\"completion_tokens\":59,\"total_tokens\":149}}\n"
+        "body": "{\"id\":\"chatcmpl-425\",\"object\":\"chat.completion\",\"created\":1787691797,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"The user is asking for the weather in Paris and specifically instructed to use the `get_weather` tool. I should call the `get_weather` tool with the argument `city='Paris'`.\",\"tool_calls\":[{\"id\":\"call_cracz9gb\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":90,\"completion_tokens\":59,\"total_tokens\":149}}\n"
       },
-      "recorded_at": "2026-08-23T16:20:01Z"
+      "recorded_at": "2026-08-25T21:03:17Z"
     },
     {
       "request": {
@@ -39,19 +39,19 @@
           "User-Agent": "Crystal",
           "Accept-Encoding": "gzip, deflate"
         },
-        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"mc_1787502001436_2\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"mc_1787502001436_2\",\"content\":[{\"type\":\"text\",\"text\":\"18C, light rain\"}]}]}],\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}",
-        "body_digest": "27ab199d5bf70bda0b8fbba895ca84f64a4cf68375c3cef1189391ceb4bb150a"
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"max_tokens\":512,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"mc_1787691797927_2\",\"name\":\"get_weather\",\"input\":{\"city\":\"Paris\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"mc_1787691797927_2\",\"content\":[{\"type\":\"text\",\"text\":\"18C, light rain\"}]}]}],\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}",
+        "body_digest": "dc74dd3487756dea5807dc9b03e1e5cba7c4e83c582aef4ddf43e1ed104ae7a6"
       },
       "response": {
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "Date": "Sun, 23 Aug 2026 16:20:02 GMT",
+          "Date": "Tue, 25 Aug 2026 21:03:18 GMT",
           "Content-Length": "268"
         },
-        "body": "{\"id\":\"msg_35e41e0617f6a169023fbe6e\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"text\",\"text\":\"The weather in Paris is currently 18°C with light rain.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":126,\"output_tokens\":16}}\n"
+        "body": "{\"id\":\"msg_9ff0fd1394f6dee382a707df\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gemma4:26b-mxfp8\",\"content\":[{\"type\":\"text\",\"text\":\"The weather in Paris is currently 18°C with light rain.\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":126,\"output_tokens\":16}}\n"
       },
-      "recorded_at": "2026-08-23T16:20:02Z"
+      "recorded_at": "2026-08-25T21:03:18Z"
     }
   ]
 }
