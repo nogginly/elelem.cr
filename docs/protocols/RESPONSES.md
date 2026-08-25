@@ -97,9 +97,3 @@ Fixture                          |Expected
 `tool_call_image_result`         |Compensated; refuses under strict policy               
 `server_executed_tool`           |Degraded — no item is emitted for a tool we did not run
 `reference_payload`              |Refuses — no blob store configured                     
-
-## Not yet built
-
-Export handles **requests**, not responses. A live call returns an `output[]`
-array of items, which is a different shape. Required for acceptance criterion 8
-and tracked in `../../SCOPE.md`.

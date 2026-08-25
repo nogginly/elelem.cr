@@ -191,5 +191,6 @@ Fixture                          |Expected
 
 ## Not yet built
 
-Response-shaped export, and prompt caching (`cache_control` markers), which is
-`provider_metadata` territory when it arrives. Both tracked in `../../SCOPE.md`.
+Prompt caching (`cache_control` markers), which is `provider_metadata`
+territory when it arrives. Deferred with the rest of the stateful-session
+work — see `../../HANDOFF.md`, "Deferred, and staying deferred."

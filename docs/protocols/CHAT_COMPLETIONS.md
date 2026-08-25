@@ -151,9 +151,3 @@ Fixture                          |Expected
 `reasoning_with_provider_payload`|Degraded; the block does not survive                                                                                        
 `reference_payload`              |Refuses — no blob store configured                                                                                          
 `audio_*`                        |**Exact.** WAV is accepted here; the degrade/refuse ladder is exercised in Phase 3 against Anthropic, which accepts no audio
-
-## Not yet built
-
-Export handles **requests**, not responses. Round-tripping a request is what
-conformance needs; a live call returns `choices[0].message`, a different shape.
-Required for acceptance criterion 8 and tracked in `../../SCOPE.md`.

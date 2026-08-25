@@ -126,8 +126,3 @@ Fixture                          |Expected
 `audio_with_transcript`          |**Exact** — audio is native here, unlike Anthropic  
 `server_executed_tool`           |Degraded — the concept exists, this tool is not ours
 `reasoning_with_provider_payload`|Another vendor's payload dropped, and named         
-
-## Not yet built
-
-Response-shaped export; `candidates[0].content.parts[]` is a different shape
-from the request. Tracked in `../../SCOPE.md`.
