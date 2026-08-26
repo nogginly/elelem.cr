@@ -108,9 +108,7 @@ module Elelem::Protocol::Gemini
       when Wire::FunctionCallPart
         ordinal = ordinals[part.name]
         ordinals[part.name] = ordinal + 1
-        MPSH::ToolCallBlock.new(
-          calls.mpsh_id("#{part.name}#reply:#{ordinal}"),
-          part.name, parse_object(part.args))
+        tool_call(calls.mpsh_id("#{part.name}#reply:#{ordinal}"), part)
       when Wire::TextPart
         MPSH::TextBlock.new(part.text)
       when Wire::InlineDataPart
@@ -131,9 +129,7 @@ module Elelem::Protocol::Gemini
       when Wire::FunctionCallPart
         ordinal = call_ordinals[part.name]
         call_ordinals[part.name] = ordinal + 1
-        MPSH::ToolCallBlock.new(
-          calls.mpsh_id(calls.positional_key(part.name, ordinal)),
-          part.name, parse_object(part.args))
+        tool_call(calls.mpsh_id(calls.positional_key(part.name, ordinal)), part)
       when Wire::FunctionResponsePart
         ordinal = response_ordinals[part.name]
         response_ordinals[part.name] = ordinal + 1
@@ -143,6 +139,22 @@ module Elelem::Protocol::Gemini
       when Wire::ThoughtPart
         thought(part)
       end
+    end
+
+    # Gemini 3 attaches a `thoughtSignature` to a `functionCall` part and
+    # enforces it strictly on replay — confirmed live by a 400, not
+    # documentation (`spec/live/gemini_spec.cr`). Stored the same way a
+    # `ThoughtPart`'s signature is: `provider_metadata`, same key, so a tool
+    # call minted on another protocol and handed to this one is
+    # indistinguishable from one this protocol never signed — both have
+    # nothing under `METADATA_KEY`, and both need the same answer once the
+    # mapper is taught to check.
+    private def tool_call(mpsh_id : String, part : Wire::FunctionCallPart) : MPSH::ToolCallBlock
+      block = MPSH::ToolCallBlock.new(mpsh_id, part.name, parse_object(part.args))
+      if value = part.thought_signature
+        block.put_meta(METADATA_KEY, "thought_signature", value)
+      end
+      block
     end
 
     # The response payload is an object rather than a string on this protocol.

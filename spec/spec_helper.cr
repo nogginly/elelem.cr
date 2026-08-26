@@ -15,6 +15,12 @@ Wiretap.configure do |c|
   # network — which on the paid endpoints would also be a bill.
   c.record_mode = ENV["CI"]? ? :none : :once
 
+  # Wiretap's own default only covers `Authorization` and `X-Api-Key`.
+  # Gemini's credential header is neither — `x-goog-api-key` — so without this
+  # it would be the only unfiltered credential among four protocols' worth of
+  # committed transcripts.
+  c.filter_headers << "X-Goog-Api-Key"
+
   # Minted call identifiers carry a timestamp and a process-wide counter —
   # `mc_<epoch-ms>_<counter>` — so the same body can never digest identically
   # twice, and any multi-turn transcript containing a tool call would be

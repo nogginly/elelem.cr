@@ -14,6 +14,26 @@ outstanding belongs here, because nobody greps a codebase for open questions.
 
 ## MUST FIX
 
+### Gemini 3 tool calls carrying a foreign or missing thought signature
+
+**Confirmed live, not assumed.** A `functionCall` replayed to Gemini 3 without
+its `thoughtSignature` — a real field, sibling to `functionCall`, discovered by
+a 400 rather than documentation — is rejected outright
+(`spec/live/gemini_spec.cr`). Plumbing now exists to capture one on read and
+replay it on write within this protocol's own history (`export.cr`,
+`mapper.cr`), the same mechanism `reasoning_signature_required` already uses
+for Anthropic's `thinking` blocks. **Confirmed sufficient**, also live: with
+the plumbing in place, elelem's own same-protocol round trip pairs and
+replays cleanly, no further change needed for that case.
+
+What the plumbing does not answer: a `ToolCallBlock` handed to this protocol
+from elsewhere — the exact shape `reasoning_signature_required` exists to
+catch on the reasoning side — has no signature to offer, and nothing yet
+checks for that before sending. Needs the same shape of fix: a capability
+check ahead of `own?`, `Degraded` rather than a silent 400. Not yet built,
+and not yet reproduced live — no handoff test carrying a tool call onto
+Gemini 3 has been run.
+
 ### Interrupted turns must leave a sendable session
 
 **Now reproducible on demand.** `spec/live/ollama_spec.cr` records a turn cut

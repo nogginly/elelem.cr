@@ -1,0 +1,40 @@
+{
+  "name": "gemini_baseline_text",
+  "recorded_with": "wiretap/0.4.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "206",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"Answer in one short sentence.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is the tallest mountain on Earth?\"}]}],\"generationConfig\":{\"maxOutputTokens\":256}}",
+        "body_digest": "6e606290d3941d0b48707ff888dc5bc29280bdb698251442d7e0fa3a3bbf2986"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Gemini-Service-Tier": "standard",
+          "Content-Type": "application/json; charset=UTF-8",
+          "Vary": "Origin, X-Origin, Referer",
+          "Date": "Wed, 26 Aug 2026 02:48:01 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=1546",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\": [\n          {\n            \"text\": \"Mount Everest is the tallest mountain on Earth.\",\n            \"thoughtSignature\": \"EtQGCtEGARFNMg+9gghCT7iwD941pdgpCoplcLdyfWfjx4bCkKiv98XxXILNaGBpyLqB6quQ08RzJ97TYf67iBq048hKd6igovF0pI10uyEsbuxVCVuLL4aaIwL7DZFzaBAKknmFinloiz/tL4DTZ5f6Nb8SRp8ejEkI1vTYIBYfXCfSElJz7Xy+Yt0UCo3cozQVkCx+t0Uzzmlo/3TqQ8kOG2fq+f/jF97qy6K/7F5A2O5EQ3jkAJf7fOSyx8DPGvuN/fGhF/xWnmS/gPo5AqT8FTj6TMnvlFqu+3JK3fgYCLbNAM9Ggit0NH82an7Et1iUnnI1jtog7UN7d6BRpYm2feZzGdaG3BfFnBm7931ixPJzBRrRPPHaYPYKSoNTYOoGYiembVaY7MtZo1Sgs9BYg0Kumm4SNo0OmJnJKzHKoiC8/nmjZbD72h7QRgHLnd2b6ecgnCt/DK9zXGJc0tfP9j09J9S3iWg5hPCJ+u7bkfXPouROpa+aBFsu4Vr4hXlzVzicfnBphNfQHNQBK63hbFwF6BYB/VAY3HPTetu0bv2NIDiW7SgmNqZQqhxZqHoHo9NPDOCxgi5LebW5BumLmxEaCPL+SnVMfGwJAwsQ8/dRXYgmxVedN9V2giglokF+nQmh1ZjyXc3IxbiGfHJEtoDa2revUg1K9ETNhbo7Wcrpas5TtjUbl0IeqZn4biZC+CDM52gk7qVQ3Gf7oWmk1dngwlrv4idZQ3ElP5hU+qcw0jNG/SqfqUIBLd89hwmC9cM5tlppcW42VZ+yTrn0dPuH0//F8XvDB21PaVLs+rvtsL7oDjPnfgQQ23HItnfGYaM5XcwrFzft/0GYPWprym+KZgXdfF4dqhz3yWi+dHD3oxWrUjvYlMs4WHabi+JL1wriAFC3Leiso9QitNDdGAkz7jXTRl5zwsJIwhEjU0W5r5cVF9P+uM5LPu5z8sjpjZa0047Gr2vcw6vMDVdflzmy7SpFElScU/xa+sFHBEzpNh/wllEir2DlxpBIjaRFk4Y1KjIHNwNvElTlv0rCNCSUngWbp6LyEpue/A23+R45/Gb+vYUCRE8tPWIS4OkWI8SzZkSksKktXXX4HWKnjdnPW+i780Jxvgp+QHmUbwD7l8ef\"\n          }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\": \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 15,\n    \"candidatesTokenCount\": 9,\n    \"totalTokenCount\": 208,\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 15\n      }\n    ],\n    \"thoughtsTokenCount\": 184,\n    \"serviceTier\": \"standard\"\n  },\n  \"modelVersion\": \"gemini-3.5-flash\",\n  \"responseId\": \"4FOOaq2-Isbe_uMP9M-dIQ\"\n}\n"
+      },
+      "recorded_at": "2026-08-26T02:48:02Z"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "gemini_thought_no_signature",
+  "recorded_with": "wiretap/0.4.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "431",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"You are terse.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is the tallest mountain on Earth?\"}]},{\"role\":\"model\",\"parts\":[{\"thought\":true,\"text\":\"The user is asking about the tallest mountain. It's Everest.\"},{\"text\":\"The tallest mountain on Earth is Mount Everest.\"}]},{\"role\":\"user\",\"parts\":[{\"text\":\"And the deepest ocean trench?\"}]}],\"generationConfig\":{\"maxOutputTokens\":256}}",
+        "body_digest": "c9cf66e0488b296ee5686d1ab0bd29510e4382eca5969ca6f01d16a7c48dc5fe"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Gemini-Service-Tier": "standard",
+          "Content-Type": "application/json; charset=UTF-8",
+          "Vary": "Origin, X-Origin, Referer",
+          "Date": "Wed, 26 Aug 2026 02:48:05 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=772",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\": [\n          {\n            \"text\": \"The deepest ocean trench is the Mariana Trench.\",\n            \"thoughtSignature\": \"ErQBCrEBARFNMg/naGHNiXOl/akUJJ+RhStZsRgK2SHC8GASx3nO/QJT7BVl7u/cgfADttUqsFLu/r+W/8gEv+yAT258qra/g1ylVRuUhYko5Tcr9SRx4r1MM7bAPcInc+2Zmt1xL6obS2wdE3NSseUMWwgTbg0M1TJ3T1vFI9P31FR7LyACvHiLPsCRfQ3Utw+wSyfHx0QEsCBbtpwblBsBsSSuWB/XFpxm0z0RhhSdqosOt2sp\"\n          }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\": \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 58,\n    \"candidatesTokenCount\": 9,\n    \"totalTokenCount\": 84,\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 58\n      }\n    ],\n    \"thoughtsTokenCount\": 17,\n    \"serviceTier\": \"standard\"\n  },\n  \"modelVersion\": \"gemini-3.5-flash\",\n  \"responseId\": \"5VOOauqUCd2u_uMP25j76AM\"\n}\n"
+      },
+      "recorded_at": "2026-08-26T02:48:05Z"
+    }
+  ]
+}

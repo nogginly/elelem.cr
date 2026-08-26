@@ -112,7 +112,7 @@ module Elelem::Protocol::Gemini
         return thought(any) if any["thought"]?.try(&.as_bool?)
 
         if call = any["functionCall"]?
-          return function_call(call)
+          return function_call(call, any["thoughtSignature"]?.try(&.as_s?))
         end
 
         # Both spellings appear in the wild: the REST surface emits camelCase,
@@ -125,7 +125,7 @@ module Elelem::Protocol::Gemini
         any["text"]?.try(&.as_s?).try { |text| TextPart.new(text) }
       end
 
-      private def self.function_call(any : JSON::Any) : Part?
+      private def self.function_call(any : JSON::Any, thought_signature : String?) : Part?
         name = any["name"]?.try(&.as_s?)
         return nil unless name
 
@@ -136,8 +136,14 @@ module Elelem::Protocol::Gemini
         # Note what is *absent*: an identifier. There is no id on the wire to
         # read, which is why pairing is reconstructed from name and ordering
         # and why MPSH mints its own `call_id`.
+        #
+        # `thought_signature` is passed in rather than read from `any` here:
+        # Gemini attaches it as a sibling of `functionCall` on the enclosing
+        # part, not as a field within the `functionCall` object itself, and
+        # `any` at this point is already the inner object.
         FunctionCallPart.new(name,
-          (any["args"]? || JSON::Any.new({} of String => JSON::Any)).to_json)
+          (any["args"]? || JSON::Any.new({} of String => JSON::Any)).to_json,
+          thought_signature)
       end
 
       private def self.inline_data(any : JSON::Any) : Part?

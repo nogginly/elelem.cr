@@ -53,9 +53,22 @@ Two smaller divergences follow from it:
   is invented. A budget of 0 disables thinking and -1 asks for dynamic thinking,
   which is the protocol's own idiom for "no constraint" and better than any
   number this shard could pick.
+- **`includeThoughts` rides on the unit, not a separate option.** Without it,
+  thinking still happens — and is billed — but neither thought text nor the
+  signature a later turn needs to replay comes back; the API's default is to
+  omit both, silently. Sent whenever a budget or level is, since there is no
+  reason to ask for reasoning and not want to see it.
 
 Unconfirmed, and flagged in `SCOPE.md`: whether a budget of 0 reliably disables
 thinking on the levels-preferring series, which has no `off` rung of its own.
+
+**Confirmed live: this protocol's `reasoning_signature_required` stays `false`,
+and Anthropic's does not generalize here.** A plain-text `ReasoningBlock` with
+no `provider_metadata` — the exact shape a foreign or unattributed reasoning
+trace has — replays cleanly on a continuation turn
+(`spec/live/gemini_spec.cr`). The signature enforcement that *is* real on this
+protocol is narrower than Anthropic's: it is specific to `functionCall`, not
+to reasoning text standing alone. See "Pairing without identifiers" below.
 
 One consequence worth knowing before prompt caching arrives: like Anthropic,
 this protocol renders the reasoning control into the prompt, so changing
@@ -86,6 +99,23 @@ reject, so no identifier field is added.
 responses arrive in the order their calls were made. A provider that reordered
 them, or omitted one, would break the correspondence, and there is nothing in
 the wire to notice with.
+
+**A real field arrived on Gemini 3, found live rather than assumed.**
+`functionCall` carries a `thoughtSignature` as a sibling field on the same
+part — not a separate `ThoughtPart` preceding it — and Gemini 3 enforces it
+strictly on replay: omitting it is a 400
+(`Function call is missing a thought_signature in functionCall parts`),
+confirmed against a real endpoint (`spec/live/gemini_spec.cr`), not merely
+documented. Optional on the 2.5 series, which is why the model chosen for a
+tool-call test matters here in a way it doesn't on the other three protocols.
+
+Captured and replayed the same way a `ThoughtPart`'s signature is —
+`provider_metadata`, same key — so `export.cr` and `mapper.cr` round-trip it
+on this protocol's own history. What is still open: a `ToolCallBlock` handed
+to this protocol from elsewhere has no such metadata and none to offer, which
+is the same shape of question the Anthropic `reasoning_signature_required` fix
+answered for reasoning blocks, not yet answered here for tool calls. Tracked
+in `SCOPE.md`.
 
 ## The response shape
 

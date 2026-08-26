@@ -1,0 +1,40 @@
+{
+  "name": "gemini_reasoning_off_35",
+  "recorded_with": "wiretap/0.4.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "249",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"Answer in one short sentence.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is 12 times 14?\"}]}],\"generationConfig\":{\"maxOutputTokens\":256,\"thinkingConfig\":{\"thinkingBudget\":0,\"includeThoughts\":true}}}",
+        "body_digest": "c266def418fd5999fc879c9bf7f60c016eb51e27876de25d670a7ac68bc37ac0"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Gemini-Service-Tier": "standard",
+          "Content-Type": "application/json; charset=UTF-8",
+          "Vary": "Origin, X-Origin, Referer",
+          "Date": "Wed, 26 Aug 2026 02:48:04 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=783",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\": [\n          {\n            \"text\": \"12 times 14 is 168.\",\n            \"thoughtSignature\": \"EmgKZgERTTIPaWXqewHz6S3zJ+J0q9QzrZqMgDu6ywtBNWAf0w/0C90cf7dsGvvodU2TfDrt6TsW+x0D1KB4Tk2u19pSPVj2JBgQaHm9QJzVb6fkOJuFVGZkW7PubfkOdY9mmGraFaJ5Jg==\"\n          }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\": \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 17,\n    \"candidatesTokenCount\": 12,\n    \"totalTokenCount\": 29,\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 17\n      }\n    ],\n    \"serviceTier\": \"standard\"\n  },\n  \"modelVersion\": \"gemini-3.5-flash\",\n  \"responseId\": \"5FOOap3fDoGdjMcPpYaXsQk\"\n}\n"
+      },
+      "recorded_at": "2026-08-26T02:48:05Z"
+    }
+  ]
+}

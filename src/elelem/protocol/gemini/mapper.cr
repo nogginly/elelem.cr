@@ -208,7 +208,13 @@ module Elelem::Protocol::Gemini
       ordinals[block.name] = ordinal + 1
       calls.bind(block.call_id, calls.positional_key(block.name, ordinal))
 
-      Wire::FunctionCallPart.new(block.name, block.arguments.to_json)
+      # The signature is replayed when we have one, same as `thinking()` does
+      # for Anthropic — but nothing here yet answers what happens when we
+      # don't and Gemini 3 requires one. That's `Resolver` work, not this
+      # method's; see `spec/live/gemini_spec.cr` for whether plumbing this
+      # through is sufficient on its own before that gets designed.
+      signature = block.meta_for(profile.metadata_key).try(&.["thought_signature"]?).try(&.as?(String))
+      Wire::FunctionCallPart.new(block.name, block.arguments.to_json, signature)
     end
 
     # A response names the function it answers. The name is recovered from the

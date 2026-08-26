@@ -52,11 +52,18 @@ module Elelem::Protocol::Gemini
 
     # No id field exists on this part, and none may be invented: an unexpected
     # key is a request the provider can reject.
+    #
+    # `thought_signature` is the exception, and arrived after the rest of this
+    # struct did: Gemini 3 attaches it as a sibling of `functionCall` on the
+    # same part, and enforces it strictly (mandatory on Gemini 3, optional on
+    # 2.5) — confirmed live by a 400, not documentation. See
+    # `spec/live/gemini_spec.cr` and `docs/protocols/GEMINI.md`.
     struct FunctionCallPart < Part
       getter name : String
       getter args : String
+      getter thought_signature : String?
 
-      def initialize(@name : String, @args : String)
+      def initialize(@name : String, @args : String, @thought_signature : String? = nil)
       end
 
       def to_json(json : JSON::Builder)
@@ -67,6 +74,7 @@ module Elelem::Protocol::Gemini
               json.field "args" { json.raw @args }
             end
           end
+          @thought_signature.try { |value| json.field "thoughtSignature", value }
         end
       end
     end
@@ -226,6 +234,13 @@ module Elelem::Protocol::Gemini
                     json.object do
                       budget.try { |value| json.field "thinkingBudget", value }
                       level.try { |value| json.field "thinkingLevel", value }
+                      # Without this, thinking still happens (and is billed)
+                      # but neither thought text nor the signature a later
+                      # turn needs to replay comes back — the API's default is
+                      # to omit both, silently. Tied to asking for thinking at
+                      # all rather than a separate `Options` field: there is
+                      # no reason to request reasoning and not want to see it.
+                      json.field "includeThoughts", true
                     end
                   end
                 end
