@@ -47,8 +47,20 @@ about the *model*, so the catalog resolves it per call by narrowing the same
 `Profile`. Read *A model catalog* in `SCOPE.md` before adding a second axis to
 it.
 
-**Gemini has never been executed.** Ollama does not serve it, so that mapper
-remains structurally verified and unrun — the checkpoint working as designed.
+**Gemini is now executed, the last of the four.** Ollama never served it, so
+unlike Anthropic this had no compatibility port to have already exercised the
+wire shape — first contact and the falsifying tests happened in the same pass.
+Found and fixed along the way: Gemini 3 requires a `thoughtSignature` on
+`functionCall` parts, which `elelem` had nowhere to carry, and
+`gemini-3.1-pro-preview` actively rejects a zero thinking budget rather than
+silently ignoring it, both now handled
+(`spec/live/gemini_spec.cr`, `docs/protocols/GEMINI.md`). Confirmed and closed:
+the reasoning-off budget genuinely disables thinking on Flash, and
+`reasoning_signature_required` correctly stays `false` here — Anthropic's fix
+does not generalize to this protocol's plain-text reasoning, only to its tool
+calls. Still open: a `ToolCallBlock` handed to this protocol from another one
+has no signature to offer, and nothing yet checks for that before sending
+(`SCOPE.md`).
 
 Recording practice, and why re-recording is more disruptive than it looks:
 *Live specs* in `DEVELOPMENT.md`.
@@ -67,14 +79,12 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-1. **Gemini live.** The only live coverage that protocol will get — and the
-   only way to confirm that a budget of 0 disables thinking on the series that
-   prefers levels, which the mapper currently assumes.
-2. **Azure will amend the design.** It speaks Chat Completions but embeds a
-   deployment name and `api-version` in the path and authenticates with
-   `api-key`, not `Bearer`. `Adapter` currently assumes path and auth are
-   *protocol* facts; Azure proves they are protocol-plus-deployment facts. Do
-   it last, so the amendment lands against three working examples.
+Azure will amend the design. It speaks Chat Completions but embeds a
+deployment name and `api-version` in the path and authenticates with
+`api-key`, not `Bearer`. `Adapter` currently assumes path and auth are
+*protocol* facts; Azure proves they are protocol-plus-deployment facts. It was
+sequenced last deliberately, so the amendment lands against four working
+examples rather than guessing ahead of them.
 
 ### On Ollama
 
