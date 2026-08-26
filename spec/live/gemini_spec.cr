@@ -9,17 +9,23 @@ require "../spec_helper"
 # cut a transcript. Once committed it replays offline like every other live
 # spec.
 #
-# **Model.** Just `gemini-3.5-flash`. This started as a two-model file — a
-# 2.5-series control alongside it, to isolate what's specific to Gemini 3 from
-# what's a general elelem bug. Both `gemini-2.5-flash-lite` and
-# `gemini-2.5-flash` came back 404 with a message pointing at successively
-# newer replacements (`gemini-3.5-flash-lite`, then `gemini-3.6-flash`) — the
-# whole 2.5 generation looks retired for newer API keys, not one model within
-# it. The control isn't run live here; the "optional on 2.5, mandatory on
-# Gemini 3" claim it would have confirmed is already well supported by
-# Google's own docs and three independent third-party bug reports hitting the
-# identical error text (see `docs/protocols/GEMINI.md`).
-private MODEL_35 = "gemini-3.5-flash"
+# **Model.** `gemini-3.5-flash` for everything except one test. This started
+# as a two-model file — a 2.5-series control alongside it, to isolate what's
+# specific to Gemini 3 from what's a general elelem bug. Both
+# `gemini-2.5-flash-lite` and `gemini-2.5-flash` came back 404 with a message
+# pointing at successively newer replacements (`gemini-3.5-flash-lite`, then
+# `gemini-3.6-flash`) — the whole 2.5 generation looks retired for newer API
+# keys, not one model within it. The control isn't run live here; the
+# "optional on 2.5, mandatory on Gemini 3" claim it would have confirmed is
+# already well supported by Google's own docs and three independent
+# third-party bug reports hitting the identical error text (see
+# `docs/protocols/GEMINI.md`).
+#
+# `gemini-3.1-pro-preview` appears once, for the one claim specific to a tier
+# rather than a generation: Google's docs say thinking cannot be turned off on
+# Gemini 3 Pro at all, only lowered — the opposite of what Flash confirmed.
+private MODEL_35  = "gemini-3.5-flash"
+private MODEL_PRO = "gemini-3.1-pro-preview"
 
 private def gemini : Elelem::Server
   Elelem::Server.new("gemini", "https://generativelanguage.googleapis.com", ENV["GEMINI_API_KEY"]?)
@@ -98,13 +104,11 @@ describe "Gemini" do
     end
   end
 
-  # SCOPE.md's unconfirmed item — and Google's own docs say thinking cannot be
-  # turned off at all on some Gemini 3 tiers (Pro), which would mean
-  # `Rendering::Disable`'s `budget: 0` compatibility fallback silently does
-  # nothing there. Untested whether Flash has the same limitation. Checked via
+  # Confirmed live on Flash: a budget of 0 reliably disables thinking — closes
+  # the item `SCOPE.md` carried as unconfirmed. Checked via
   # `usageMetadata.thoughtsTokenCount` rather than the presence of a thought
   # part, since `includeThoughts` governs visibility, not whether thinking
-  # happened at all.
+  # happened at all. Pro is a different story entirely — see below.
   describe "reasoning off" do
     it "actually disables thinking rather than merely being accepted" do
       Wiretap.intercept("gemini_reasoning_off_35") do
@@ -117,6 +121,36 @@ describe "Gemini" do
         usage = reply.meta?("gemini", "usage").as?(M::Object)
         thoughts = usage.try(&.["thoughtsTokenCount"]?)
         (thoughts.nil? || thoughts == 0_i64).should be_true
+      end
+    end
+  end
+
+  # Confirmed on Flash above; Google's own docs make a sharper, opposite claim
+  # about Pro specifically: thinking cannot be turned off on Gemini 3 Pro at
+  # all, only lowered to `LOW`, which "still performs some reasoning." Not a
+  # generation-wide fact — a tier-specific one, and the first run of this test
+  # found it the hard way: `thinkingBudget: 0` against this model wasn't
+  # silently ignored, it was an active 400 (`Budget 0 is invalid. This model
+  # only works in thinking mode.`). `CANNOT_DISABLE_THINKING`
+  # (`capabilities.cr`) now catches this before the request is built and
+  # substitutes the lowest rung instead — a real, recorded loss, which is why
+  # this call needs `Policy::Lenient`: under the default policy the
+  # `Degraded` outcome would refuse the call before anything reaches the wire,
+  # the same guard the Anthropic signature fix relies on.
+  describe "reasoning off, on the tier documented as unable to disable it" do
+    it "substitutes the lowest rung rather than sending an invalid budget" do
+      Wiretap.intercept("gemini_reasoning_off_pro") do
+        session = M::Session.new("Answer in one short sentence.")
+        session << M::Message.user("What is 12 times 14?")
+
+        reply, report = client(Elelem::Capability::Policy::Lenient).send(session, MODEL_PRO,
+          options: Elelem::Options.new(reasoning: Elelem::Reasoning::Off.new, max_output_tokens: 512))
+
+        report.annotations.map(&.outcome).should contain(M::Outcome::Degraded)
+
+        usage = reply.meta?("gemini", "usage").as?(M::Object)
+        thoughts = usage.try(&.["thoughtsTokenCount"]?)
+        (thoughts.as?(Int64) || 0_i64).should be > 0_i64
       end
     end
   end

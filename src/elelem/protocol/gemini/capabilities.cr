@@ -42,6 +42,23 @@ module Elelem::Protocol::Gemini
     Reasoning::Effort::Max    => "HIGH",
   }
 
+  # Confirmed live by an active rejection, not documentation guesswork:
+  # `thinkingBudget: 0` — `Rendering::Disable`'s compatibility fallback for a
+  # levels-preferring model — gets a 400 here, `Budget 0 is invalid. This
+  # model only works in thinking mode.`, rather than being silently accepted
+  # or silently ignored. See `spec/live/gemini_spec.cr`.
+  #
+  # A tier-specific fact, not a generation-wide one — Flash on the same
+  # generation honours a budget of 0 correctly — so it lives here as a closed
+  # list rather than as a substring match on "pro", which would be both
+  # fragile and wrong the moment a differently-behaved Pro model exists.
+  # Expected to stay short: growing it needs the same kind of live rejection
+  # that put the first entry here, the same discipline `Catalog::BUDGET_ONLY`
+  # already follows for the reasoning-unit axis.
+  CANNOT_DISABLE_THINKING = Set{
+    "gemini-3.1-pro-preview",
+  }
+
   PROFILE = Capability::Profile.new(
     provider: NAME,
     accepted_media: {

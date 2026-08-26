@@ -1,0 +1,40 @@
+{
+  "name": "gemini_reasoning_off_pro",
+  "recorded_with": "wiretap/0.4.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "252",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"Answer in one short sentence.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is 12 times 14?\"}]}],\"generationConfig\":{\"maxOutputTokens\":512,\"thinkingConfig\":{\"thinkingLevel\":\"LOW\",\"includeThoughts\":true}}}",
+        "body_digest": "c68d6ad696501c95a683a8e98b41267951a018922acf15fd6a985d96151d8d4b"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Gemini-Service-Tier": "standard",
+          "Content-Type": "application/json; charset=UTF-8",
+          "Vary": "Origin, X-Origin, Referer",
+          "Date": "Wed, 26 Aug 2026 04:18:14 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=3444",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\": [\n          {\n            \"text\": \"**Calculating a Simple Product**\\n\\nOkay, so the prompt gives me a straightforward multiplication problem: what's 12 times 14? My brain immediately jumps into calculation mode. I'm going to break this down for speed and accuracy. I'll split 14 into 10 + 4, making the multiplication easier to handle mentally. So, that's 12 times 10, which is 120, and then 12 times 4, which is 48. Adding those together, 120 + 48 equals 168. Finally, I'll package the answer as requested in a single, simple sentence. Therefore, the response will be \\\"12 times 14 is 168.\\\"\\n\\n\\n\",\n            \"thought\": true\n          },\n          {\n            \"text\": \"12 times 14 equals 168.\",\n            \"thoughtSignature\": \"EuMCCuACARFNMg93Nq//mbv6ZspyXXISfLg0gsRBlvHnWZ9+c+lxtBIRES5Y8efVjmGdJX0k8cCG4lPo2PR1i3pPGerZjww07s6CNNtpzcKpi1JAqR7GSKgcwh0wom1AafYo8OrY2KQXkOCEf67priSWcaTyhBJFB/OHFLR4xSbv79IiOLLVigepNHjoFrJBMAE8bfFOahZ5wxOb6uRPIoWactm1CsBfi3s93d6QMSSgEVuRwV1bss2I+EtvJiGTedUX1ozwk21B7/Veupp2EKzcB0fSWbqQ6MgOGCthzlyAJcvEuG2i2LUxigq1V9eIiLzLoS2O5kWa531Zt3ShNcQlZKIjYuj6iwoJrDGrBWK4eETwuGBy2j2LBwr7THBmximahtl4CeLpCMP804xKrVyetzLkx0tlYG6+kc+JbhB1U0HaeIqSQ/yA9+vgXg1jVry0+bhM23NbPfZC+ctMNpiryX6HYw==\"\n          }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\": \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 17,\n    \"candidatesTokenCount\": 12,\n    \"totalTokenCount\": 127,\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 17\n      }\n    ],\n    \"thoughtsTokenCount\": 98,\n    \"serviceTier\": \"standard\"\n  },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"AmmOaq_ZOryN_PUP8NOU0AY\"\n}\n"
+      },
+      "recorded_at": "2026-08-26T04:18:14Z"
+    }
+  ]
+}

@@ -62,6 +62,26 @@ Two smaller divergences follow from it:
 Unconfirmed, and flagged in `SCOPE.md`: whether a budget of 0 reliably disables
 thinking on the levels-preferring series, which has no `off` rung of its own.
 
+**Confirmed live, and the answer splits by tier, not by generation.** On
+`gemini-3.5-flash`, a budget of 0 reliably disables thinking —
+`usageMetadata` carries no `thoughtsTokenCount` at all, not zero, absent
+(`spec/live/gemini_spec.cr`). On `gemini-3.1-pro-preview`, the same budget is
+an active 400: `Budget 0 is invalid. This model only works in thinking mode.`
+Not a silent no-op either way — the first run of the Pro test found this the
+hard way.
+
+`Capabilities::CANNOT_DISABLE_THINKING` is a closed, explicit list of models
+confirmed to reject a zero budget outright, checked before a request is built
+rather than after it fails. A model on the list gets its `Off` request
+rendered as the lowest rung this protocol spells instead — a real,
+recorded `Degraded` loss, not silently ignored — since the alternative is
+either send an invalid request or send an unannounced one, and this shard
+does neither. Deliberately a closed list rather than a substring match on
+`"pro"`: a differently-behaved Pro model would be silently and wrongly
+caught by the substring, where the list just doesn't grow until a live
+rejection earns it a place, the same discipline `Catalog::BUDGET_ONLY`
+already follows.
+
 **Confirmed live: this protocol's `reasoning_signature_required` stays `false`,
 and Anthropic's does not generalize here.** A plain-text `ReasoningBlock` with
 no `provider_metadata` — the exact shape a foreign or unattributed reasoning

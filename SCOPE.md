@@ -112,9 +112,6 @@ What remains open is only what a live call can settle:
   serialize happily and may still be rejected by the model behind the endpoint.
   A protocol-level declaration cannot know, and a per-model rung list is a
   catalog axis nobody has yet needed. Wait for a rejection.
-- **Gemini's `Off` is unconfirmed.** A budget of 0 disables thinking, and is
-  documented on the series that takes budgets; the series that prefers levels
-  accepts a budget only for backwards compatibility, and has no `off` rung.
 - **No budget clamp on Gemini.** Anthropic documents that the budget must sit
   below `max_tokens`; Gemini documents no such relationship, so none is
   invented. Revisit the first time a live call disagrees.

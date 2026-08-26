@@ -71,7 +71,7 @@ module Elelem::Protocol::Gemini
       end
 
       flush_compensation(contents, pending, report)
-      budget, level = reasoning(options, report)
+      budget, level = reasoning(options, model, report)
 
       {Wire::Request.new(model, contents, session.system_prompt, declarations(options),
         options.max_output_tokens, thinking_budget: budget, thinking_level: level), report}
@@ -85,13 +85,31 @@ module Elelem::Protocol::Gemini
     # documents no relationship between a thinking budget and
     # `maxOutputTokens`, and inventing one would be a rule of ours dressed up as
     # a rule of theirs. Worth revisiting the first time a live call disagrees.
-    private def reasoning(options : Options,
+    private def reasoning(options : Options, model : String,
                           report : Capability::Report) : {Int32?, String?}
       request = options.reasoning
       return {nil, nil} unless request
 
       unit = profile.reasoning_unit
       rendering, outcome = Capability::ReasoningControl.resolve(request, unit)
+
+      # Confirmed live by a 400, not documentation: `thinkingBudget: 0` — this
+      # rendering's compatibility fallback for a levels-preferring model — is
+      # `Budget 0 is invalid. This model only works in thinking mode.` on some
+      # models, not a silent accept. A tier-specific fact
+      # (`CANNOT_DISABLE_THINKING`, `capabilities.cr`), not a generation-wide
+      # one — Flash honours a budget of 0 correctly
+      # (`spec/live/gemini_spec.cr`). The lowest rung this protocol spells is
+      # the closest honest substitute, and it is a real loss: the caller
+      # asked for no thinking and gets some regardless, so it is `Degraded`
+      # and recorded rather than sent as the silent `Exact` `resolve()`
+      # would otherwise claim for this rendering.
+      if rendering.disable? && CANNOT_DISABLE_THINKING.includes?(model)
+        report.record(MPSH::Outcome::Degraded,
+          "reasoning control: reasoning off not supported on #{model}, sent as the lowest rung instead")
+        return {nil, REASONING_LEVELS[Reasoning::Effort::Low]}
+      end
+
       report.record(outcome, Capability::ReasoningControl.detail(request, rendering, unit))
 
       case rendering
@@ -105,10 +123,6 @@ module Elelem::Protocol::Gemini
                  end
         {budget, nil}
       in Capability::ReasoningControl::Rendering::Disable
-        # A budget of zero switches thinking off, and is documented on the
-        # series that takes budgets. Accepted for compatibility on the series
-        # that prefers levels, which have no "off" rung of their own — the one
-        # rendering here that a live call should confirm before it is trusted.
         {0, nil}
       in Capability::ReasoningControl::Rendering::Drop
         {nil, nil}
