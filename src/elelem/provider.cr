@@ -1,5 +1,11 @@
 require "./server"
-require "./adapter"
+require "./adapters/adapter"
+require "./adapters/chat_completions"
+require "./adapters/responses"
+require "./adapters/anthropic"
+require "./adapters/gemini"
+require "./adapters/azure/chat_completions"
+require "./adapters/azure/responses"
 
 module Elelem
   # A server speaking one protocol.

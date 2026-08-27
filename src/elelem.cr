@@ -51,10 +51,21 @@ require "./elelem/protocol/gemini/mapper"
 require "./elelem/protocol/gemini/export"
 
 # The live layer: a deployment, the protocol it speaks, and one request per
-# send. Flat files for now — group them under a directory when there are five,
-# or when the first unambiguously-transport concern arrives.
+# send. `Server`, `Provider` and `Client` stay flat files — none has grown
+# enough siblings to want a directory. `adapters/` did: six concrete adapters,
+# two of them a deployment amending a protocol rather than declaring one, is
+# the shared vocabulary `DEVELOPMENT.md` says a directory is for. One file per
+# adapter, `adapters/<deployment>/<protocol>.cr` for the ones that amend
+# rather than declare — see `adapters/adapter.cr` for the shape every adapter
+# is modeled on.
 require "./elelem/server"
-require "./elelem/adapter"
+require "./elelem/adapters/adapter"
+require "./elelem/adapters/chat_completions"
+require "./elelem/adapters/responses"
+require "./elelem/adapters/anthropic"
+require "./elelem/adapters/gemini"
+require "./elelem/adapters/azure/chat_completions"
+require "./elelem/adapters/azure/responses"
 require "./elelem/provider"
 require "./elelem/client"
 

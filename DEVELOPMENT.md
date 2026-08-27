@@ -122,17 +122,23 @@ src/elelem/
                   wire/response.cr  parse-only — what we read
                   mapper.cr         MPSH → request
                   export.cr         request or response → MPSH
+  adapters/     path, headers, prepare/read — one file per protocol adapter:
+                  adapter.cr              the abstract base every adapter models on
+                  <protocol>.cr           a protocol's own adapter
+                  <deployment>/<protocol>.cr  a deployment amending one — Azure's two
   server.cr     one deployment: host, credential, connection, status errors
   provider.cr   a server speaking one protocol, plus its vendor claim
-  adapter.cr    per protocol: path, headers, prepare/read
   client.cr     send(session, model) → (Message, Report)
   options.cr    tools, output cap, reasoning — per call, never stored
   reasoning.cr  the caller's reasoning request: a rung, a budget, or off
 ```
 
-Flat files rather than a directory, because a directory here *is* a namespace
-and none of these five wants one yet. Group them when there are enough to share
-a vocabulary, not merely a layer.
+`server.cr`, `provider.cr`, `client.cr`, `options.cr` and `reasoning.cr` stay
+flat files, because a directory here *is* a namespace and none of these five
+wants one yet. `adapters/` did, once there were enough concrete adapters to
+share a vocabulary — six, two of them a deployment amending a protocol rather
+than declaring one — which is the condition worth watching for in whatever's
+still flat above. Group when it's met, not before.
 
 Two structural rules, both absolute:
 
