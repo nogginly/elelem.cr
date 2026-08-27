@@ -168,6 +168,35 @@ not inline* names Azure specifically as one of the strict servers that rejects
 scaffolding interleaved between tool results. Confirmed against Azure's own
 documented behaviour before this section existed; nothing new to record there.
 
+### Live finding: reasoning models reject `max_tokens`
+
+Not an Azure fact specifically — an OpenAI fact Azure surfaced first, because
+this shard had no live Chat Completions coverage against a real reasoning
+model until `gpt5.4mini`. OpenAI deprecated `max_tokens` in favour of
+`max_completion_tokens` for the reasoning-model line, and a reasoning model
+now rejects the old spelling outright (`HTTP 400 — Unsupported parameter`)
+rather than tolerating it.
+
+`ChatCompletionsAdapter` still defaults to `max_tokens` — see
+`Wire::MaxTokensField`'s own doc comment for why the default cannot simply
+flip: Ollama's compatible endpoint has no support for the new spelling, and
+switching would silently stop capping output there rather than fail loudly.
+A deployment known to need the new spelling states so explicitly, the same
+way `reasoning_unit` already lets a caller override what a deployment name
+alone cannot say. `gpt5.4mini` does, in `spec/live/azure_spec.cr`. See
+*`max_tokens` vs `max_completion_tokens`* in `SCOPE.md` for what's still
+open — this is a per-deployment override today, not yet a model catalog.
+
+### Live finding: the system-prompt divergence holds against a real endpoint
+
+`spec/conformance/layer_spec.cr` already pinned this structurally — a session
+with a system prompt is `Restructured` here by design, never `Exact`, because
+MPSH holds the prompt as a session field and turning it into any wire form is
+a restructuring of MPSH's own shape, whatever the destination protocol calls
+native. `azure_spec.cr` confirms the same claim against Azure specifically:
+nothing about the live 400 or the field-name fix above changed this, and no
+live call has ever produced `Exact` with a system prompt present.
+
 ## Conformance
 
 `spec/conformance/chat_completions_spec.cr`. Fourteen fixtures must round-trip

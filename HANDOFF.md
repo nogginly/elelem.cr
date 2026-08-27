@@ -65,6 +65,22 @@ has no signature to offer, and nothing yet checks for that before sending
 Recording practice, and why re-recording is more disruptive than it looks:
 *Live specs* in `DEVELOPMENT.md`.
 
+**Azure OpenAI is now live too, and it amended the design as expected.**
+`Adapter` assumed path and auth were protocol facts; Azure proved them
+protocol-*plus*-deployment facts — `Provider.for_azure`,
+`AzureChatCompletionsAdapter`, `AzureResponsesAdapter`. The two protocols
+disagree with each other on where the deployment lives (path segment for Chat
+Completions, body-only for Responses) badly enough that Microsoft's own
+documentation disagreed with itself; settled against a live deployment's own
+portal rather than guessed. First contact also found a live gap unrelated to
+the amendment itself: a reasoning-capable deployment rejects `max_tokens`
+outright and wants `max_completion_tokens`, handled as an explicit
+per-deployment override (`Wire::MaxTokensField`) rather than a model catalog,
+since Azure deployment names carry no model identity a catalog could match
+against — same shape as `reasoning_unit`'s existing override, and the same
+justification. Detail in `docs/servers/AZURE.md` and
+`docs/protocols/CHAT_COMPLETIONS.md`'s own *Live finding* sections.
+
 ## The live layer
 
 Built and described in `DEVELOPMENT.md` — *Layering*, *Three identities, kept
@@ -79,12 +95,11 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-Azure will amend the design. It speaks Chat Completions but embeds a
-deployment name and `api-version` in the path and authenticates with
-`api-key`, not `Bearer`. `Adapter` currently assumes path and auth are
-*protocol* facts; Azure proves they are protocol-plus-deployment facts. It was
-sequenced last deliberately, so the amendment lands against four working
-examples rather than guessing ahead of them.
+All four protocols and a fifth deployment (Azure, atop Chat Completions and
+Responses) are now exercised live. `SCOPE.md`'s `MUST FIX` section is what's
+left and unsequenced: a Gemini tool call carrying a foreign or missing thought
+signature, and interrupted-turn session repair are both real, both confirmed
+live-reproducible, and neither built yet.
 
 ### On Ollama
 
@@ -100,6 +115,16 @@ than a green run here to settle it. See `docs/protocols/ANTHROPIC.md`.
   the general story rather than from a protocol's declared `Profile`, and were
   wrong both times. `unsupported_media_type` is *exact* on Anthropic, because
   WEBP is accepted there.
+- **`Restructured` is not a bug waiting to be found.** Twice while getting
+  Azure live, a `report.worst.should eq Exact` failed and looked like a new
+  protocol gap — it was the test both times, not the mapper. Chat Completions
+  and Responses both report `Restructured` on *any* session carrying a system
+  prompt, unconditionally, by design: MPSH holds the prompt as a session
+  field, and turning it into any wire form is a restructuring of MPSH's own
+  shape regardless of whether the destination protocol calls that placement
+  native. Pinned already in `spec/conformance/layer_spec.cr`; check there —
+  or the protocol's own doc — before assuming a Restructured result is new
+  information.
 - **Corrections cluster in the capability model, not the format.** Three came
   from declaring profiles and round-tripping fixtures; all three changed the
   capability model. Gemini, the protocol most likely to break MPSH, changed only

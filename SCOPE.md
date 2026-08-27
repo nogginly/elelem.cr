@@ -102,6 +102,30 @@ assume the spec ruled on it. Resolve when the spec is next revised.
 
 ## WILL FIX
 
+### `max_tokens` vs `max_completion_tokens` is per-deployment, not yet per-model
+
+Confirmed live: `gpt5.4mini` on Azure rejects `max_tokens` outright and wants
+`max_completion_tokens`, OpenAI's replacement field for the reasoning-model
+line. Ollama's Chat Completions-compatible endpoint has the opposite problem —
+`max_completion_tokens` support has been an open, unresolved request against
+it for over a year, so defaulting to the new spelling would silently stop
+capping output there rather than fail loudly.
+
+Handled for now as an explicit, per-adapter override —
+`Wire::MaxTokensField`, threaded through `Provider.for`/`.for_azure` the same
+way `reasoning_unit` already is — defaulting to the old spelling everywhere,
+stated explicitly for a deployment known to need the new one. Not a
+`Capability::Catalog` axis: Catalog matches on model string, and this
+shard has no live coverage yet of plain OpenAI direct, only Azure and
+Ollama's emulation of the protocol. Building an exact-match list now would be
+guessing ahead of evidence this shard doesn't have.
+
+Worth revisiting once there's a second data point beyond Azure — a live
+OpenAI-direct spec, or a second Azure deployment on an older, non-reasoning
+model that still wants `max_tokens`. At that point this becomes the same
+shape as the reasoning-unit catalog: an exact-match table plus the same
+deployment-level override for names that carry no model identity.
+
 ### Reasoning controls: the unit is keyed on the model
 
 `Profile` gained `reasoning_unit`, `Capability::Catalog` resolves `Either` per

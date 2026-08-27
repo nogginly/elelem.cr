@@ -109,6 +109,19 @@ Reasoning unit is `Effort` here too, so the deployment-name-is-not-a-model-name
 problem that matters for Anthropic and Gemini is inert on this protocol as
 well — see the equivalent note in `CHAT_COMPLETIONS.md`.
 
+### Live finding: the path shape held, and so did the system-prompt divergence
+
+`/openai/responses` with no deployment segment was confirmed against a real
+Azure resource's own portal before this section first existed; `spec/live/azure_spec.cr`
+confirms it was also the URL that actually answered — the recorded interaction
+matches on exactly that path and query, so a wrong guess here would have
+surfaced as a transport error, not a subtle one.
+
+Same session, same system prompt, same result as Chat Completions:
+`Restructured`, never `Exact`, for the reason `CHAT_COMPLETIONS.md`'s
+equivalent note gives — this is a fact about MPSH's own shape, not this
+protocol's declared placement, so it was never going to differ by server.
+
 ## Conformance
 
 `spec/conformance/responses_spec.cr`. Sixteen fixtures round-trip untouched.
