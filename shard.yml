@@ -15,3 +15,4 @@ development_dependencies:
   # shard's runtime dependency count stays nil.
   wiretap:
     github: nogginly/wiretap.cr
+    version: ">= 0.4.1"
