@@ -20,7 +20,7 @@ module Elelem::MPSH
   # Note what is absent: any `to_json` that a provider could accept. Storage
   # form is not wire form, and the surest way to keep it that way is for the
   # canonical types to have no serialization identity of their own. Persistence
-  # is an explicit codec, added beside these types, not mixed into them.
+  # is an explicit Archive, added beside these types, not mixed into them.
   class Session
     property system_prompt : String?
     getter messages : Array(Message)

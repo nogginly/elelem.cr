@@ -2,7 +2,7 @@ require "./meta"
 require "./payload"
 
 module Elelem::MPSH
-  # Discriminator. Exists for codecs and for capability lookup keyed by kind;
+  # Discriminator. Exists for Archive and for capability lookup keyed by kind;
   # mappers should branch on the union with `case ... in`, not on this.
   enum BlockKind
     Text

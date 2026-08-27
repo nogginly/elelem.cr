@@ -146,7 +146,7 @@ Two structural rules, both absolute:
 2. **Storage form is never wire form.** No canonical type serializes into a
    request body. They carry no serialization identity at all — no
    `JSON::Serializable` under `mpsh/` — so nobody can hand one to an HTTP client
-   by accident. Persistence is an explicit codec beside the types.
+   by accident. Persistence is an explicit Archive beside the types.
 
 Rule 2 is the failure that makes a client un-portable, and it has been made
 before: once storage form is wire form, there is no mapping layer, and therefore
