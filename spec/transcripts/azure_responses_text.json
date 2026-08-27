@@ -1,0 +1,54 @@
+{
+  "name": "azure_responses_text",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://oxaro-alpha.openai.azure.com/openai/responses?api-version=2025-04-01-preview",
+        "headers": {
+          "content-type": "application/json",
+          "api-key": "[FILTERED]",
+          "Content-Length": "196",
+          "Host": "oxaro-alpha.openai.azure.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt5.4mini\",\"instructions\":\"You are terse.\",\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Say hello in one short sentence.\"}]}],\"max_output_tokens\":64}",
+        "body_digest": "91be20f56e5b64a23334849c0cda9c51bee36c73a9b6b83430956b0d6c69c068"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Length": "3572",
+          "Content-Type": "application/json",
+          "Date": "Thu, 27 Aug 2026 18:45:09 GMT",
+          "Server": "istio-envoy",
+          "x-ms-aoai-configured-data-retention-days": "30",
+          "skip-error-remapping": "true",
+          "x-ms-is-spilled-over": "false",
+          "x-ratelimit-key": "gpt5.4mini",
+          "x-ratelimit-remaining-requests": "149",
+          "x-ratelimit-reset-requests": "0",
+          "x-ratelimit-limit-requests": "150",
+          "x-ratelimit-renewalperiod-requests": "60",
+          "x-ratelimit-abusepenalty-active": "False",
+          "x-ratelimit-remaining-tokens": "149989",
+          "x-ratelimit-reset-tokens": "0",
+          "x-ratelimit-limit-tokens": "150000",
+          "x-ratelimit-renewalperiod-tokens": "60",
+          "azureai-fe-is-streaming": "False",
+          "azureai-fe-offer-type": "paygo",
+          "x-ms-served-model": "gpt-5.4-mini-2026-03-17",
+          "x-request-id": "f94232f7-0c4f-4bbd-8f2c-d2a2fed89d5f",
+          "apim-request-id": "e9238dff-123c-483a-a098-4dd5740d0bdf",
+          "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+          "X-Content-Type-Options": "nosniff",
+          "x-ms-region": "Canada East"
+        },
+        "body": "{\n  \"id\": \"resp_0166e231059d5767006a9085b64e9c8190bc98a1ab6a9dcc61\",\n  \"object\": \"response\",\n  \"created_at\": 1787856310,\n  \"status\": \"completed\",\n  \"background\": false,\n  \"completed_at\": 1787856311,\n  \"content_filters\": [\n    {\n      \"blocked\": false,\n      \"source_type\": \"prompt\",\n      \"content_filter_raw\": [],\n      \"content_filter_results\": {\n        \"hate\": {\n          \"filtered\": false,\n          \"severity\": \"safe\"\n        },\n        \"sexual\": {\n          \"filtered\": false,\n          \"severity\": \"safe\"\n        },\n        \"violence\": {\n          \"filtered\": false,\n          \"severity\": \"safe\"\n        },\n        \"self_harm\": {\n          \"filtered\": false,\n          \"severity\": \"safe\"\n        },\n        \"jailbreak\": {\n          \"detected\": false,\n          \"filtered\": false\n        }\n      },\n      \"content_filter_offsets\": {\n        \"start_offset\": 0,\n        \"end_offset\": 864,\n        \"check_offset\": 0\n      }\n    },\n    {\n      \"blocked\": false,\n      \"source_type\": \"completion\",\n      \"content_filter_raw\": [],\n      \"content_filter_results\": {\n        \"protected_material_text\": {\n          \"detected\": false,\n          \"filtered\": false\n        },\n        \"protected_material_code\": {\n          \"detected\": false,\n          \"filtered\": false\n        },\n        \"hate\": {\n          \"filtered\": false,\n          \"severity\": \"safe\"\n        },\n        \"sexual\": {\n          \"filtered\": false,\n          \"severity\": \"safe\"\n        },\n        \"violence\": {\n          \"filtered\": false,\n          \"severity\": \"safe\"\n        },\n        \"self_harm\": {\n          \"filtered\": false,\n          \"severity\": \"safe\"\n        }\n      },\n      \"content_filter_offsets\": {\n        \"start_offset\": 0,\n        \"end_offset\": 6,\n        \"check_offset\": 0\n      }\n    }\n  ],\n  \"error\": null,\n  \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\": \"You are terse.\",\n  \"max_output_tokens\": 64,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt5.4mini\",\n  \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"msg_0166e231059d5767006a9085b6de2c8190b754eb7a49e2142a\",\n      \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n          \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\": [],\n          \"text\": \"Hello!\"\n        }\n      ],\n      \"phase\": \"final_answer\",\n      \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\": \"none\",\n    \"mode\": \"standard\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tool_usage\": {\n    \"image_gen\": {\n      \"input_tokens\": 0,\n      \"input_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"output_tokens\": 0,\n      \"output_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"total_tokens\": 0\n    },\n    \"web_search\": {\n      \"num_requests\": 0\n    }\n  },\n  \"tools\": [],\n  \"top_logprobs\": 0,\n  \"top_p\": 0.98,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 21,\n    \"input_tokens_details\": {\n      \"cache_write_tokens\": 0,\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 6,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 27\n  },\n  \"user\": null,\n  \"metadata\": {}\n}"
+      },
+      "recorded_at": "2026-08-27T18:45:11Z"
+    }
+  ]
+}

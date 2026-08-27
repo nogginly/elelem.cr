@@ -40,7 +40,8 @@ module Elelem
     # protocol-*plus*-deployment concerns.
     def self.for(server : Server, protocol : ProtocolKind, vendor : String? = nil,
                  default_max_tokens : Int32 = Elelem::Protocol::Anthropic::DEFAULT_MAX_TOKENS,
-                 reasoning_unit : Capability::ReasoningUnit? = nil) : Provider
+                 reasoning_unit : Capability::ReasoningUnit? = nil,
+                 max_tokens_field : Protocol::ChatCompletions::Wire::MaxTokensField? = nil) : Provider
       canonical = case protocol
                   in ProtocolKind::ChatCompletions then Elelem::Protocol::ChatCompletions::METADATA_KEY
                   in ProtocolKind::Responses       then Elelem::Protocol::Responses::METADATA_KEY
@@ -50,11 +51,23 @@ module Elelem
 
       resolved = vendor || (server.name == canonical ? canonical : server.name)
 
+      # `max_tokens_field` only means anything to Chat Completions — it is not
+      # a `Capability::Profile` fact, it is a deployment's own spelling
+      # preference for one field. Loud at construction if named for a
+      # protocol that has no such field, same reasoning as the
+      # `reasoning_unit` guard below: a claim about the wire the wire cannot
+      # back.
+      if max_tokens_field && !protocol.chat_completions?
+        raise ArgumentError.new("max_tokens_field only applies to ChatCompletions, not #{protocol}")
+      end
+
       adapter = case protocol
-                in ProtocolKind::ChatCompletions then ChatCompletionsAdapter.new(resolved, reasoning_unit)
-                in ProtocolKind::Responses       then ResponsesAdapter.new(resolved, reasoning_unit)
-                in ProtocolKind::Anthropic       then AnthropicAdapter.new(resolved, reasoning_unit)
-                in ProtocolKind::Gemini          then GeminiAdapter.new(resolved, reasoning_unit)
+                in ProtocolKind::ChatCompletions
+                  ChatCompletionsAdapter.new(resolved, reasoning_unit,
+                    max_tokens_field || Protocol::ChatCompletions::Wire::MaxTokensField::MaxTokens)
+                in ProtocolKind::Responses then ResponsesAdapter.new(resolved, reasoning_unit)
+                in ProtocolKind::Anthropic then AnthropicAdapter.new(resolved, reasoning_unit)
+                in ProtocolKind::Gemini    then GeminiAdapter.new(resolved, reasoning_unit)
                 end
 
       # Loud, and at construction rather than at request time: an override
@@ -68,6 +81,53 @@ module Elelem
             "#{unit} cannot be requested of it")
         end
       end
+
+      new(server, adapter, default_max_tokens)
+    end
+
+    # Azure OpenAI: same wire shape as `openai.chat_completions` or
+    # `openai.responses`, a different path and a different auth header. Kept
+    # apart from `.for` rather than folded into `ProtocolKind`, because Azure
+    # amends *where this deployment lives*, not *what the protocol can
+    # express* — `Capability::Profile` is unchanged, so there is nothing here
+    # for the shared conformance suite's exhaustive `case ProtocolKind` to
+    # gain by knowing Azure exists as a fifth member.
+    #
+    # `protocol` is restricted to the two Azure actually serves. Anthropic and
+    # Gemini shape are refused rather than silently building an adapter that
+    # would misrepresent what the deployment can do — the same asymmetry
+    # narrowing observes everywhere else: refuse a claim the wire cannot back,
+    # never fabricate one.
+    #
+    # `api_version` is required and undefaulted on purpose. Azure's dated
+    # versions drift, and a stale default here would be exactly the kind of
+    # silently-wrong constant this shard has already been burned by twice.
+    def self.for_azure(server : Server, protocol : ProtocolKind, api_version : String,
+                       vendor : String? = nil,
+                       default_max_tokens : Int32 = Elelem::Protocol::Anthropic::DEFAULT_MAX_TOKENS,
+                       reasoning_unit : Capability::ReasoningUnit? = nil,
+                       max_tokens_field : Protocol::ChatCompletions::Wire::MaxTokensField? = nil) : Provider
+      canonical = case protocol
+                  in ProtocolKind::ChatCompletions then Elelem::Protocol::ChatCompletions::METADATA_KEY
+                  in ProtocolKind::Responses       then Elelem::Protocol::Responses::METADATA_KEY
+                  in ProtocolKind::Anthropic, ProtocolKind::Gemini
+                    raise ArgumentError.new("Azure OpenAI does not serve #{protocol} — only ChatCompletions and Responses")
+                  end
+      resolved = vendor || (server.name == canonical ? canonical : server.name)
+
+      if max_tokens_field && !protocol.chat_completions?
+        raise ArgumentError.new("max_tokens_field only applies to ChatCompletions, not #{protocol}")
+      end
+
+      adapter = case protocol
+                in ProtocolKind::ChatCompletions
+                  AzureChatCompletionsAdapter.new(api_version, resolved, reasoning_unit,
+                    max_tokens_field || Protocol::ChatCompletions::Wire::MaxTokensField::MaxTokens)
+                in ProtocolKind::Responses
+                  AzureResponsesAdapter.new(api_version, resolved, reasoning_unit)
+                in ProtocolKind::Anthropic, ProtocolKind::Gemini
+                  raise ArgumentError.new("Azure OpenAI does not serve #{protocol} — only ChatCompletions and Responses")
+                end
 
       new(server, adapter, default_max_tokens)
     end

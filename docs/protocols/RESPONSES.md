@@ -87,6 +87,28 @@ We target the stateless mode. Three reasons, in order of weight:
 
 When handles arrive they live in a provider binding, never in the profile.
 
+## Azure
+
+Same wire shape as plain OpenAI Responses — nothing in this document changes.
+Only path and auth differ, in `AzureResponsesAdapter`.
+
+**Unlike Azure's own Chat Completions surface, the deployment is not in the
+path here.** Confirmed against a live deployment's own portal rather than
+documentation, which disagreed with itself on this point (some pages describe
+an undated `v1` surface with the deployment in the body only; others a dated,
+path-based one). What is actually served: `/openai/responses`, deployment name
+in the body's `model` field exactly as `Protocol::Responses::Mapper` already
+writes it, `api-version` as a required dated query parameter. So Azure amends
+Chat Completions and Responses **differently from each other**, not by one
+shared rule — the asymmetry `AzureChatCompletionsAdapter` and
+`AzureResponsesAdapter` exist separately to express.
+
+Built via `Provider.for_azure(server, ProtocolKind::Responses, api_version, ...)`.
+
+Reasoning unit is `Effort` here too, so the deployment-name-is-not-a-model-name
+problem that matters for Anthropic and Gemini is inert on this protocol as
+well — see the equivalent note in `CHAT_COMPLETIONS.md`.
+
 ## Conformance
 
 `spec/conformance/responses_spec.cr`. Sixteen fixtures round-trip untouched.

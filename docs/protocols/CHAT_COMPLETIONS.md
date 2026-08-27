@@ -138,6 +138,36 @@ indistinguishable from a carrier.
 
 Structural recognition narrows this. It does not close it, and cannot.
 
+## Azure
+
+Azure OpenAI serves this exact wire shape — same `Profile`, same mapper, same
+exporter — at a different address, with different auth. Nothing above changes;
+only `Adapter#path` and `Adapter#headers` do, in `AzureChatCompletionsAdapter`.
+
+Fact          |Plain OpenAI-shaped endpoint|Azure                                                             
+--------------|----------------------------|------------------------------------------------------------------
+Path          |`/v1/chat/completions`      |`/openai/deployments/{deployment}/chat/completions`               
+Model identity|body `model` field          |the path segment; `model` is still sent but ignored there         
+Version       |none                        |required query parameter, `api-version`, e.g. `2025-04-01-preview`
+Auth header   |`authorization: Bearer ...` |`api-key: ...`                                                    
+
+Built via `Provider.for_azure(server, ProtocolKind::ChatCompletions, api_version, ...)`,
+not `Provider.for` — see `provider.cr`'s doc comment for why Azure is a separate
+factory rather than a fifth `ProtocolKind`.
+
+**The deployment name is not the model name.** Azure lets an operator call a
+`gpt-...` deployment anything — `prod-reasoning-2` is a real example elsewhere
+in this codebase. `Capability::Catalog` resolves `reasoning_unit` by exact model
+string, so an opaque deployment name simply falls through to this protocol's
+declared `Effort` unit, which is a no-op here regardless — Chat Completions
+never had an ambiguous unit to resolve. The deployment-name problem is real for
+Anthropic and Gemini behind a gateway; it is inert here.
+
+**The carrier-ordering requirement above is Azure's.** *Carriers are deferred,
+not inline* names Azure specifically as one of the strict servers that rejects
+scaffolding interleaved between tool results. Confirmed against Azure's own
+documented behaviour before this section existed; nothing new to record there.
+
 ## Conformance
 
 `spec/conformance/chat_completions_spec.cr`. Fourteen fixtures must round-trip

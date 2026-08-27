@@ -13,6 +13,31 @@ module Elelem::Protocol::ChatCompletions
   # field, content is either a string or a part array, and images are fused into
   # `data:` URIs. Every one of those is a thing MPSH refuses to store.
   module Wire
+    # Which spelling of the output cap this deployment wants.
+    #
+    # OpenAI deprecated `max_tokens` in favour of `max_completion_tokens` for
+    # its reasoning-model line, and a reasoning model now rejects the old
+    # spelling outright rather than tolerating it — confirmed live, not
+    # assumed, against `gpt5.4mini` on Azure.
+    #
+    # This is not a `Capability::Profile` fact: it is not what the *protocol*
+    # can express, it is which spelling one *deployment* behind it wants, and
+    # two deployments speaking the identical protocol can want different
+    # answers. Ollama, LM Studio and llama.cpp — the emulators, not implementing
+    # OpenAI's own service — only ever accept `max_tokens`;
+    # `max_completion_tokens` support has been an open, unresolved request
+    # against Ollama's compatible endpoint for over a year. Silently
+    # defaulting to the new spelling would not degrade gracefully there, it
+    # would stop capping output entirely — the exact silent-runaway failure
+    # `spec_helper.cr` and `DEVELOPMENT.md` already record this shard being
+    # burned by once. So `MaxTokens` stays the default everywhere, and a
+    # deployment known to need the new spelling says so explicitly — see
+    # `ChatCompletionsAdapter#initialize`.
+    enum MaxTokensField
+      MaxTokens
+      MaxCompletionTokens
+    end
+
     # A single piece of message content.
     abstract struct Part
       abstract def to_json(json : JSON::Builder)
@@ -195,6 +220,7 @@ module Elelem::Protocol::ChatCompletions
       getter messages : Array(Message)
       getter tools : Array(ToolDeclaration)
       getter max_tokens : Int32?
+      getter max_tokens_field : MaxTokensField
       # A bare string at the top level: the flattest of the four spellings of
       # this idea. `nil` omits the field, leaving the model's own default.
       getter reasoning_effort : String?
@@ -202,7 +228,8 @@ module Elelem::Protocol::ChatCompletions
       def initialize(@model : String, @messages : Array(Message),
                      @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
                      @max_tokens : Int32? = nil,
-                     @reasoning_effort : String? = nil)
+                     @reasoning_effort : String? = nil,
+                     @max_tokens_field : MaxTokensField = MaxTokensField::MaxTokens)
       end
 
       def to_json(json : JSON::Builder)
@@ -212,7 +239,10 @@ module Elelem::Protocol::ChatCompletions
           unless @tools.empty?
             json.field("tools") { json.array { @tools.each(&.to_json(json)) } }
           end
-          @max_tokens.try { |value| json.field "max_tokens", value }
+          @max_tokens.try do |value|
+            field = @max_tokens_field.max_tokens? ? "max_tokens" : "max_completion_tokens"
+            json.field field, value
+          end
           @reasoning_effort.try { |value| json.field "reasoning_effort", value }
         end
       end

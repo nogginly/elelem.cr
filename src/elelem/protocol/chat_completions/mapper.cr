@@ -25,9 +25,11 @@ module Elelem::Protocol::ChatCompletions
   class Mapper
     getter profile : Capability::Profile
     getter calls : MPSH::CallIdTable
+    getter max_tokens_field : Wire::MaxTokensField
 
     def initialize(@profile : Capability::Profile = PROFILE,
-                   @calls : MPSH::CallIdTable = MPSH::CallIdTable.new(NAME))
+                   @calls : MPSH::CallIdTable = MPSH::CallIdTable.new(NAME),
+                   @max_tokens_field : Wire::MaxTokensField = Wire::MaxTokensField::MaxTokens)
     end
 
     def map(session : MPSH::Session, model : String,
@@ -60,7 +62,7 @@ module Elelem::Protocol::ChatCompletions
 
       flush_compensation(wire, pending, report)
       {Wire::Request.new(model, wire, declarations(options), options.max_output_tokens,
-        reasoning_effort(options, report)), report}
+        reasoning_effort(options, report), @max_tokens_field), report}
     end
 
     # The named rung, lowercase, or nothing at all.

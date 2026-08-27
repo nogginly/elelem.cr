@@ -1,0 +1,56 @@
+{
+  "name": "azure_chat_completions_text",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://oxaro-alpha.openai.azure.com/openai/deployments/gpt5.4mini/chat/completions?api-version=2025-04-01-preview",
+        "headers": {
+          "content-type": "application/json",
+          "api-key": "[FILTERED]",
+          "Content-Length": "193",
+          "Host": "oxaro-alpha.openai.azure.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt5.4mini\",\"messages\":[{\"role\":\"system\",\"content\":\"You are terse.\"},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Say hello in one short sentence.\"}]}],\"max_completion_tokens\":64}",
+        "body_digest": "12b9dc129c63d931e9a7fc36f28970c6044a4ecd85dcc1e2d6e7c56bce486fbe"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Length": "1449",
+          "Content-Type": "application/json",
+          "Date": "Thu, 27 Aug 2026 18:45:08 GMT",
+          "Server": "istio-envoy",
+          "azureai-fe-is-streaming": "False",
+          "azureai-fe-offer-type": "paygo",
+          "azureml-model-session": "d20260826075037-19189c8e",
+          "skip-error-remapping": "true",
+          "x-accel-buffering": "no",
+          "x-ms-is-spilled-over": "false",
+          "x-ms-rai-invoked": "true",
+          "x-ms-served-model": "gpt-5.4-mini-2026-03-17",
+          "x-ratelimit-abusepenalty-active": "False",
+          "x-ratelimit-key": "gpt5.4mini",
+          "x-ratelimit-limit-requests": "150",
+          "x-ratelimit-limit-tokens": "150000",
+          "x-ratelimit-remaining-requests": "149",
+          "x-ratelimit-remaining-tokens": "149979",
+          "x-ratelimit-renewalperiod-requests": "60",
+          "x-ratelimit-renewalperiod-tokens": "60",
+          "x-ratelimit-reset-requests": "0",
+          "x-ratelimit-reset-tokens": "0",
+          "x-request-id": "06dc1bd5-bb99-4eef-8f72-6ed4f4679d27",
+          "apim-request-id": "9092cef8-985b-45e7-9e80-bbd4e00a8b2e",
+          "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+          "X-Content-Type-Options": "nosniff",
+          "x-ms-region": "Canada East"
+        },
+        "body": "{\"choices\":[{\"content_filter_results\":{\"hate\":{\"filtered\":false,\"severity\":\"safe\"},\"protected_material_code\":{\"detected\":false,\"filtered\":false},\"protected_material_text\":{\"detected\":false,\"filtered\":false},\"self_harm\":{\"filtered\":false,\"severity\":\"safe\"},\"sexual\":{\"filtered\":false,\"severity\":\"safe\"},\"violence\":{\"filtered\":false,\"severity\":\"safe\"}},\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"annotations\":[],\"content\":\"Hello!\",\"refusal\":null,\"role\":\"assistant\"}}],\"created\":1787856309,\"id\":\"chatcmpl-EHZO1ASInwrrIAjCocjc1MwBd276s\",\"model\":\"gpt-5.4-mini-2026-03-17\",\"object\":\"chat.completion\",\"prompt_filter_results\":[{\"prompt_index\":0,\"content_filter_results\":{\"hate\":{\"filtered\":false,\"severity\":\"safe\"},\"jailbreak\":{\"detected\":false,\"filtered\":false},\"self_harm\":{\"filtered\":false,\"severity\":\"safe\"},\"sexual\":{\"filtered\":false,\"severity\":\"safe\"},\"violence\":{\"filtered\":false,\"severity\":\"safe\"}}}],\"service_tier\":\"default\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":6,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":0,\"rejected_prediction_tokens\":0},\"latency_checkpoint\":{\"engine_tbt_ms\":5,\"engine_ttft_ms\":36,\"engine_ttlt_ms\":64,\"pre_inference_ms\":104,\"service_tbt_ms\":6,\"service_ttft_ms\":421,\"service_ttlt_ms\":445,\"total_duration_ms\":350,\"user_visible_ttft_ms\":317},\"prompt_tokens\":21,\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0},\"total_tokens\":27}}\n"
+      },
+      "recorded_at": "2026-08-27T18:45:09Z"
+    }
+  ]
+}

@@ -129,6 +129,15 @@ module Elelem
       headers
     end
 
+    # Azure's spelling, shared by every Azure adapter regardless of which
+    # protocol it carries: the credential is a plain header value, never a
+    # bearer token.
+    private def api_key(credential : String?) : HTTP::Headers
+      headers = HTTP::Headers{"content-type" => "application/json"}
+      credential.try { |value| headers["api-key"] = value }
+      headers
+    end
+
     # Both OpenAI protocols and Anthropic nest the message the same way.
     private def nested_error(body : String) : String?
       JSON.parse(body)["error"]?.try(&.["message"]?).try(&.as_s?)
@@ -138,6 +147,16 @@ module Elelem
   end
 
   class ChatCompletionsAdapter < Adapter
+    # Which spelling of the output cap this deployment wants. See
+    # `Protocol::ChatCompletions::Wire::MaxTokensField` for why this defaults
+    # to the old spelling everywhere rather than the new one anywhere.
+    getter max_tokens_field : Protocol::ChatCompletions::Wire::MaxTokensField
+
+    def initialize(vendor : String? = nil, reasoning_unit : Capability::ReasoningUnit? = nil,
+                   @max_tokens_field : Protocol::ChatCompletions::Wire::MaxTokensField = Protocol::ChatCompletions::Wire::MaxTokensField::MaxTokens)
+      super(vendor, reasoning_unit)
+    end
+
     def profile : Capability::Profile
       Protocol::ChatCompletions::PROFILE
     end
@@ -157,7 +176,7 @@ module Elelem
     def prepare(session : MPSH::Session, model : String, policy : Capability::Policy,
                 retention : Capability::ReasoningRetention, max_tokens : Int32,
                 options : Options = Options.new) : Exchange
-      mapper = Protocol::ChatCompletions::Mapper.new(narrowed(model))
+      mapper = Protocol::ChatCompletions::Mapper.new(narrowed(model), max_tokens_field: @max_tokens_field)
       request, report = mapper.map(session, model, policy, retention, options)
       exporter = Protocol::ChatCompletions::Exporter.new(mapper.calls)
 
@@ -262,6 +281,56 @@ module Elelem
       exporter = Protocol::Gemini::Exporter.new(mapper.calls)
 
       Exchange.new(request.to_json, report, ->(body : String) { exporter.export_reply(body) })
+    end
+  end
+
+  # Azure OpenAI speaks Chat Completions and Responses over the same wire
+  # shapes as their `openai.*` originals — same `Profile`, same mapper, same
+  # exporter — but is neither the same *server* nor the same *deployment*
+  # concern. `api_version` is a required, dated query parameter Azure demands
+  # on every call, which is why it lives here rather than in `Options`: it is
+  # a fact about this deployment, not this request. See `Provider.for_azure`.
+  #
+  # Both Azure adapters inherit `profile`, `error_detail` and `prepare`
+  # unchanged from their Chat-Completions-family base — path and headers are
+  # the only two facts Azure actually amends.
+  class AzureChatCompletionsAdapter < ChatCompletionsAdapter
+    def initialize(@api_version : String, vendor : String? = nil,
+                   reasoning_unit : Capability::ReasoningUnit? = nil,
+                   max_tokens_field : Protocol::ChatCompletions::Wire::MaxTokensField = Protocol::ChatCompletions::Wire::MaxTokensField::MaxTokens)
+      super(vendor, reasoning_unit, max_tokens_field)
+    end
+
+    # `model` here is the deployment name — Azure conflates the two, so no
+    # separate parameter is needed. The deployment name still lands in the
+    # request body too (`Protocol::ChatCompletions::Mapper` writes `model`
+    # regardless); Azure ignores it there and only the path segment counts.
+    def path(model : String) : String
+      "/openai/deployments/#{URI.encode_path_segment(model)}/chat/completions?api-version=#{@api_version}"
+    end
+
+    def headers(credential : String?) : HTTP::Headers
+      api_key(credential)
+    end
+  end
+
+  class AzureResponsesAdapter < ResponsesAdapter
+    def initialize(@api_version : String, vendor : String? = nil,
+                   reasoning_unit : Capability::ReasoningUnit? = nil)
+      super(vendor, reasoning_unit)
+    end
+
+    # Unlike Chat Completions, Azure's Responses surface does not put the
+    # deployment in the path — confirmed against a live deployment's own
+    # portal, not documentation, which disagreed with itself on this point.
+    # The deployment name rides in the body as `model`, exactly as
+    # `Protocol::Responses::Mapper` already writes it for plain OpenAI.
+    def path(model : String) : String
+      "/openai/responses?api-version=#{@api_version}"
+    end
+
+    def headers(credential : String?) : HTTP::Headers
+      api_key(credential)
     end
   end
 end
