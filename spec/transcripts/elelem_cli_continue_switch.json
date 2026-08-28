@@ -1,0 +1,31 @@
+{
+  "name": "elelem_cli_continue_switch",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "1089",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"What is the tallest mountain on Earth? Answer in one short sentence.\"}]},{\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Mount Everest is the tallest mountain above sea level.\\n    *   Mauna Kea is the tallest from base to peak, but Everst is the standard answer for \\\"tallest mountain on Earth\\\".\\n\\n    *   *Draft 1:* Mount Everest is the tallest mountain on Earth. (Simple, direct, one sentence).\\n    *   *Draft 2:* The tallest mountain on Earth is Mount Everest. (Also good).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\\n\\n    *   One sentence? Yes.\\n    *   Short? Yes.\\n    *   Accurate? Yes.\"}]},{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}]},{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Why is that?\"}]}]}",
+        "body_digest": "0a805d0bbd3a1da0b03c4d52be1eaf5389f37d0c903882cbbbe26a29df8ff61e"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Fri, 28 Aug 2026 15:13:37 GMT",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\"id\":\"resp_607592\",\"object\":\"response\",\"created_at\":1787930017,\"completed_at\":1787930017,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gemma4:26b-mxfp8\",\"previous_response_id\":null,\"instructions\":null,\"output\":[{\"id\":\"rs_resp_607592\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"*   Question: \\\"Why is that?\\\" (referring to Mount Everest being the tallest mountain on Earth).\\n    *   Context: Previous interaction established Mount Everest is the tallest.\\n    *   Constraint: None specified, but usually, a clear, informative explanation is expected.\\n\\n    *   *Geological mechanism:* Tectonic plate movement.\\n    *   *Specific plates:* Indian Plate colliding with the Eurasian Plate.\\n    *   *Process:* Convergent boundary, crustal thickening/folding/uplift.\\n\\n    *   *Draft 1 (Simple):* It's because the Indian Plate is crashing into the Eurasian Plate, which pushes the land up.\\n    *   *Draft 2 (Scientific):* Mount Everest was formed by the collision of the Indian and Eurasian tectonic plates, which caused the Earth's crust to fold and rise upward.\\n    *   *Draft 3 (Nuanced/Detailed):* It was formed by a tectonic collision between the Indian Plate and the Eurasian Plate, a process called continental collision that continues to push the mountain higher today.\\n\\n    *   Explain the *collision* of tectonic plates (Indian and Eurasian).\\n    *   Explain the *process* (convergent boundary/uplift).\\n    *   Mention that it's *still growing* (adds depth).\\n\\n    *   \\\"Mount Everest was formed by the ongoing collision between the Indian Plate and the Eurasian Plate, which pushes the Earth's crust upward.\\\"\"}],\"encrypted_content\":\"*   Question: \\\"Why is that?\\\" (referring to Mount Everest being the tallest mountain on Earth).\\n    *   Context: Previous interaction established Mount Everest is the tallest.\\n    *   Constraint: None specified, but usually, a clear, informative explanation is expected.\\n\\n    *   *Geological mechanism:* Tectonic plate movement.\\n    *   *Specific plates:* Indian Plate colliding with the Eurasian Plate.\\n    *   *Process:* Convergent boundary, crustal thickening/folding/uplift.\\n\\n    *   *Draft 1 (Simple):* It's because the Indian Plate is crashing into the Eurasian Plate, which pushes the land up.\\n    *   *Draft 2 (Scientific):* Mount Everest was formed by the collision of the Indian and Eurasian tectonic plates, which caused the Earth's crust to fold and rise upward.\\n    *   *Draft 3 (Nuanced/Detailed):* It was formed by a tectonic collision between the Indian Plate and the Eurasian Plate, a process called continental collision that continues to push the mountain higher today.\\n\\n    *   Explain the *collision* of tectonic plates (Indian and Eurasian).\\n    *   Explain the *process* (convergent boundary/uplift).\\n    *   Mention that it's *still growing* (adds depth).\\n\\n    *   \\\"Mount Everest was formed by the ongoing collision between the Indian Plate and the Eurasian Plate, which pushes the Earth's crust upward.\\\"\"},{\"id\":\"msg_554435\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Mount Everest was formed by the ongoing collision between the **Indian Plate** and the **Eurasian Plate**. As these two tectonic plates push against each other, the Earth's crust is forced upward, a process that continues to make the mountain even taller today.\",\"annotations\":[],\"logprobs\":[]}]}],\"error\":null,\"tools\":[],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":null,\"usage\":{\"input_tokens\":53,\"output_tokens\":363,\"total_tokens\":416,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-08-28T15:13:37Z"
+    }
+  ]
+}

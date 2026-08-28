@@ -43,11 +43,20 @@ module Elelem::Cli
     # `$CWD/elelem.yaml`, then `$HOME/elelem.yaml`. See `docs/CLI_DESIGN.md`.
     def self.load : Config
       path = locate || raise ConfigError.new(
-        "no elelem.yaml found in #{Dir.current} or $HOME — see docs/CLI_DESIGN.md for the format")
+        "no elelem.yaml found via $ELELEM_CONFIG, #{Dir.current}, or $HOME — see docs/CLI_DESIGN.md")
       from_yaml(File.read(path))
     end
 
+    # Explicit beats implicit: `$ELELEM_CONFIG`, if set, names the file
+    # directly and skips the search — the same reasoning `$ELELEM_HOME`
+    # already exists for `Sessions`. Not just a testing convenience: without
+    # it, a sandboxed test has no way to avoid being shadowed by whatever
+    # real `elelem.yaml` an actual invocation happens to have left sitting in
+    # `$CWD` or `$HOME` — checking `$CWD` first is right for normal use, but
+    # gives an explicit override nothing to override *with*.
     def self.locate : String?
+      return ENV["ELELEM_CONFIG"]? if ENV["ELELEM_CONFIG"]?
+
       cwd_candidate = File.join(Dir.current, "elelem.yaml")
       return cwd_candidate if File.exists?(cwd_candidate)
 

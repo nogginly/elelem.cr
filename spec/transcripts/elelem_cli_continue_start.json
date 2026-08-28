@@ -1,0 +1,31 @@
+{
+  "name": "elelem_cli_continue_start",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "163",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth? Answer in one short sentence.\"}]}]}",
+        "body_digest": "9d7beae77fe24f5cfbc99dc777763938604d7ec09048a73851db7c08e6b925a6"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Fri, 28 Aug 2026 15:13:23 GMT",
+          "Content-Length": "975"
+        },
+        "body": "{\"id\":\"chatcmpl-143\",\"object\":\"chat.completion\",\"created\":1787930003,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the tallest mountain on Earth.\",\"reasoning\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Mount Everest is the tallest mountain above sea level.\\n    *   Mauna Kea is the tallest from base to peak, but Everst is the standard answer for \\\"tallest mountain on Earth\\\".\\n\\n    *   *Draft 1:* Mount Everest is the tallest mountain on Earth. (Simple, direct, one sentence).\\n    *   *Draft 2:* The tallest mountain on Earth is Mount Everest. (Also good).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\\n\\n    *   One sentence? Yes.\\n    *   Short? Yes.\\n    *   Accurate? Yes.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":172,\"total_tokens\":202}}\n"
+      },
+      "recorded_at": "2026-08-28T15:13:23Z"
+    }
+  ]
+}

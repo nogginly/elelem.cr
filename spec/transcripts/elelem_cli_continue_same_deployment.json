@@ -1,0 +1,31 @@
+{
+  "name": "elelem_cli_continue_same_deployment",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "content-type": "application/json",
+          "Content-Length": "978",
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gemma4:26b-mxfp8\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth? Answer in one short sentence.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth.\"}],\"reasoning_content\":\"*   Question: \\\"What is the tallest mountain on Earth?\\\"\\n    *   Constraint: \\\"Answer in one short sentence.\\\"\\n\\n    *   Mount Everest is the tallest mountain above sea level.\\n    *   Mauna Kea is the tallest from base to peak, but Everst is the standard answer for \\\"tallest mountain on Earth\\\".\\n\\n    *   *Draft 1:* Mount Everest is the tallest mountain on Earth. (Simple, direct, one sentence).\\n    *   *Draft 2:* The tallest mountain on Earth is Mount Everest. (Also good).\\n\\n    *   \\\"Mount Everest is the tallest mountain on Earth.\\\"\\n\\n    *   One sentence? Yes.\\n    *   Short? Yes.\\n    *   Accurate? Yes.\"},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Why is that?\"}]}]}",
+        "body_digest": "83104bf99f32c192110e7b56ece2518acf742a49ab00f0a2597fe1b1ec808e5f"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Fri, 28 Aug 2026 15:13:32 GMT",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\"id\":\"chatcmpl-482\",\"object\":\"chat.completion\",\"created\":1787930012,\"model\":\"gemma4:26b-mxfp8\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mount Everest is the highest point above sea level because of the continuous collision between the **Indian and Eurasian tectonic plates**, which forces the Earth's crust upward to form the Himalayan mountain range.\\n\\nHowever, \\\"tallest\\\" can be defined in different ways:\\n* **From base to peak:** Mauna Kea in Hawaii is taller, but much of it is underwater.\\n* **From the Earth's center:** Mount Chimborazo in Ecuador is the farthest point from the Earth's core due to the Earth's equatorial bulge.\",\"reasoning\":\"*   Question: \\\"Why is that?\\\" (referring to the previous question/answer about Mount Everest being the tallest mountain).\\n    *   Constraint: None specified, but usually, explanations should be clear and accurate.\\n\\n    *   What makes Mount Everest the tallest?\\n    *   Key geological reason: Tectonic plate movement (Indian Plate colliding with the Eurasian Plate).\\n    *   Nuance: There are different ways to measure \\\"tallest\\\" (altitude vs. base-to-peak vs. distance from center).\\n\\n    *   *Altitude (Above Sea Level):* Mount Everest is the highest point on Earth relative to sea level.\\n    *   *Geology:* The collision of the Indian and Eurasian tectonic plates caused the Himalayas to rise.\\n    *   *Nuance/Comparison:*\\n        *   Mauna Kea is taller from base to peak (underwater base).\\n        *   Mount Chimborazo is farther from the Earth's center (due to equatorial bulge).\\n\\n    *   *Draft 1 (Simple):* It is the highest because of tectonic plate collision.\\n    *   *Draft 2 (More detail):* Mount Everest is the tallest because the Indian tectonic plate is crashing into the Eurasian plate, pushing the land upward.\\n    *   *Draft 3 (Comprehensive/Nuanced):* It is the highest point above sea level because the Indian and Eurasian tectonic plates are constantly colliding, which pushes the Himalayan mountains upward. However, if you measure from the base to the peak, Mauna Kea is taller, and if you measure from the Earth's center, Mount Chimborazo is further away.\\n\\n    *   Start with the primary reason (Altitude/Sea level/Tectonics).\\n    *   Briefly mention the \\\"why\\\" of the measurement (Tectonic uplift).\\n    *   (Optional but helpful) Mention the different ways to measure \\\"tallest\\\" to provide a complete answer.\\n\\n    \\\"Mount Everest is the highest point above sea level because of the continuous collision between the Indian and Eurasian tectonic plates, which forces the Earth's crust upward.\\\"\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":53,\"completion_tokens\":556,\"total_tokens\":609}}\n"
+      },
+      "recorded_at": "2026-08-28T15:13:32Z"
+    }
+  ]
+}

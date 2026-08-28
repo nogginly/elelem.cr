@@ -22,19 +22,21 @@ module Elelem::Cli
       knoll lantern maple nectar orchid pebble quarry ridge sparrow
       tundra vale wren]
 
-    # `$CWD/.elelem` if it exists, else `$HOME/.elelem`, else `$ELELEM_HOME` —
-    # the last mainly for scripting and CI, where `$HOME` may not be set or
-    # may not mean what it usually does.
+    # `$ELELEM_HOME` first if set — explicit beats implicit, the same
+    # reasoning `Config` now applies to `$ELELEM_CONFIG`. This is a change
+    # from the original order (`$CWD`, then `$HOME`, then `$ELELEM_HOME` as
+    # a last resort): a real invocation's `.elelem` sitting in `$CWD` or
+    # `$HOME` gave a sandboxed test nothing to override it with, the same gap
+    # that showed up first in `Config`. Checking `$CWD` before `$HOME` is
+    # still right for ordinary use; explicit still beats both.
     def root : String
+      return ENV["ELELEM_HOME"] if ENV["ELELEM_HOME"]?
+
       cwd_candidate = File.join(Dir.current, ".elelem")
       return cwd_candidate if Dir.exists?(cwd_candidate)
 
       if home = ENV["HOME"]?
         return File.join(home, ".elelem")
-      end
-
-      if elelem_home = ENV["ELELEM_HOME"]?
-        return elelem_home
       end
 
       raise SessionError.new("no $HOME and no $ELELEM_HOME — nowhere to store sessions")

@@ -92,7 +92,10 @@ calls `Client#send`, hands back the reply and report.
 
 ## Config: `elelem.yaml`
 
-Search order: `$CWD/elelem.yaml`, then `$HOME/elelem.yaml`. A deployment
+Search order: `$ELELEM_CONFIG` if set — the literal path, no search — else
+`$CWD/elelem.yaml`, then `$HOME/elelem.yaml`. Explicit beats implicit: an
+env var naming the file directly always wins over guessing from what
+happens to exist. A deployment
 name is a config-level identity, deliberately distinct from a protocol —
 the same separation `Provider.for` already enforces between server, protocol,
 and vendor claim, so a name like `anthropic` can't be quietly ambiguous
@@ -129,9 +132,12 @@ vocabulary as new deployment amendments arrive.
 
 ## Session storage
 
-`$CWD/.elelem` if it exists, else `$HOME/.elelem`, else `$ELELEM_HOME` as a
-final override — mainly for scripting and CI, where "home" may not mean
-what it usually does. A `sessions/` subfolder, one folder per session.
+`$ELELEM_HOME` if set, else `$CWD/.elelem` if it exists, else `$HOME/.elelem`.
+Promoted to first once `Config` needed the same escape hatch for
+`$ELELEM_CONFIG` — an explicit path someone actually pulled up should not
+lose to whatever `.elelem` a real invocation happened to leave sitting in
+`$CWD` or `$HOME`, and that's exactly what only checking `$CWD` first could
+not offer. A `sessions/` subfolder, one folder per session.
 
 Session IDs: generated, short, memorable — adjective-noun pairs (`brisk-comet`)
 over a hash prefix, for the same reason git branch names and Docker container
