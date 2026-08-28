@@ -6,13 +6,14 @@ rather than restates.
 
 ## Read in this order
 
-Document                    |Why                                                                           
-----------------------------|------------------------------------------------------------------------------
-`docs/MPSH_SPECIFICATION.md`|Authoritative. §8a records what the checkpoint established and what it did not
-`SCOPE.md`                  |The worklist. Every open question, each with the trap that makes it awkward   
-`DEVELOPMENT.md`            |Layering, conventions, how an agent uses the shard, how to add a protocol     
-`docs/protocols/*.md`       |One per protocol: declared capabilities, limits, the bugs each produced       
-`docs/servers/*.md`         |One per server: what it serves, where it diverges, what a green run misses    
+Document                    |Why                                                                            
+----------------------------|-------------------------------------------------------------------------------
+`docs/MPSH_SPECIFICATION.md`|Authoritative. §8a records what the checkpoint established and what it did not 
+`SCOPE.md`                  |The worklist. Every open question, each with the trap that makes it awkward    
+`DEVELOPMENT.md`            |Layering, conventions, how an agent uses the shard, how to add a protocol      
+`docs/protocols/*.md`       |One per protocol: declared capabilities, limits, the bugs each produced        
+`docs/servers/*.md`         |One per server: what it serves, where it diverges, what a green run misses     
+`docs/CLI_DESIGN.md`        |The `elelem` executable: config, session storage, verb grammar, what's deferred
 
 Where this file and `docs/MPSH_SPECIFICATION.md` disagree, the specification
 wins.
@@ -81,6 +82,27 @@ against — same shape as `reasoning_unit`'s existing override, and the same
 justification. Detail in `docs/servers/AZURE.md` and
 `docs/protocols/CHAT_COMPLETIONS.md`'s own *Live finding* sections.
 
+**Two things now exist beyond the live protocol layer itself.**
+`MPSH::Archive` (`src/elelem/mpsh/archive.cr`) round-trips a `Session` to
+JSON and back — the piece the whole portable-history pitch was missing,
+since nothing previously turned a `Session` into anything that could
+survive past one process. Tested against the full MPSH fixture set through
+`Conformance.compare`, zero divergence required (`spec/mpsh/archive_spec.cr`)
+— a stricter bar than any protocol gets, since this isn't a capability
+adaptation and has no matrix to excuse a difference.
+
+And `elelem` now ships as more than a library: `start`/`continue`
+(`src/elelem_cli/`, entrypoint `src/elelem_cli.cr`) build one
+`elelem.yaml`-configured deployment into a session snapshot per turn.
+`continue` remembers which deployment last answered a given session by
+reading it off the snapshot's own filename, rather than falling back to a
+global config default — `docs/CLI_DESIGN.md` records that a `default_deployment`
+config key was tried first and rejected, not merely skipped, because it
+answered "what does the config prefer" when what `continue` needs is "what
+was this conversation already having." Live-tested in-process against a
+sandboxed config and session store, recorded against Ollama
+(`spec/elelem_cli/commands/`).
+
 ## The live layer
 
 Built and described in `DEVELOPMENT.md` — *Layering*, *Three identities, kept
@@ -95,16 +117,20 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-All four protocols and a fifth deployment (Azure, atop Chat Completions and
-Responses) are now exercised live. `SCOPE.md`'s `MUST FIX` section is what's
-left and unsequenced: a Gemini tool call carrying a foreign or missing thought
-signature, and interrupted-turn session repair are both real, both confirmed
-live-reproducible, and neither built yet.
+All four protocols, a fifth deployment (Azure), `Archive`, and a first-party
+CLI are now built and live-tested. Two separate worklists, not one:
+
+- **Protocol side** — `SCOPE.md`'s `MUST FIX`: a Gemini tool call carrying a
+  foreign or missing thought signature, and interrupted-turn session repair.
+  Both real, both confirmed live-reproducible, neither built yet.
+- **CLI side** — `docs/CLI_DESIGN.md`'s own *Deliberately deferred, not
+  forgotten*: tool support, streaming, session-inspection verbs
+  (`list`/`show`). None chosen or sequenced yet.
 
 ### On Ollama
 
 What it serves, where it diverges, and what a green run there does *not* prove:
-`docs/servers/ollama.md`. Read it before treating any live green as having
+`docs/servers/OLLAMA.md`. Read it before treating any live green as having
 closed an open question — Ollama has no signature to validate, which is
 exactly why the narrowing default needed a real Anthropic recording rather
 than a green run here to settle it. See `docs/protocols/ANTHROPIC.md`.
@@ -125,6 +151,18 @@ than a green run here to settle it. See `docs/protocols/ANTHROPIC.md`.
   native. Pinned already in `spec/conformance/layer_spec.cr`; check there —
   or the protocol's own doc — before assuming a Restructured result is new
   information.
+- **A test's own sandboxing can break the thing it's testing around it.**
+  Two `elelem_cli` specs `Dir.cd`'d into a temp directory to sandbox
+  `Sessions`/`Config`'s filesystem resolution, and silently broke Wiretap's
+  own relative transcript path doing it — Wiretap resolves that path against
+  the real process CWD too. Every spec passed, because the live call to
+  Ollama still succeeded; the recordings just never landed anywhere real,
+  and the sandbox's own cleanup deleted whatever had been written into it
+  before anyone noticed. Fixed by giving `Sessions`/`Config` an explicit
+  env-var override (`$ELELEM_HOME`, `$ELELEM_CONFIG`) instead of moving the
+  process's CWD at all: sandbox exactly what the code under test reads,
+  never anything downstream of it that happens to read the same ambient
+  state.
 - **Corrections cluster in the capability model, not the format.** Three came
   from declaring profiles and round-tripping fixtures; all three changed the
   capability model. Gemini, the protocol most likely to break MPSH, changed only
