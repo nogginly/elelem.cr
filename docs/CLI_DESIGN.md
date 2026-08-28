@@ -1,8 +1,8 @@
 # CLI Design
 
-**Status**: Decisions settled so far, ahead of any code. Nothing under
-`src/elelem/cli/` exists yet — this document is what it should be built
-against, and the record of *why*, so a decision made once in conversation
+**Status**: `src/elelem_cli/` and `src/elelem_cli.cr` now exist — `start` and
+`continue` are built. What follows is still the record of *why*, kept
+current rather than archived, so a decision made once in conversation
 doesn't get silently re-made differently later.
 
 **Scope**: The `elelem` executable — config resolution, deployment naming,
@@ -29,27 +29,34 @@ stdlib. The zero-runtime-dependency posture stays true of what
 `require "elelem"` pulls in.
 
 ```
-src/elelem/            # the library — unchanged by any of this
-  mpsh/archive.cr        # NEW, but a library concern: Session ↔ JSON,
-                          # independent of the CLI existing at all
+src/elelem/             # the library — unchanged by any of this
+  mpsh/archive.cr          # a library concern: Session ↔ JSON,
+                           # independent of the CLI existing at all
+src/elelem.cr
 
-src/elelem/cli/        # NEW — CLI-only: config, session-folder naming, commands
+src/elelem_cli/         # CLI-only: config, session-folder naming, commands
   config.cr
   sessions.cr
+  query.cr
+  output.cr
   commands/
     start.cr
     continue.cr
+src/elelem_cli.cr        # thin entrypoint: verb dispatch, error handling, done
 
-src/bin/elelem.cr       # NEW — thin entrypoint: OptionParser, dispatch, done
-
-examples/               # NEW — small, standalone, one file each, no CLI machinery
+examples/                # small, standalone, one file each, no CLI machinery
 ```
 
 Reasoning: someone who `require`s `elelem` to build their own thing should
 never transitively get config-file parsing or session-folder conventions
-they didn't ask for. `cli/` under the same namespace keeps everything in one
-shard and repo while keeping that boundary visible, the same instinct that
-already keeps `mpsh/` from knowing HTTP exists.
+they didn't ask for. `elelem_cli/` as a sibling directory to `elelem/` —
+rather than nested inside it — makes that boundary a fact about the
+filesystem, not just a convention within a shared tree: `require "elelem"`
+touches zero files under `elelem_cli/`, provably, not just by agreement.
+Everything under `elelem_cli/` still lives in the `Elelem::Cli` namespace,
+though — this isn't a second product, it's the same one wearing a different
+front door, and the module name says so even though the directory doesn't
+have to.
 
 ## Verbs: `start`, `continue`
 
@@ -79,10 +86,9 @@ SQL-like "everything after `elelem` is one query" grammar.
   continue *on* is genuinely optional and orthogonal — continuing itself is
   not.
 
-Both verbs are thin CLI-layer wrappers over one library-level operation
-(name TBD, lives under `cli/` or possibly promoted to the library proper if
-it turns out other consumers want it too): resolve a `Provider`, load or
-start a `Session`, call `Client#send`, hand back what to persist.
+Both verbs are thin wrappers over one shared operation — `Elelem::Cli::Query.run`,
+in `elelem_cli/query.cr` — which resolves a `Provider`, appends the prompt,
+calls `Client#send`, hands back the reply and report.
 
 ## Config: `elelem.yaml`
 
@@ -113,8 +119,6 @@ deployments:
     protocol: chat_completions
     server: http://localhost:11434
     model: llama3.2
-
-default_deployment: anthropic
 ```
 
 Credentials are referenced by environment variable name, never stored in the
@@ -142,6 +146,26 @@ anything less would mean reconstructing what's already free to keep. Each
 `continue` writes a new timestamped file into the session's folder; nothing
 is overwritten. A future `--no-history` (or similar) to overwrite instead is
 cheap to add later and isn't designed in now.
+
+Filenames carry the deployment name, not just a timestamp —
+`<unix_ms>-<deployment>.json`. This is what makes `continue SESSID "..."`
+work with no flag at all: it reuses whichever deployment last answered
+*this* session, read straight off the last snapshot's filename. There is no
+`default_deployment` in `elelem.yaml` for this to fall back to, on purpose —
+an earlier version of this design had one, and it was wrong in a way that
+only showed up with two configured deployments in play: it answered "what do
+I usually want," a fact about the config, when what `continue` actually
+needs is "what was this conversation already having," a fact about the
+session. A global default silently aims a continued conversation at
+whatever the config happens to prefer, which has nothing to do with where
+that conversation was. Switching deployments remains exactly as deliberate
+as it already was — `--on` — but staying on the same one is now free and
+correct by default, rather than requiring the same flag every single time.
+
+A snapshot written before this existed has no deployment segment in its
+filename. Treated as genuinely unknown rather than guessed at: `continue`
+against one of these asks for `--on` once, and every snapshot after that
+carries the answer.
 
 ## Deliberately deferred, not forgotten
 
