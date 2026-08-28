@@ -1,9 +1,9 @@
 # CLI Design
 
-**Status**: `src/elelem_cli/` and `src/elelem_cli.cr` now exist — `start` and
-`continue` are built. What follows is still the record of *why*, kept
-current rather than archived, so a decision made once in conversation
-doesn't get silently re-made differently later.
+**Status**: `src/elelem_cli/` and `src/elelem_cli.cr` now exist — `start`,
+`continue`, `list` and `show` are built. What follows is still the record of
+*why*, kept current rather than archived, so a decision made once in
+conversation doesn't get silently re-made differently later.
 
 **Scope**: The `elelem` executable — config resolution, deployment naming,
 session storage, and the verb grammar. Does not cover the `Archive` format
@@ -173,6 +173,51 @@ filename. Treated as genuinely unknown rather than guessed at: `continue`
 against one of these asks for `--on` once, and every snapshot after that
 carries the answer.
 
+## Verbs: `list`, `show`
+
+```
+elelem list                                → one line per session
+elelem show SESSID                         → the transcript
+elelem show SESSID --snapshots             → the append-only turn history
+elelem show SESSID --json                  → the stored archive, verbatim
+```
+
+Two read-only verbs. Neither touches a network, which makes them the only
+commands here fully testable without a recording.
+
+**Every block is rendered, not just the text ones.** `Message#text`
+concatenates text blocks and drops the rest — correct for printing a reply,
+wrong for an inspection verb. A transcript that silently omitted tool calls
+and reasoning would misrepresent precisely the sessions this shard exists to
+carry between providers, and would be most convincing on the ones that matter
+most. Non-text blocks get a bracketed one-line descriptor (`Output.describe`)
+— enough to know a block is there and what it is, without dumping base64 into
+a terminal.
+
+**`--snapshots` exists because the storage design is otherwise invisible.** A
+transcript only ever shows the newest snapshot, so nothing in the CLI would
+reveal that every `continue` appends rather than overwrites. That is a design
+decision worth being able to see.
+
+**`--json` emits the file's own bytes, not `Archive.write(Archive.read(...))`.**
+A read-then-write would put this command's understanding of the format between
+the person and their data, and quietly rewrite anything it did not understand.
+The portable artefact is the point of the shard; handing it over should not
+require knowing the folder convention, nor risk a lossy round trip on the way
+out.
+
+**Listing is deliberately cheap.** One file read per session — the newest
+snapshot, which is already a complete point-in-time record, so turn count and
+opening prompt come free from a read that also proves the session is intact. A
+folder with no snapshots (what a crashed `start` leaves) is skipped, and one
+that will not parse is reported inline rather than fatally: a corrupt session
+should cost you that session, not the ability to find the other nineteen.
+
+**`Output` gained an injectable stream** (`Output.stream`, `Output.error_stream`).
+`start`/`continue` never needed one — their observable effect is a file on
+disk. For `list` and `show` the output *is* the behaviour, so without a seam
+they could only be tested by asserting they did not raise, which is not a test.
+
 ## Deliberately deferred, not forgotten
 
 - **Tool execution.** `Client#send`'s turn loop, including tool dispatch, is
@@ -186,5 +231,6 @@ carries the answer.
 - **Interrupted-turn repair.** `SCOPE.md` MUST FIX, unbuilt. A `continue`
   against a session left dangling by a cut-short turn behaves however the
   library currently behaves — honest, not (yet) repaired.
-- **`list`/`show` and any other session-inspection verbs.** Not designed yet;
-  `start`/`continue` first.
+- **Session deletion or pruning.** Nothing removes a session or trims its
+  snapshot history yet. `list` and `show` make the accumulation visible,
+  which is the point at which someone will want to; not designed in now.
