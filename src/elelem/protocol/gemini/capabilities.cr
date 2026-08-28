@@ -78,6 +78,11 @@ module Elelem::Protocol::Gemini
     refusal_channel: false,
     can_synthesize_user_message: true,
     system_placement: Capability::SystemPlacement::Structured,
+    # `tool_call_signature_required` is deliberately *not* set here, though
+    # Gemini is the only protocol that has the requirement at all: it arrived
+    # with the 3 series and the 2.5 series does not have it, so it is keyed on
+    # the model by `Capability::Catalog::SIGNED_TOOL_CALLS`, not declared on
+    # the protocol.
     string_shorthand: false
   )
 end

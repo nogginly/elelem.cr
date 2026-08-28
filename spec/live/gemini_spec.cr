@@ -104,6 +104,55 @@ describe "Gemini" do
     end
   end
 
+  # The other half of the signature story, and the half `SCOPE.md` carried as
+  # "not yet reproduced live". Above proves elelem's own same-protocol round
+  # trip replays a signature correctly. This proves what happens when there is
+  # no signature to replay because the call was minted somewhere else — the
+  # handoff this shard exists to perform, and the one shape the plumbing alone
+  # could not save.
+  #
+  # The call below is built by hand with `anthropic` metadata precisely as a
+  # cross-protocol handoff would leave it: a real tool call, correctly paired
+  # with its result, carrying an opaque payload Gemini cannot read. Before the
+  # `Resolver` check it went to the wire as-is and 400'd. Now `Catalog` marks
+  # this model as signing its own calls, the call degrades, and the request is
+  # sent without it.
+  #
+  # `Policy::Lenient` for the same reason the Pro reasoning test needs it: the
+  # loss is real and the default policy would refuse before anything reached
+  # the wire. That refusal is the correct default — this test deliberately
+  # opts out of it to observe what the degraded request actually does.
+  describe "a tool call handed over from another protocol" do
+    it "degrades the unsignable call rather than sending an invalid request" do
+      Wiretap.intercept("gemini_foreign_tool_call_35") do
+        session = tool_question
+
+        call = M::ToolCallBlock.new("call_ext_1", "get_weather",
+          M::Object{"city" => "Paris".as(M::Value)})
+        call.put_meta("anthropic", "id", "toolu_01ABCDEF")
+        session << M::Message.new(M::Role::Assistant, [call.as(M::Block)])
+        session << M::Message.new(M::Role::User, [
+          M::ToolResultBlock.new("call_ext_1",
+            [M::TextBlock.new("18C, light rain").as(M::Block)]).as(M::Block),
+        ])
+
+        session << M::Message.user("Given that, what should I wear?")
+
+        reply, report = client(Elelem::Capability::Policy::Lenient)
+          .send(session, MODEL_35, options: armed)
+
+        # The check fired, and named the block kind it fired on.
+        report.annotations
+          .select { |a| a.block_kind == M::BlockKind::ToolCall }
+          .map(&.outcome).should contain(M::Outcome::Degraded)
+
+        # And the request was still accepted, which is the whole point: the
+        # 400 this replaces was not recoverable, a degradation is.
+        reply.content.select(M::TextBlock).should_not be_empty
+      end
+    end
+  end
+
   # Confirmed live on Flash: a budget of 0 reliably disables thinking — closes
   # the item `SCOPE.md` carried as unconfirmed. Checked via
   # `usageMetadata.thoughtsTokenCount` rather than the presence of a thought

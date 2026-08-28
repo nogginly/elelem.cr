@@ -1,0 +1,40 @@
+{
+  "name": "gemini_foreign_tool_call_35",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "648",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"Use the supplied tools when they apply.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"user\",\"parts\":[{\"functionResponse\":{\"name\":\"unknown_function\",\"response\":{\"output\":\"18C, light rain\"}}}]},{\"role\":\"user\",\"parts\":[{\"text\":\"Given that, what should I wear?\"}]}],\"tools\":[{\"functionDeclarations\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}],\"generationConfig\":{\"maxOutputTokens\":512}}",
+        "body_digest": "1ed249199b04e41f9e25561d9705cec04926f7b8073185167ae130be629ce917"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Gemini-Service-Tier": "standard",
+          "Content-Type": "application/json; charset=UTF-8",
+          "Vary": "Origin, X-Origin, Referer",
+          "Date": "Fri, 28 Aug 2026 19:35:03 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=2232",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\": [\n          {\n            \"text\": \"Since the weather in Paris is 18°C (about 64°F) with light rain, here is what you should wear:\\n\\n*   **Layers:** A light sweater, cardigan, or long-sleeve shirt. This will keep you comfortable if it gets cool, but you can easily adjust if you warm up.\\n*   **Waterproof Outerwear:** A light raincoat, trench coat, or windbreaker with a hood to protect you from the light rain.\\n*   **Bottoms:** Jeans, chinos, or long trousers. \\n*   **Footwear:** Closed-toe shoes that are comfortable for walking and water-resistant (like leather sneakers or boots). Avoid canvas shoes or sandals that will easily get soaked.\\n*   **Accessories:** Don't forget to carry a small travel umbrella!\",\n            \"thoughtSignature\": \"Ev4ECvsEARFNMg+y48Af+nVTvTmjgZzfUFjLIB6t1Zus/rn/TJp/4S1TRoTn8O7NFxq4D/e19ha6BHKNBWIYoE0ihOeLvaCOLSvkOYHyCQoLANRdOhJaaYv2sONDKhdkhdMxVlvleXMEqj5UNc1+rQIAzw9rWwk+3sg8wVl3BMt6+0KtB8P1/5ZR+RQV2sd/FzRwhioDRA0jO0fEnfYg48Q45/DfZP3xp9WOuS6+1E4ZVWB88lg9y9weFZVPQkM0tgvKV1MoqZwmTrjsGjpRWX6RnGM0qBJNroTTaPUaulNUVN8m0rKPdZFdVRBdSpjXAJ3h33FFxY2geEmV14d6+rcFZhVZK6395F9FbnBo8jDlWGBxZPhh8k/W9UlquINNmPFNNr/MAU2RJrNELKU6jrf4o0tX72EIJ4IlfdieHRezJyIOrFBhx2papHwydANI0IdgJlVEScU5lRRfEOnRUTFChL5EvppzGpZFQ98dXop+onyD7A55xmbCX/4cq7p9OXTkDb+drRG7HRmYAJRAagRWKhLejEdiMPZJ/LfZ30x9z6dfjirW4v8Kzb1HYoPYSdcoZDBn9ELoqoYOzcLY4VLVDbkmeCQY8HyrcbVDyVfVNVOW5ntOyoh0vxT/jFmM7G2oa9sU/ZHYJc9DwlRdfbHvOzulHVLwqUDd7GC12geBUKtS9x+vtNUhK7hu9nCZm6l3/IaGRXrm1DOVR49p8D6q9oJV3/O5H+H8s6RpHRf78FxXPbg9fq/YVD9qJK07MpgohfGFRLWaH9XOuJILuz7HjmJvpyK1AAdw0dSpD4QAukbktnItfuJEWRQXcTp5JLJ38CTeaWX1hCMAoPJ0LaY=\"\n          }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\": \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 104,\n    \"candidatesTokenCount\": 170,\n    \"totalTokenCount\": 414,\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 104\n      }\n    ],\n    \"thoughtsTokenCount\": 140,\n    \"serviceTier\": \"standard\"\n  },\n  \"modelVersion\": \"gemini-3.5-flash\",\n  \"responseId\": \"5OKRauyHOfGW-8YPtJS_0AU\"\n}\n"
+      },
+      "recorded_at": "2026-08-28T19:35:02Z"
+    }
+  ]
+}

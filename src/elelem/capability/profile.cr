@@ -105,6 +105,29 @@ module Elelem::Capability
     # `spec/live/anthropic_spec.cr` and `SCOPE.md`'s "Known gap".
     getter? reasoning_signature_required : Bool
 
+    # Whether this protocol's tool calls are only valid carrying a replayable
+    # payload the vendor itself issued, the same way `thinking` blocks are on
+    # Anthropic. Separate flag rather than a reuse of the one above, because
+    # the two are genuinely independent: Gemini requires a signature on a
+    # `functionCall` part and requires nothing of the sort on a plain-text
+    # `thought` part, so one protocol needs to answer the two questions
+    # differently.
+    #
+    # Declared from a live 400 rather than documentation (`Function call is
+    # missing a thought_signature in functionCall parts`). Without it,
+    # `Resolver#own?`'s "empty metadata is portable by construction" rule
+    # calls a foreign tool call `Exact` and sends an invalid request —
+    # precisely the shape this shard exists to produce, since a tool call
+    # minted on another protocol never carries a Gemini signature.
+    #
+    # Defaults false on every protocol *including Gemini*, and is switched on
+    # per model by `Catalog`, because the requirement arrived with Gemini 3
+    # and the 2.5 series genuinely does not have it. Declaring it protocol-wide
+    # was tried first and rejected: it would drop every tool call handed to a
+    # 2.5 deployment, silently and permanently, to avoid a 400 that names the
+    # missing field outright. See `Catalog::SIGNED_TOOL_CALLS`.
+    getter? tool_call_signature_required : Bool
+
     def initialize(
       @provider : String,
       metadata_key : String? = nil,
@@ -122,6 +145,7 @@ module Elelem::Capability
       @system_placement : SystemPlacement = SystemPlacement::InMessages,
       @string_shorthand : Bool = true,
       @reasoning_signature_required : Bool = false,
+      @tool_call_signature_required : Bool = false,
     )
       @metadata_key = metadata_key || @provider
     end
@@ -155,7 +179,8 @@ module Elelem::Capability
         first_message_must_be_user: @first_message_must_be_user,
         system_placement: @system_placement,
         string_shorthand: @string_shorthand,
-        reasoning_signature_required: @reasoning_signature_required)
+        reasoning_signature_required: @reasoning_signature_required,
+        tool_call_signature_required: @tool_call_signature_required)
     end
 
     # The same protocol, told which of its two reasoning units this deployment
@@ -193,7 +218,47 @@ module Elelem::Capability
         first_message_must_be_user: @first_message_must_be_user,
         system_placement: @system_placement,
         string_shorthand: @string_shorthand,
-        reasoning_signature_required: @reasoning_signature_required)
+        reasoning_signature_required: @reasoning_signature_required,
+        tool_call_signature_required: @tool_call_signature_required)
+    end
+
+    # The same protocol, told that this deployment's model authenticates its
+    # own tool calls.
+    #
+    # Narrowing only, like its two siblings above, though the direction reads
+    # backwards at first glance: turning this *on* asks the protocol to accept
+    # **less** than it declared, since a call that would otherwise have mapped
+    # `Exact` now has a condition to meet. `false` is the permissive value
+    # here, which is why only `false -> true` is allowed and the reverse
+    # raises — a catalog entry may add the requirement, never waive one a
+    # protocol declared for itself.
+    def with_tool_call_signature_required(required : Bool) : Profile
+      return self if required == @tool_call_signature_required
+
+      unless required
+        raise ArgumentError.new(
+          "#{@provider}: cannot waive tool_call_signature_required; " \
+          "the catalog may add the requirement, never remove it")
+      end
+
+      Profile.new(
+        @provider,
+        metadata_key: @metadata_key,
+        accepted_media: @accepted_media,
+        binary_form: @binary_form,
+        tool_calls: @tool_calls,
+        tool_results: @tool_results,
+        reasoning: @reasoning,
+        reasoning_unit: @reasoning_unit,
+        server_executed: @server_executed,
+        refusal_channel: @refusal_channel,
+        can_synthesize_user_message: @can_synthesize_user_message,
+        alternation_required: @alternation_required,
+        first_message_must_be_user: @first_message_must_be_user,
+        system_placement: @system_placement,
+        string_shorthand: @string_shorthand,
+        reasoning_signature_required: @reasoning_signature_required,
+        tool_call_signature_required: true)
     end
   end
 end

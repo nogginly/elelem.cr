@@ -223,10 +223,16 @@ module Elelem::Protocol::Gemini
       calls.bind(block.call_id, calls.positional_key(block.name, ordinal))
 
       # The signature is replayed when we have one, same as `thinking()` does
-      # for Anthropic — but nothing here yet answers what happens when we
-      # don't and Gemini 3 requires one. That's `Resolver` work, not this
-      # method's; see `spec/live/gemini_spec.cr` for whether plumbing this
-      # through is sufficient on its own before that gets designed.
+      # for Anthropic. When we don't, whether we reach here depends on the
+      # model: `Capability::Catalog` sets `tool_call_signature_required` for
+      # the Gemini 3 series and `Resolver` then checks it ahead of `own?`, so
+      # the unsigned foreign call that used to reach the wire and 400 is now
+      # `Degraded` and dropped before this point. On a 2.5 deployment there is
+      # no such requirement, nothing is set, and an unsigned call maps and
+      # sends exactly as it always did.
+      #
+      # Which means `signature` below is legitimately nil in one live case —
+      # an unsigned call bound for 2.5 — and that is correct, not a gap.
       signature = block.meta_for(profile.metadata_key).try(&.["thought_signature"]?).try(&.as?(String))
       Wire::FunctionCallPart.new(block.name, block.arguments.to_json, signature)
     end

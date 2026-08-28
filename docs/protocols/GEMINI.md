@@ -131,11 +131,43 @@ tool-call test matters here in a way it doesn't on the other three protocols.
 
 Captured and replayed the same way a `ThoughtPart`'s signature is —
 `provider_metadata`, same key — so `export.cr` and `mapper.cr` round-trip it
-on this protocol's own history. What is still open: a `ToolCallBlock` handed
-to this protocol from elsewhere has no such metadata and none to offer, which
-is the same shape of question the Anthropic `reasoning_signature_required` fix
-answered for reasoning blocks, not yet answered here for tool calls. Tracked
-in `SCOPE.md`.
+on this protocol's own history.
+
+### A foreign tool call, and why the check is keyed on the model
+
+A `ToolCallBlock` handed to this protocol from elsewhere has no such metadata
+and none to offer. That is the same shape of question the Anthropic
+`reasoning_signature_required` fix answered for reasoning blocks, and it now
+has the same shape of answer: `Profile#tool_call_signature_required?`, checked
+by `Resolver` ahead of `own?`, reporting `Degraded` rather than sending a
+request that cannot succeed. The call is dropped, the loss is annotated, and a
+`Strict` caller still gets a refusal.
+
+The one thing that is *not* like the Anthropic fix is where the flag is
+declared. `reasoning_signature_required` sits on Anthropic's `PROFILE`, true
+for the whole protocol. This one sits in `Capability::Catalog::SIGNED_TOOL_CALLS`,
+keyed on the model, because the requirement arrived with Gemini 3 and the 2.5
+series does not have it.
+
+Declaring it protocol-wide was written first and rejected. The two errors are
+not symmetric:
+
+Wrong how                      |What happens                                                                          |Cost                 
+-------------------------------|--------------------------------------------------------------------------------------|---------------------
+Protocol-wide, on a 2.5 model  |Every tool call handed to that deployment is dropped, with only an annotation         |Silent, permanent    
+Catalog, on an unlisted 3 model|A 400 naming the missing field outright — the error that found this in the first place|Loud, one line to fix
+
+`catalog.cr`'s own rule about silent misfires being this project's most
+expensive failure mode is the same judgement one level down, so the catalog
+default stays optimistic here even though the argument that justified optimism
+for `BUDGET_ONLY` — a closed, shrinking exception list — runs the other way on
+this axis. Both comments say so explicitly; read them together before adding a
+third axis.
+
+**Expect to add entries.** Only spellings this repository has actually
+observed are listed, because a wrong entry fails in the silent direction while
+a missing one does not. Guessing at plausible siblings only helps in the
+direction that hurts.
 
 ## The response shape
 

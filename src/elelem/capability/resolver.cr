@@ -119,16 +119,26 @@ module Elelem::Capability
       metadata.has_key?(profile.metadata_key)
     end
 
-    # Does this reasoning block actually carry what this protocol's own
+    # Does this block actually carry what this protocol's own
     # signature-bearing form needs to replay it — a `signature` or an
-    # equivalent opaque payload such as `redacted_data`? Deliberately looked
-    # up under `profile.metadata_key` rather than any key: metadata namespaced
-    # to a different vendor is exactly as unreplayable here as no metadata at
-    # all, which is why this subsumes `own?` rather than running alongside it.
-    private def replayable?(block : MPSH::ReasoningBlock, profile : Profile) : Bool
+    # equivalent opaque payload such as `redacted_data` or Gemini's
+    # `thought_signature`? Deliberately looked up under `profile.metadata_key`
+    # rather than any key: metadata namespaced to a different vendor is
+    # exactly as unreplayable here as no metadata at all, which is why this
+    # subsumes `own?` rather than running alongside it.
+    #
+    # One predicate over a union of key spellings, rather than one per block
+    # kind. The spellings are disjoint in practice — each lives under exactly
+    # one vendor's `metadata_key`, so `thought_signature` can never be found
+    # under Anthropic's namespace — and the question being asked is identical
+    # in both callers: *is there an opaque payload here that this vendor
+    # issued and will accept back*.
+    REPLAY_PAYLOAD_KEYS = {"signature", "redacted_data", "thought_signature"}
+
+    private def replayable?(block : MPSH::Block, profile : Profile) : Bool
       meta = block.meta_for(profile.metadata_key)
       return false unless meta
-      meta.has_key?("signature") || meta.has_key?("redacted_data")
+      REPLAY_PAYLOAD_KEYS.any? { |key| meta.has_key?(key) }
     end
 
     private def binary_outcome(block : MPSH::BinaryBlock, profile : Profile,
@@ -169,6 +179,23 @@ module Elelem::Capability
         # flag is necessary and not sufficient. Elsewhere the result survives as
         # conversation and the tool framing does not.
         return MPSH::Outcome::Exact if profile.server_executed? && own?(block, profile)
+        return MPSH::Outcome::Degraded
+      end
+
+      # A protocol that authenticates its own tool calls cannot accept one it
+      # never issued, whatever `own?` says — this is the same case, one block
+      # kind over, that `reasoning_signature_required` exists to catch, and it
+      # subsumes `own?` for the same reason: a signature under another
+      # vendor's `metadata_key` is as unusable here as none at all.
+      #
+      # `Degraded`, not `Refused`. The call is lost and the mapper drops the
+      # part, which is a recorded loss a `strict` caller can still escalate to
+      # a refusal by policy — where `Refused` would hard-fail every
+      # cross-protocol handoff carrying a tool call, the exact move this shard
+      # exists to perform. A dangling result left behind by the dropped call
+      # is the pre-existing behaviour of every other `Degraded` tool call here
+      # and is not made worse by this branch.
+      if profile.tool_call_signature_required? && !replayable?(block, profile)
         return MPSH::Outcome::Degraded
       end
 

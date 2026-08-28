@@ -135,4 +135,68 @@ describe "Gemini round trip" do
       expect_raises(C::RefusedError, /blob store/) { diverges("reference_payload") }
     end
   end
+
+  # The Gemini 3 requirement, and the reason it is keyed on the model rather
+  # than declared on the protocol.
+  #
+  # Every test above runs on `gemini-test`, which is in no catalog entry and
+  # therefore behaves like the 2.5 series — which is why `tool_call_text_result`
+  # is still in `GEMINI_EXACT` above and must stay there. These run the same
+  # mapper over the same fixture with the profile the catalog resolves for a
+  # Gemini 3 model, so the two behaviours are pinned side by side rather than
+  # one of them being assumed.
+  describe "tool call signatures, keyed on the model" do
+    signed = Elelem::Capability::Catalog.narrow(
+      Elelem::Protocol::Gemini::PROFILE, "gemini-3.5-flash")
+
+    it "requires a signature on Gemini 3 and not on the 2.5 series" do
+      signed.tool_call_signature_required?.should be_true
+
+      unsigned = Elelem::Capability::Catalog.narrow(
+        Elelem::Protocol::Gemini::PROFILE, "gemini-2.5-flash")
+      unsigned.tool_call_signature_required?.should be_false
+    end
+
+    it "degrades a tool call carrying no signature of this vendor's" do
+      session = Elelem::Fixtures.tool_call_text_result
+      mapper = Elelem::Protocol::Gemini::Mapper.new(signed)
+      request, report = mapper.map(session, "gemini-3.5-flash", C::Policy::Lenient)
+
+      report.annotations
+        .select { |a| a.block_kind == M::BlockKind::ToolCall }
+        .map(&.outcome).should contain(M::Outcome::Degraded)
+
+      # The point of the check: the invalid part never reaches the wire.
+      request.to_json.should_not contain("functionCall")
+    end
+
+    it "refuses rather than degrading under a strict policy" do
+      session = Elelem::Fixtures.tool_call_text_result
+      mapper = Elelem::Protocol::Gemini::Mapper.new(signed)
+      expect_raises(C::RefusedError) { mapper.map(session, "gemini-3.5-flash", C::Policy::Strict) }
+    end
+
+    it "maps a signed call exactly, since it has something to replay" do
+      session = Elelem::Fixtures.tool_call_text_result
+      call = session.messages[1].content.first.as(M::ToolCallBlock)
+      call.put_meta("gemini", "thought_signature", "CtEHAdHtim9Cn1t7A0hSFtT8yTWM0")
+
+      mapper = Elelem::Protocol::Gemini::Mapper.new(signed)
+      request, report = mapper.map(session, "gemini-3.5-flash", C::Policy::Lenient)
+
+      report.annotations
+        .select { |a| a.block_kind == M::BlockKind::ToolCall }
+        .should be_empty
+      request.to_json.should contain(%("thoughtSignature":"CtEHAdHtim9Cn1t7A0hSFtT8yTWM0"))
+    end
+
+    # Narrowing is one-directional here as everywhere else, and this axis is
+    # the one where the permissive value is `false` — so the guard reads
+    # backwards and is worth pinning.
+    it "will not let a catalog entry waive a requirement" do
+      expect_raises(ArgumentError, /never remove/) do
+        signed.with_tool_call_signature_required(false)
+      end
+    end
+  end
 end
