@@ -218,6 +218,55 @@ should cost you that session, not the ability to find the other nineteen.
 disk. For `list` and `show` the output *is* the behaviour, so without a seam
 they could only be tested by asserting they did not raise, which is not a test.
 
+## Waiting: a ticker, not an event queue
+
+`start` and `continue` block on one HTTP round trip with nothing to print.
+Without an indicator that reads as *slow*, not *stuck* — especially against a
+local Ollama, where thirty seconds is normal and indistinguishable from a hang.
+
+`Progress` spawns a fiber that wakes every `TICK` (250ms) and redraws a
+spinner and an elapsed-second count. **Elapsed seconds are the point**; a
+spinner alone says the process is alive, `23s` says whether the model is slow
+or the endpoint is hanging, which is the question actually being asked.
+
+**On stderr, and only when stderr is a terminal.** The stdout rule above
+exists so `elelem start ollama "..." > answer.txt` works, and a spinner on
+stdout would corrupt that file. Redirected stderr is a log or a CI transcript,
+where a few hundred carriage returns are worse than no indicator, so
+`STDERR.tty?` gates the whole thing to a no-op.
+
+### Why not an event queue
+
+The natural design is for the library to emit progress events and the CLI to
+render them — correct *when there are events*, which is to say once streaming
+lands. Today there is one thing to report and its source is a clock, not the
+server. A queue would build half of streaming's architecture against a library
+with no seam to feed it, delivering none of streaming's benefit. `Elelem::Client`
+is untouched by this and stays headless.
+
+### What streaming will want from it
+
+Streaming does not retire the ticker. Chunks arrive that cannot be shown — a
+tool call spread over several deltas has to be aggregated before it is
+parseable, and during that aggregation the CLI is waiting with nothing to
+print again. The indicator survives; it gets started and stopped repeatedly
+within one turn rather than wrapping the whole call.
+
+Two accommodations, both free:
+
+- `#start`/`#stop` are public and `.while_waiting` is a convenience built on
+  them, so the block form is not the only door.
+- `#label` is mutable, so a caller mid-stream can say what it is waiting *for*
+  ("aggregating tool call") without tearing the indicator down. This is the
+  part of the event-queue idea worth keeping, at none of its cost.
+
+**Known limit:** Crystal's sockets are non-blocking and yield to the
+scheduler, so ticks continue through the HTTP round trip. DNS resolution is
+the exception — `getaddrinfo` can block the thread, so on a cold cache the
+spinner may pause briefly before the request proper begins. It is short, it
+is before the slow part, and engineering around it would cost more than it
+returns. Recorded so it is not rediscovered as a bug.
+
 ## Deliberately deferred, not forgotten
 
 - **Tool execution.** `Client#send`'s turn loop, including tool dispatch, is
@@ -227,7 +276,9 @@ they could only be tested by asserting they did not raise, which is not a test.
   surface to get the verb grammar and storage shape right against.
 - **Streaming.** Doesn't exist in the library yet (`DEVELOPMENT.md`'s event-block
   sketch is forward-looking design prose, not built) — so it can't exist in
-  the CLI either. Not this document's problem to solve.
+  the CLI either. Not this document's problem to solve. When it does arrive,
+  see *What streaming will want from it* above: `Progress` is built to be
+  reused mid-stream rather than replaced.
 - **Interrupted-turn repair.** `SCOPE.md` MUST FIX, unbuilt. A `continue`
   against a session left dangling by a cut-short turn behaves however the
   library currently behaves — honest, not (yet) repaired.

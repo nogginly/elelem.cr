@@ -3,6 +3,7 @@ require "../config"
 require "../sessions"
 require "../query"
 require "../output"
+require "../progress"
 
 module Elelem::Cli::Commands
   module Continue
@@ -32,7 +33,9 @@ module Elelem::Cli::Commands
       provider = config.provider_for(deployment_name)
 
       session = Sessions.latest(session_id)
-      reply, report = Query.run(provider, d.model, session, prompt)
+      reply, report = Progress.while_waiting("waiting on #{deployment_name}") do
+        Query.run(provider, d.model, session, prompt)
+      end
       Sessions.snapshot(session_id, session, deployment_name)
 
       Output.warn_lossy(report)

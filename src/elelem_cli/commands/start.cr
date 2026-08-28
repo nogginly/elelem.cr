@@ -2,6 +2,7 @@ require "../config"
 require "../sessions"
 require "../query"
 require "../output"
+require "../progress"
 
 module Elelem::Cli::Commands
   module Start
@@ -17,7 +18,9 @@ module Elelem::Cli::Commands
       provider = config.provider_for(deployment_name)
 
       session = MPSH::Session.new
-      reply, report = Query.run(provider, d.model, session, prompt)
+      reply, report = Progress.while_waiting("waiting on #{deployment_name}") do
+        Query.run(provider, d.model, session, prompt)
+      end
 
       id = Sessions.generate_id
       Sessions.snapshot(id, session, deployment_name)
