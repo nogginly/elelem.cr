@@ -257,39 +257,43 @@ Outcome       |Means                                     |Silent?
 than a table. The full resolution path:
 
 ```mermaid
+---
+config:
+  layout: elk
+---
 flowchart TD
-    A["Block + Profile + nesting"] --> B{"Kind?"}
+    A["Block + Profile + nesting"] --> B{{"Kind?"}}
 
     B -->|text| X1["Exact"]
-    B -->|tool_call / tool_result| TC{"server_executed<br/>and provider can't?"}
-    B -->|reasoning / refusal| RR{"Provider's own<br/>channel?"}
-    B -->|image / audio / document| MT{"media_type in<br/>accepted set?"}
+    B -->|tool_call / tool_result| TC{{"server_executed<br/>and provider can't?"}}
+    B -->|reasoning / refusal| RR{{"Provider's own<br/>channel?"}}
+    B -->|image / audio / document| MT{{"media_type in<br/>accepted set?"}}
 
     TC -->|yes| X4a["Degraded → text"]
-    TC -->|no| TF{"Native block form?"}
+    TC -->|no| TF{{"Native block form?"}}
     TF -->|yes| X1b["Exact"]
     TF -->|no| X2["Restructured<br/>hoist to field or item"]
 
     RR -->|yes| X1c["Exact"]
     RR -->|no| X4b["Degraded<br/>structure kept in MPSH,<br/>payload shed on wire"]
 
-    MT -->|no| FB{"text_fallback?"}
-    MT -->|yes| NEST{"Inside a<br/>tool_result?"}
-    NEST -->|no| FORM{"Binary form?"}
-    NEST -->|yes| TRF{"tool_result takes<br/>nested blocks?"}
+    MT -->|no| FB{{"text_fallback?"}}
+    MT -->|yes| NEST{{"Inside a<br/>tool_result?"}}
+    NEST -->|no| FORM{{"Binary form?"}}
+    NEST -->|yes| TRF{{"tool_result takes<br/>nested blocks?"}}
 
     FORM -->|native| X1d["Exact"]
     FORM -->|data URI| X2b["Restructured"]
 
     TRF -->|yes| X1e["Exact — Anthropic"]
-    TRF -->|no| SYN{"Can synthesize<br/>a user message?"}
+    TRF -->|no| SYN{{"Can synthesize<br/>a user message?"}}
     SYN -->|yes| X3["Compensated<br/>placeholder + synthetic message<br/><i>never stored</i>"]
     SYN -->|no| FB
 
     FB -->|present| X4c["Degraded<br/>annotation recorded"]
     FB -->|absent| X5["Refused<br/>raise, send nothing"]
 
-    X1 & X1b & X1c & X1d & X1e & X2 & X2b & X3 & X4a & X4b & X4c & X5 --> POL{"Policy permits?"}
+    X1 & X1b & X1c & X1d & X1e & X2 & X2b & X3 & X4a & X4b & X4c & X5 --> POL{{"Policy permits?"}}
     POL -->|yes| OUT["Map, record annotation if lossy"]
     POL -->|no| ERR["RefusedError"]
 
@@ -313,6 +317,70 @@ does, which a hand-maintained prose version would not survive one phase.
 
 **Capability is declared per media type, not per block kind.** "Supports images"
 is too coarse for a model that takes PNG but not WEBP.
+
+### The compensation carrier, both directions
+
+`Compensated` is the one outcome above whose machinery outlives the block it
+was decided for. The resolver says a tool result's image cannot travel where it
+stands; getting it to the wire and home again is a *sequence*-level job, and it
+is the same job on three protocols. `Capability::Carrier` owns it — see its
+doc comments for the rules, and `spec/capability/carrier_spec.cr` for what is
+pinned.
+
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart TD
+    subgraph OUT["Map: MPSH to wire"]
+      A["tool_result:<br/>text + image"] --> B["text stays,<br/>marker left in place"]
+      A --> C["image buffered"]
+      C --> D{{"next item?"}}
+      D -->|another tool result| C
+      D -->|user turn, model turn,<br/>or end of request| E["flush:<br/>carrier emitted"]
+    end
+
+    E --> W["wire: tool result,<br/>tool result, carrier"]
+
+    subgraph BACK["Export: wire to MPSH"]
+      W --> F["split:<br/>markers become blocks"]
+      F --> G{{"carrier?<br/>synthetic, markers open,<br/>no text of its own"}}
+      G -->|yes| H["absorb:<br/>image returns to its marker"]
+      G -->|no| I["a genuine user turn"]
+    end
+
+    H --> J["tool_result:<br/>text + image, as it began"]
+
+    classDef rule stroke:#ef6c00,stroke-width:3px
+    classDef done stroke:#2e7d32,stroke-width:3px
+    class D,G rule
+    class J done
+```
+
+Three things in that picture cost somebody a bug.
+
+**The flush point is anything that is not a tool result** — a user turn, a model
+turn, or the end of the request — not merely a user turn. Strict servers,
+Azure's OpenAI endpoint among them, reject scaffolding wedged between the tool
+messages answering one assistant turn, so the carrier waits; but waiting *past*
+the model's reply puts it beyond the results it belongs to, where export can no
+longer pair them. The Gemini mapper flushed only before user messages and
+produced two divergences from that one missing case.
+
+**Deciding a message is a carrier is a guess, narrowed three ways.** The
+`synthetic` flag is decisive and exists only within one process — a session
+read back from JSON has none. Then a marker still open above, which is our own
+constant. Then the message having no text of its own. A person genuinely
+sending a photograph straight after a tool result is indistinguishable from
+scaffolding, and always will be.
+
+**Markers are addressed by position, not counted.** Each part is written to the
+slot its own marker occupies, so a part the target cannot express spends its
+slot and leaves that marker standing where it belongs. Counting markers and
+filling the first one still open agrees with this only while every part
+converts, which is how the two quietly disagreed for three implementations.
+
 
 Annotations are a category borrowed from `docs/PSR_BRANCHING_AND_SCATTER_GATHER.md`, which is otherwise deferred: persisted, never on the linearization path, never sent to a provider. Degradation events are the first entries; branch rankings will share the channel later.
 
