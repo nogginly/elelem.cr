@@ -2,6 +2,8 @@ name: elelem
 version: 0.1.0
 license: MPL2
 
+crystal: ">= 1.19, < 2.0"
+
 description: >
   More details soon, though saying the name out loud gives you a clue.
 
