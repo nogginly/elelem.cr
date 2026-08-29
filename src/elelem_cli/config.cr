@@ -61,12 +61,45 @@ module Elelem::Cli
   # The name is what `start`/`continue` take and what a snapshot filename
   # records, so it stays the CLI's unit of identity even though it no longer
   # carries the endpoint itself.
+  #
+  # ## Why model preferences are configuration and not a catalog
+  #
+  # `reasoning` and `reasoning_retention` are model-specific facts, and this
+  # shard already has a place for model-specific facts —
+  # `Capability::Catalog`. They deliberately do not go there.
+  #
+  # The catalog holds **hard protocol facts**: get `SIGNED_TOOL_CALLS` wrong
+  # and the request 400s, the vendor is the authority, and nobody's local
+  # opinion should override it. These are **soft quality preferences**: qwen3.8
+  # thinking too much and gemma4 preferring reasoning dropped from closed turns
+  # are things an operator reads off a model card, get them wrong and the
+  # answers are merely worse, and reasonable people running the same model may
+  # disagree. Hard facts that break requests are ours to get right; soft
+  # preferences are the operator's to state.
+  #
+  # It also means adding a model never requires a release, which for locally
+  # served models is most of the point.
+  #
+  # This closes the question `Capability::Retention` parked — whether a model
+  # catalog should exist for `CompletedTurns`. Answer: no, it is configuration.
   struct Deployment
     getter name : String
     getter server : ServerConfig
     getter model : String
 
-    def initialize(@name : String, @server : ServerConfig, @model : String)
+    # Absent means absent, all the way down to the wire. `Options#reasoning`
+    # documents why that is load-bearing rather than tidy: a request that does
+    # not ask for reasoning stays byte-identical to what it was before this
+    # option existed, so no recorded transcript is re-cut by adding it.
+    getter reasoning : Reasoning::Request?
+
+    # `nil` leaves `Client`'s own default (`All`) in charge, rather than this
+    # struct restating it — same reasoning as above, one layer up.
+    getter reasoning_retention : Capability::ReasoningRetention?
+
+    def initialize(@name : String, @server : ServerConfig, @model : String,
+                   @reasoning : Reasoning::Request? = nil,
+                   @reasoning_retention : Capability::ReasoningRetention? = nil)
     end
 
     def protocol : ProtocolKind
@@ -198,7 +231,78 @@ module Elelem::Cli
         "deployment #{name.inspect} names server #{server_name.inspect}, which is not defined " \
         "— have: #{servers.keys.join(", ")}")
 
-      Deployment.new(name: name, server: server, model: model)
+      Deployment.new(name: name, server: server, model: model,
+        reasoning: parse_reasoning(name, node["reasoning"]?),
+        reasoning_retention: parse_retention(name, node["reasoning_retention"]?))
+    end
+
+    # `low`, `medium`, `high`, `xhigh`, `max`, `none`, or a positive integer
+    # token budget. Absent leaves the provider's own default alone, which is a
+    # different thing from `none` — `none` asks the model not to think.
+    #
+    # **`off` is not a spelling here, on purpose.** YAML 1.1 reads a bare
+    # `off` as boolean false, so `reasoning: off` would arrive as a bool and
+    # fail confusingly. Rather than accept a quoted `"off"` and have two
+    # spellings for one thing, there is one word — `none` — and a bare boolean
+    # gets an error that says so.
+    private def self.parse_reasoning(name : String, node : YAML::Any?) : Reasoning::Request?
+      return nil if node.nil? || node.raw.nil?
+
+      unless node.as_bool?.nil?
+        raise ConfigError.new("deployment #{name.inspect} has a boolean 'reasoning' — YAML reads a bare " \
+                              "on/off/yes/no as a boolean; write 'none' to ask the model not to think")
+      end
+
+      if budget = node.as_i?
+        return Reasoning::Budget.new(budget) if budget > 0
+        raise ConfigError.new("deployment #{name.inspect} has a 'reasoning' budget of #{budget} " \
+                              "— must be positive, or 'none' to ask the model not to think")
+      end
+
+      level = node.as_s? || raise ConfigError.new(
+        "deployment #{name.inspect} has a 'reasoning' that is neither a level nor a token budget")
+
+      return Reasoning::Off.new if level.downcase == "none"
+      parse_effort(name, level)
+    end
+
+    # The rungs only. Split from `parse_reasoning` because that method already
+    # decides between four shapes — absent, boolean, integer, string — before
+    # it gets here, and the ladder is the part most likely to grow.
+    private def self.parse_effort(name : String, level : String) : Reasoning::Effort
+      case level.downcase
+      when "low"    then Reasoning::Effort::Low
+      when "medium" then Reasoning::Effort::Medium
+      when "high"   then Reasoning::Effort::High
+      when "xhigh"  then Reasoning::Effort::XHigh
+      when "max"    then Reasoning::Effort::Max
+      else
+        raise ConfigError.new("deployment #{name.inspect} has unrecognised reasoning #{level.inspect} " \
+                              "— expected low, medium, high, xhigh, max, none, or a token budget")
+      end
+    end
+
+    # `all`, `completed_turns`, or `none`.
+    #
+    # The `none` here and the `none` under `reasoning` are different things —
+    # this one drops reasoning blocks out of the *history* being replayed, that
+    # one asks the model not to produce any. They share a word because both are
+    # the honest word for their own key, and the keys are adjacent enough that
+    # nobody reads one for the other.
+    private def self.parse_retention(name : String, node : YAML::Any?) : Capability::ReasoningRetention?
+      return nil if node.nil? || node.raw.nil?
+
+      mode = node.as_s? || raise ConfigError.new(
+        "deployment #{name.inspect} has a 'reasoning_retention' that is not a string")
+
+      case mode.downcase
+      when "all"             then Capability::ReasoningRetention::All
+      when "completed_turns" then Capability::ReasoningRetention::CompletedTurns
+      when "none"            then Capability::ReasoningRetention::None
+      else
+        raise ConfigError.new("deployment #{name.inspect} has unrecognised reasoning_retention #{mode.inspect} " \
+                              "— expected all, completed_turns, or none")
+      end
     end
 
     private def self.parse_protocol(name : String, protocol_name : String) : ProtocolKind

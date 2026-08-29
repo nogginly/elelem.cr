@@ -27,13 +27,21 @@ module Elelem::Capability
   # Applies retention to a history at map time. Returns indices only — nothing
   # is copied, nothing is mutated, and the canonical session is untouched.
   #
-  # NOTE (open, deliberately not designed yet): the requirement that motivated
-  # `CompletedTurns` is *model*-specific, not protocol-specific — one model
-  # family asking that past reasoning be dropped once a turn closes. Everything
-  # else in this shard is keyed on protocol. Whether a model catalog should
-  # exist, independent of the protocol a model is reached through, and what
-  # minimal set of preferences it would carry, is an open design question
-  # parked until the protocol layer exists.
+  # The requirement that motivated `CompletedTurns` is *model*-specific, not
+  # protocol-specific — one model family asking that past reasoning be dropped
+  # once a turn closes. Everything else in this shard is keyed on protocol,
+  # which left an open question: should a model catalog exist for this?
+  #
+  # **Settled: no.** It is operator configuration, stated per deployment in
+  # the CLI's `elelem.yaml`, not a table in this library. The line is between
+  # hard protocol facts and soft quality preferences. `Capability::Catalog`
+  # holds the former — get `SIGNED_TOOL_CALLS` wrong and the request 400s, and
+  # the vendor is the authority. This is the latter: get it wrong and the
+  # answers are merely worse, the source is a model card rather than an API
+  # contract, and two people running the same model may reasonably disagree.
+  #
+  # Which is why this enum stays a plain caller-supplied preference and gains
+  # no lookup of its own. See `Elelem::Cli::Deployment`.
   module Retention
     extend self
 

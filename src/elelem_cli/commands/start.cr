@@ -19,7 +19,8 @@ module Elelem::Cli::Commands
 
       session = MPSH::Session.new
       reply, report = Progress.while_waiting("waiting on #{deployment_name}") do
-        Query.run(provider, d.model, session, prompt)
+        Query.run(provider, d.model, session, prompt,
+          reasoning: d.reasoning, retention: d.reasoning_retention)
       end
 
       id = Sessions.generate_id

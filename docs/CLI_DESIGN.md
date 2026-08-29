@@ -131,14 +131,60 @@ deployments:
   qwen:
     server: home-ollama
     model: qwen3.8
+    reasoning: none
 
   gemma:
     server: home-ollama
     model: gemma4-27b
+    reasoning_retention: completed_turns
 ```
 
 Credentials are referenced by environment variable name, never stored in the
 file.
+
+### Model preferences: `reasoning` and `reasoning_retention`
+
+Both optional, both per deployment, both absent by default.
+
+`reasoning` takes `low`, `medium`, `high`, `xhigh`, `max`, `none`, or a
+positive integer token budget. `none` asks the model not to think; leaving
+the key out asks nothing and leaves the provider's own default alone. The two
+are genuinely different, and the distinction is load-bearing — an absent
+`Options#reasoning` emits nothing on any protocol, so a deployment that
+configures neither produces the same request body it produced before either
+option existed, and no recorded transcript is re-cut.
+
+There is no `off` spelling. YAML 1.1 reads a bare `off` as boolean false, so
+`reasoning: off` would arrive as a bool and fail somewhere unhelpful. Rather
+than accept a quoted `"off"` and carry two spellings for one thing, there is
+one word — `none` — and a bare boolean gets an error saying so.
+
+`reasoning_retention` takes `all`, `completed_turns`, or `none`, mapping
+straight onto `Capability::ReasoningRetention`. `completed_turns` replays
+reasoning only for the turn in progress and drops it from closed ones, which
+is what some model cards ask for.
+
+The `none` under each key means a different thing — one asks the model not to
+produce reasoning, the other drops reasoning out of the history being
+replayed. They share a word because it is the honest word for each key.
+
+### Why these are configuration and not a catalog
+
+`Capability::Catalog` already holds model-specific facts, and these
+deliberately do not go in it. The line is between **hard protocol facts** and
+**soft quality preferences**:
+
+            |`SIGNED_TOOL_CALLS`|`reasoning`, `reasoning_retention`
+------------|-------------------|----------------------------------
+Wrong ⇒     |400, request fails |Answers are merely worse          
+Authority   |The vendor's API   |A model card, read by the operator
+Disagreement|Not reasonable     |Perfectly reasonable              
+Lives in    |Code               |`elelem.yaml`                     
+
+Facts that break requests are ours to get right. Preferences someone read off
+a model card are theirs to state — and stating them in config means adding a
+model never requires a release, which for locally served models is most of the
+point. This settles the question `Capability::Retention` had parked.
 
 ### Why the split
 

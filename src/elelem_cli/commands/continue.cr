@@ -34,7 +34,8 @@ module Elelem::Cli::Commands
 
       session = Sessions.latest(session_id)
       reply, report = Progress.while_waiting("waiting on #{deployment_name}") do
-        Query.run(provider, d.model, session, prompt)
+        Query.run(provider, d.model, session, prompt,
+          reasoning: d.reasoning, retention: d.reasoning_retention)
       end
       Sessions.snapshot(session_id, session, deployment_name)
 
