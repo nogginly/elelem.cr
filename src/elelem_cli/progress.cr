@@ -48,6 +48,11 @@ module Elelem::Cli
     # No-op on anything that is not a terminal. Redirected stderr belongs to a
     # log file or a CI transcript, and a few hundred carriage returns and
     # braille glyphs in one is worse than no indicator at all.
+    #
+    # `STDERR` is the default rather than the only option because the CLI's
+    # commands pass `Output.error_stream` instead, which makes `Output` the
+    # single switch for everything the CLI emits — without that, silencing the
+    # spec suite would have silenced `Output` and left the spinner drawing.
     def start : Nil
       return if @running || !@io.tty?
 

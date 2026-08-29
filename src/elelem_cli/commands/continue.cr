@@ -33,7 +33,7 @@ module Elelem::Cli::Commands
       provider = config.provider_for(deployment_name)
 
       session = Sessions.latest(session_id)
-      reply, report = Progress.while_waiting("waiting on #{deployment_name}") do
+      reply, report = Progress.while_waiting("waiting on #{deployment_name}", Output.error_stream) do
         Query.run(provider, d.model, session, prompt,
           reasoning: d.reasoning, retention: d.reasoning_retention)
       end

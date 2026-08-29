@@ -1,4 +1,5 @@
 require "../../spec_helper"
+require "../../support/cli_output"
 require "file_utils"
 require "../../../src/elelem_cli/sessions"
 require "../../../src/elelem_cli/commands/list"
@@ -24,21 +25,6 @@ private def with_sandbox(&) : Nil
     original_home ? (ENV["ELELEM_HOME"] = original_home) : ENV.delete("ELELEM_HOME")
     FileUtils.rm_rf(tmp)
   end
-end
-
-# Captures both streams, and always restores them — a spec that leaks a
-# closed IO into `Output.stream` takes every later spec in the run with it.
-private def captured(&) : {String, String}
-  printed, warned = IO::Memory.new, IO::Memory.new
-  Elelem::Cli::Output.stream = printed
-  Elelem::Cli::Output.error_stream = warned
-  begin
-    yield
-  ensure
-    Elelem::Cli::Output.stream = STDOUT
-    Elelem::Cli::Output.error_stream = STDERR
-  end
-  {printed.to_s, warned.to_s}
 end
 
 private def seed(id : String, deployment : String, prompt : String) : Nil

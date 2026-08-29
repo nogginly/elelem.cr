@@ -1,4 +1,5 @@
 require "../../spec_helper"
+require "../../support/cli_output"
 require "file_utils"
 require "../../../src/elelem_cli/config"
 require "../../../src/elelem_cli/sessions"
@@ -37,7 +38,11 @@ private def with_sandbox(&) : Nil
   ENV["ELELEM_HOME"] = File.join(tmp, ".elelem")
   ENV["ELELEM_CONFIG"] = config_path
   begin
-    yield
+    # Every command here prints a reply, and a recorded run prints it just as
+    # loudly as a live one — which buried real failures under transcripts.
+    # Wrapped at the sandbox rather than per test because no spec in this file
+    # asserts on output; one that wants to can call `captured` itself.
+    captured { yield }
   ensure
     original_home ? (ENV["ELELEM_HOME"] = original_home) : ENV.delete("ELELEM_HOME")
     original_config ? (ENV["ELELEM_CONFIG"] = original_config) : ENV.delete("ELELEM_CONFIG")

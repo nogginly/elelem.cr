@@ -357,6 +357,21 @@ should cost you that session, not the ability to find the other nineteen.
 disk. For `list` and `show` the output *is* the behaviour, so without a seam
 they could only be tested by asserting they did not raise, which is not a test.
 
+It turned out to be worth having for `start`/`continue` after all, for a
+different reason: a `crystal spec` run was buried under the replies of every
+recorded command. `spec/support/cli_output.cr` redirects both streams for the
+duration of a block, and the two live command specs wrap their sandbox in it.
+
+`Progress` is the reason `Output` had to become the *single* switch rather
+than merely a switch. It draws whenever its stream is a terminal, and a spec
+run in a terminal is one — so silencing `Output` alone would have left the
+spinner ticking over the transcripts. `start`/`continue` therefore hand
+`Progress` the `Output.error_stream` rather than `STDERR` directly.
+
+The one thing still writing to the real streams is `src/elelem_cli.cr`, the
+executable's own usage and error reporting. That is the process boundary, no
+spec invokes it, and routing it through `Output` would buy nothing.
+
 ## Waiting: a ticker, not an event queue
 
 `start` and `continue` block on one HTTP round trip with nothing to print.
