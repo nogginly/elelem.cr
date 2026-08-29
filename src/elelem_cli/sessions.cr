@@ -139,12 +139,45 @@ module Elelem::Cli
     # a config deployment name, and those can legitimately differ (Azure, a
     # gateway) — this fact belongs to *how you're using elelem*, not to the
     # portable conversation itself, so it stays out of the archive proper.
+    #
+    # The timestamp is a *sequence* that is usually also a clock. Two snapshots
+    # landing in the same millisecond leave `snapshots` sorting on the segment
+    # after it, and deployment names do not order chronologically: with a turn
+    # on `ollama` followed by one on `ollama-responses`, the `-` (0x2D) ending
+    # the shared prefix sorts before the `.` (0x2E) of `ollama.json`, so the
+    # newer snapshot lands first and `latest_deployment` names the deployment
+    # you just switched *away* from. Found by a CI runner fast enough to write
+    # both inside one millisecond, replaying a transcript with no network
+    # round trip to separate them.
+    #
+    # Nothing on disk records which of two same-millisecond writes came
+    # second, so no comparator can fix this after the fact; it has to be made
+    # impossible at write time. Hence the bump: a taken millisecond advances by
+    # one rather than being shared. The clock stays honest to within the number
+    # of snapshots written in the same instant, which is the smaller lie.
     def snapshot(id : String, session : MPSH::Session, deployment : String) : String
       dir = path_for(id)
       Dir.mkdir_p(dir)
-      file = File.join(dir, "#{Time.utc.to_unix_ms}-#{deployment}.json")
+
+      stamp = Time.utc.to_unix_ms
+      file = File.join(dir, "#{stamp}-#{deployment}.json")
+      while File.exists?(file) || taken?(dir, stamp)
+        stamp += 1
+        file = File.join(dir, "#{stamp}-#{deployment}.json")
+      end
+
       File.write(file, MPSH::Archive.write(session))
       file
+    end
+
+    # Whether any snapshot in this folder already claims that millisecond,
+    # whatever deployment it names. Checking the filename alone would let two
+    # deployments share a stamp, which is the exact tie that started this.
+    private def taken?(dir : String, stamp : Int64) : Bool
+      prefix = "#{stamp}-"
+      Dir.children(dir).any? do |entry|
+        entry.ends_with?(".json") && (entry.starts_with?(prefix) || entry == "#{stamp}.json")
+      end
     end
 
     def latest(id : String) : MPSH::Session
@@ -168,10 +201,12 @@ module Elelem::Cli
     end
 
     # One session's snapshots, oldest first, as `<unix_ms>-<deployment>.json`
-    # filenames. Sorted lexically, which is also chronological: the timestamp
-    # is fixed-width unix milliseconds and leads the name. That will hold
-    # until the year 33658, which is later than this comment needs to worry
-    # about.
+    # filenames. Sorted lexically, which is also chronological on two counts,
+    # both load-bearing: the timestamp is fixed-width unix milliseconds and
+    # leads the name — good until the year 33658 — *and* `snapshot` guarantees
+    # no two share a millisecond, so the comparison never reaches the
+    # deployment segment, which does not order by time. Widening the stamp or
+    # relaxing that guarantee breaks this quietly, in one direction only.
     def snapshots(id : String) : Array(String)
       dir = path_for(id)
       raise SessionError.new("no session named #{id.inspect} in #{folder}") unless Dir.exists?(dir)

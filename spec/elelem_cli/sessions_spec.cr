@@ -54,11 +54,54 @@ describe Elelem::Cli::Sessions do
     with_sandbox do
       id = Elelem::Cli::Sessions.generate_id
       Elelem::Cli::Sessions.snapshot(id, M::Session.new, "anthropic")
-      sleep 5.milliseconds # distinct unix_ms timestamp, not distinct content
       Elelem::Cli::Sessions.snapshot(id, M::Session.new, "azure-mini")
 
       Dir.children(Elelem::Cli::Sessions.path_for(id)).size.should eq(2)
       Elelem::Cli::Sessions.latest_deployment(id).should eq("azure-mini")
+    end
+  end
+
+  # The CI failure this fixes, reproduced without needing a fast runner.
+  #
+  # Two writes with no sleep between them land in the same millisecond on any
+  # machine worth the name. Before the stamp bump, `snapshots` then sorted on
+  # the segment after the timestamp, where `ollama-responses` precedes
+  # `ollama` — `-` is 0x2D, `.` is 0x2E — so the *newer* snapshot sorted first
+  # and `latest_deployment` named the deployment just switched away from.
+  #
+  # The deployment names are load-bearing and deliberately the ones from
+  # `continue_spec.cr`: the bug needs one name to be a prefix of the other, so
+  # a pair like `anthropic`/`azure-mini` cannot show it. It also only fails in
+  # one direction — switching from the shorter name to the longer — which is
+  # why the reverse is asserted too rather than assumed symmetric.
+  it "orders snapshots written in the same millisecond by write order, not by name" do
+    with_sandbox do
+      id = Elelem::Cli::Sessions.generate_id
+      Elelem::Cli::Sessions.snapshot(id, M::Session.new, "ollama")
+      Elelem::Cli::Sessions.snapshot(id, M::Session.new, "ollama-responses")
+
+      Elelem::Cli::Sessions.snapshots(id).size.should eq(2)
+      Elelem::Cli::Sessions.latest_deployment(id).should eq("ollama-responses")
+
+      other = Elelem::Cli::Sessions.generate_id
+      Elelem::Cli::Sessions.snapshot(other, M::Session.new, "ollama-responses")
+      Elelem::Cli::Sessions.snapshot(other, M::Session.new, "ollama")
+
+      Elelem::Cli::Sessions.latest_deployment(other).should eq("ollama")
+    end
+  end
+
+  # A tight run, to prove the bump keeps ordering rather than merely avoiding a
+  # collision: every stamp distinct, and the sorted filenames in write order.
+  it "keeps a burst of snapshots distinct and in order" do
+    with_sandbox do
+      id = Elelem::Cli::Sessions.generate_id
+      written = (1..8).map { |n| Elelem::Cli::Sessions.snapshot(id, M::Session.new, "d#{n}") }
+
+      files = Elelem::Cli::Sessions.snapshots(id)
+      files.size.should eq(8)
+      files.should eq(written.map { |path| File.basename(path) })
+      files.map { |file| Elelem::Cli::Sessions.parse_snapshot(file)[0] }.uniq.size.should eq(8)
     end
   end
 
