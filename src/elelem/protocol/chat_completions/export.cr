@@ -1,6 +1,7 @@
 require "./wire/request"
 require "./wire/response"
 require "./mapper"
+require "../../capability/carrier"
 require "../../mpsh/session"
 require "../../mpsh/translation"
 
@@ -101,20 +102,18 @@ module Elelem::Protocol::ChatCompletions
     # A trailing `user` message after tool results is ambiguous on the wire: it
     # is either a compensation carrier belonging to the results above it, or
     # genuine input opening a new turn. This is the same distinction
-    # `MPSH::Turns` draws for retention, approached from the other side.
+    # `MPSH::Turns` draws for retention, approached from the other side. The
+    # signals, and the honest limits of all three, are in
+    # `Capability::Carrier`.
     #
-    # The honest limit: a foreign session produced by another client doing the
-    # same twiddling with different placeholder text is undetectable, and a
-    # genuine user message that follows a tool result and carries an image is a
-    # legitimate conversation. This narrows the ambiguity; it does not close it.
+    # Local to this protocol: content here may be a bare `String` rather than
+    # parts, in which case there is nothing to inspect and it is not a carrier.
     private def carrier?(message : Wire::Message, run : Array(MPSH::ToolResultBlock)) : Bool
-      return false if run.empty?
-      return true if message.synthetic?
-      return false unless run.any? { |result| placeholders(result) > 0 }
-
       body = message.content
-      return false unless body.is_a?(Array(Wire::Part))
-      body.none?(Wire::TextPart)
+      parts = body.is_a?(Array(Wire::Part)) ? body : [] of Wire::Part
+
+      Capability::Carrier.carrier?(run, message.synthetic?, parts,
+        eligible: body.is_a?(Array(Wire::Part))) { |part| part.is_a?(Wire::TextPart) }
     end
 
     # Carrier content is returned to the result that referenced it, in order.
@@ -122,28 +121,7 @@ module Elelem::Protocol::ChatCompletions
       body = message.content
       return unless body.is_a?(Array(Wire::Part))
 
-      queue = body.dup
-      run.each do |result|
-        placeholders(result).times do
-          part = queue.shift?
-          break unless part
-          block = part_to_block(part)
-          replace_placeholder(result, block) if block
-        end
-      end
-    end
-
-    private def placeholders(result : MPSH::ToolResultBlock) : Int32
-      result.content.count do |block|
-        block.is_a?(MPSH::TextBlock) && block.text == COMPENSATION_PLACEHOLDER
-      end
-    end
-
-    private def replace_placeholder(result : MPSH::ToolResultBlock, block : MPSH::Block) : Nil
-      index = result.content.index do |existing|
-        existing.is_a?(MPSH::TextBlock) && existing.text == COMPENSATION_PLACEHOLDER
-      end
-      result.content[index] = block if index
+      Capability::Carrier.absorb(run, body) { |part| part_to_block(part) }
     end
 
     # A consecutive run of `role: "tool"` messages becomes one user message.
@@ -161,27 +139,8 @@ module Elelem::Protocol::ChatCompletions
       MPSH::ToolResultBlock.new(calls.mpsh_id(provider_id), split_placeholders(text_of(message)))
     end
 
-    # A tool result arrives as one string, and the placeholders inside it mark
-    # where non-text content belonged. Splitting on the marker restores the
-    # block boundaries, which is what lets the carrier be absorbed back into the
-    # right positions rather than appended.
-    #
-    # Splitting on the marker itself rather than on newlines matters: genuine
-    # tool output contains newlines, and splitting on those would shred it.
     private def split_placeholders(body : String) : Array(MPSH::Block)
-      return [] of MPSH::Block if body.empty?
-
-      blocks = [] of MPSH::Block
-      segments = body.split(COMPENSATION_PLACEHOLDER)
-
-      segments.each_with_index do |segment, index|
-        trimmed = segment.strip('\n')
-        blocks << MPSH::TextBlock.new(trimmed) unless trimmed.empty?
-        # Every split point but the last trailing one had a placeholder.
-        blocks << MPSH::TextBlock.new(COMPENSATION_PLACEHOLDER) if index < segments.size - 1
-      end
-
-      blocks
+      Capability::Carrier.split(body)
     end
 
     private def assistant(session : MPSH::Session, message : Wire::Message) : Nil

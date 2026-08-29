@@ -1,6 +1,7 @@
 require "./wire/request"
 require "./wire/response"
 require "./mapper"
+require "../../capability/carrier"
 require "../../mpsh/session"
 require "../../mpsh/translation"
 
@@ -186,55 +187,28 @@ module Elelem::Protocol::Gemini
       end
     end
 
+    # Local to this protocol: a carrier is a `user` content, and a `model` one
+    # never is. That check sat *below* the synthetic test in the original and
+    # stays below it here, which is what `eligible` is for — an early return
+    # would outrank `synthetic?` and change the answer.
     private def carrier?(content : Wire::Content,
                          pending : Array(MPSH::ToolResultBlock)) : Bool
-      return false if pending.empty?
-      return true if content.synthetic?
-      return false unless content.role == "user"
-      return false unless pending.any? { |result| placeholders(result) > 0 }
-      content.parts.none?(Wire::TextPart)
+      Capability::Carrier.carrier?(pending, content.synthetic?, content.parts,
+        eligible: content.role == "user") { |part| part.is_a?(Wire::TextPart) }
     end
 
+    # Fresh ordinal tables per part: a carrier holds lifted media, never a
+    # function call or response, so nothing in it participates in the ordinal
+    # pairing this protocol uses in place of identifiers.
     private def absorb_carrier(content : Wire::Content,
                                pending : Array(MPSH::ToolResultBlock)) : Nil
-      queue = content.parts.dup
-      pending.each do |result|
-        placeholders(result).times do
-          part = queue.shift?
-          break unless part
-          block = to_block(part, Hash(String, Int32).new(0), Hash(String, Int32).new(0))
-          replace_placeholder(result, block) if block
-        end
+      Capability::Carrier.absorb(pending, content.parts) do |part|
+        to_block(part, Hash(String, Int32).new(0), Hash(String, Int32).new(0))
       end
-    end
-
-    private def placeholders(result : MPSH::ToolResultBlock) : Int32
-      result.content.count do |block|
-        block.is_a?(MPSH::TextBlock) && block.text == COMPENSATION_PLACEHOLDER
-      end
-    end
-
-    private def replace_placeholder(result : MPSH::ToolResultBlock,
-                                    block : MPSH::Block) : Nil
-      index = result.content.index do |existing|
-        existing.is_a?(MPSH::TextBlock) && existing.text == COMPENSATION_PLACEHOLDER
-      end
-      result.content[index] = block if index
     end
 
     private def split_placeholders(body : String) : Array(MPSH::Block)
-      return [] of MPSH::Block if body.empty?
-
-      blocks = [] of MPSH::Block
-      segments = body.split(COMPENSATION_PLACEHOLDER)
-
-      segments.each_with_index do |segment, index|
-        trimmed = segment.strip('\n')
-        blocks << MPSH::TextBlock.new(trimmed) unless trimmed.empty?
-        blocks << MPSH::TextBlock.new(COMPENSATION_PLACEHOLDER) if index < segments.size - 1
-      end
-
-      blocks
+      Capability::Carrier.split(body)
     end
 
     private def parse_object(json : String) : MPSH::Object

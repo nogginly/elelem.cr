@@ -451,6 +451,12 @@ abstraction is the first protocol from a different family.
 2. **Write the map direction.** MPSH view in, request body out. Every outcome
    goes through `Report#record`; that is where policy is enforced, and where a
    mapper that wants to lose something has to say so.
+
+   If the protocol cannot carry non-text content inside a tool result, do
+   **not** write the compensation carrier again. `Capability::Carrier.flush`
+   holds the rule and the flush points; the mapper supplies only the message
+   shape it spells a carrier with. Three hand-written copies produced three
+   phrasings and one bug.
 3. **Write the response reader.** `wire/response.cr`, parse-only, tolerant of
    unknown fields — providers add them constantly and a strict reader breaks on
    every vendor tweak. Only an absent top-level envelope raises. Note which
@@ -463,7 +469,9 @@ abstraction is the first protocol from a different family.
    namespace provider data, flag server-executed tools, preserve redacted
    reasoning as a block rather than an omission — and **discard compensation
    scaffolding**, so a synthetic message this client generated is never
-   re-imported as though it were real.
+   re-imported as though it were real. That last part is
+   `Capability::Carrier`'s `carrier?`, `absorb` and `split`; a protocol adds
+   only its own precondition, via `eligible`.
 5. **Write the request options.** Tool declarations and the output cap, in this
    protocol's spelling. All four differ; see `options.cr` and
    `spec/conformance/options_spec.cr`.

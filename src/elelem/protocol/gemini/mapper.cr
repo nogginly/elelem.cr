@@ -6,11 +6,14 @@ require "../../capability/policy"
 require "../../capability/retention"
 require "../../capability/reasoning_control"
 require "../../capability/structural"
+require "../../capability/carrier"
 require "../../mpsh/session"
 require "../../mpsh/translation"
 
 module Elelem::Protocol::Gemini
-  COMPENSATION_PLACEHOLDER = "[elelem: content returned separately in the following message]"
+  # The same marker the other two protocols use, and for the same reasons —
+  # one definition, in `Capability::Carrier`.
+  COMPENSATION_PLACEHOLDER = Capability::Carrier::PLACEHOLDER
 
   # MPSH view in, request body out.
   #
@@ -164,17 +167,14 @@ module Elelem::Protocol::Gemini
       message.role.user? ? "user" : "model"
     end
 
+    # This is the protocol whose flush points were wrong — see the caller in
+    # `map`, and `Capability::Carrier` for the rule it now shares.
     private def flush_compensation(contents : Array(Wire::Content),
                                    pending : Array(Wire::Part),
                                    report : Capability::Report) : Nil
-      return if pending.empty?
-
-      report.record(
-        Capability::Structural.outcome(Capability::Structural::Adaptation::DeferCompensationCarrier),
-        "compensation carrier deferred past #{pending.size} tool result(s)")
-
-      contents << Wire::Content.new("user", pending.dup, synthetic: true)
-      pending.clear
+      Capability::Carrier.flush(pending, report) do |parts|
+        contents << Wire::Content.new("user", parts, synthetic: true)
+      end
     end
 
     private def parts_for(message : MPSH::Message, index : Int32,

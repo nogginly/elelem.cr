@@ -104,6 +104,11 @@ Several results' worth of content may ride in **one** carrier.
 Recorded as `Structural::Adaptation::DeferCompensationCarrier`, because it is a
 sequence-level adaptation that no per-block rule can express.
 
+The rule itself lives in `Capability::Carrier`, shared with Responses and
+Gemini. This mapper supplies only the message a carrier is spelled with; the
+exporter supplies only its own precondition, since content here may be a bare
+string with no parts to inspect.
+
 ## Export
 
 Three signals, in descending reliability.

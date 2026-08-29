@@ -87,6 +87,23 @@ against — same shape as `reasoning_unit`'s existing override, and the same
 justification. Detail in `docs/servers/AZURE.md` and
 `docs/protocols/CHAT_COMPLETIONS.md`'s own *Live finding* sections.
 
+**Carrier deferral is now extracted**, ahead of a fifth protocol as its own
+entry asked. The rule — buffer lifted content, flush before anything that is
+not a tool result, recognise the carrier again on the way back — lived in three
+mappers and three exporters, written differently each time and wrong once. It
+is now `Capability::Carrier` (`src/elelem/capability/carrier.cr`), generic over
+the wire part type so it cannot know what a protocol is, with the marker as one
+constant rather than three that had to stay byte-identical forever. A protocol
+keeps only the message shape it spells a carrier with, plus any precondition of
+its own, which is why `carrier?` takes an `eligible` flag rather than letting
+callers guard ahead of it: both preconditions sat *below* the synthetic check
+and hoisting them would have changed the answer. Unit-tested directly for the
+first time (`spec/capability/carrier_spec.cr`) — the old arrangement could only
+test each copy through its own protocol's fixtures, which is exactly how one
+copy stayed wrong. That spec also turned up an inherited infelicity in
+`absorb`, pinned as-is and recorded in `SCOPE.md` rather than fixed inside a
+refactor claiming to change nothing.
+
 **Two things now exist beyond the live protocol layer itself.**
 `MPSH::Archive` (`src/elelem/mpsh/archive.cr`) round-trips a `Session` to
 JSON and back — the piece the whole portable-history pitch was missing,
@@ -150,12 +167,6 @@ forgotten*: tool support (open question: text-only first?), streaming (blocked
 — the library has no streaming seam), and session pruning (unblocked, small).
 Tool support is downstream of interrupted-turn repair, since repair is what
 shapes the turn loop.
-
-Also due, and unblocked: **carrier deferral extraction** (`SCOPE.md`'s *WILL
-FIX*). It is reimplemented in three mappers and three exporters, was written
-differently each time, and was wrong once. Its own entry says to do it *before*
-a fifth protocol, not after; there are four and they are stable, so this is the
-moment. Pure refactor, conformance suite is the safety net, no recording.
 
 ### On Ollama
 

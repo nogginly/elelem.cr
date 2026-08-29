@@ -128,31 +128,25 @@ default. Still open, and the reason this stays in WILL FIX:
 - Per-model *rung* support, if a rejection ever demands it. A second axis on
   the same entry, not a second mechanism.
 
-### Carrier deferral is reimplemented per protocol
+### `absorb` fills the first open marker, not the one it consumed
 
-Three mappers now buffer compensation carriers and flush them at turn
-boundaries, and the rule is identical in all three: a carrier belongs to the run
-of tool results preceding it, so it must be emitted before anything that is not
-itself a tool result — genuine user content, an assistant turn, or the end of
-the request.
+Found while pinning `Capability::Carrier` with its own spec, and older than
+that module — all three implementations it replaced behaved this way.
 
-Written three times, expressed differently each time, and wrong once: the Gemini
-mapper flushed only before user messages, so the carrier landed *after* the
-model's reply, where export could no longer see the results it belonged to. The
-symptom was two divergences — a message count off by one and an image that
-stayed a placeholder — from a single missing case.
+`absorb` deals carrier parts out against each result's marker *count*, but
+`replace_placeholder` fills the **first** marker still open. The two agree only
+while every part converts. A part the target protocol cannot express spends its
+slot and returns nothing, so the next part that does convert slides up into the
+skipped position and the surviving marker trails behind it. The count stays
+right; the ordering inside that one tool result drifts.
 
-Export has the same duplication in reverse: three near-identical
-`carrier?`/`absorb_carrier`/`split_placeholders` implementations differing only
-in the wire types they walk.
-
-Extract once the fourth protocol is stable rather than mid-checkpoint. The shape
-is probably a small module parameterized by two predicates — *is this part a
-tool result* and *build a carrier message* — since the buffering, the flush
-points and the placeholder handling are otherwise identical. `Structural` is
-where the outcome is already recorded, so it is the natural home.
-
-Worth doing before a fifth protocol, not after.
+Small blast radius — one result's internal ordering, and only when a protocol
+absorbs a carrier holding media it cannot express — and it surfaces as a
+conformance divergence rather than a wrong answer. The fix is to consume markers
+positionally, which is a handful of lines and a behaviour change, so it was
+deliberately kept out of the extraction commit, whose entire safety argument was
+that it changed nothing. Pinned as-is in `spec/capability/carrier_spec.cr`;
+delete this entry when the follow-up lands.
 
 ### A localizable content synthesizer
 

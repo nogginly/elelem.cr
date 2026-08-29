@@ -68,7 +68,11 @@ directions, and improving the wording is a breaking change.
 
 Carriers are deferred past the run of tool outputs for the same reason as
 elsewhere: strict servers require every output answering one turn to precede
-anything else. See `../../SCOPE.md` on extracting this shared logic.
+anything else. The rule is `Capability::Carrier`, shared with Chat Completions
+and Gemini — "same constant" is now literal rather than a promise, since
+`COMPENSATION_PLACEHOLDER` names one definition. This protocol adds nothing of
+its own: an item's content is always parts, so there is no precondition to
+pass.
 
 ## Statefulness, deliberately unused
 

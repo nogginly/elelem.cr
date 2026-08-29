@@ -193,8 +193,12 @@ model's reply, where export could no longer see the tool results it belonged to.
 Two divergences from one missing case: a message count off by one, and an image
 that stayed a placeholder.
 
-The rule is identical across three mappers and was expressed differently in each
-— see `../../SCOPE.md` on extracting it before a fifth protocol arrives.
+The rule was identical across three mappers and expressed differently in each,
+which is how this one stayed wrong; it is now extracted to
+`Capability::Carrier` and unit-tested there. What stays local here is the
+precondition that a carrier is a `user` content and never a `model` one —
+passed as `eligible` rather than checked ahead of the call, because it sat
+below the synthetic test and hoisting it would change the answer.
 
 ## Conformance
 

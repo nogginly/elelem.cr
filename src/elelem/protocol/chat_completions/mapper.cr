@@ -5,6 +5,7 @@ require "../../capability/resolver"
 require "../../capability/policy"
 require "../../capability/retention"
 require "../../capability/reasoning_control"
+require "../../capability/carrier"
 require "../../mpsh/session"
 require "../../mpsh/translation"
 
@@ -20,7 +21,12 @@ module Elelem::Protocol::ChatCompletions
   # is part of that shape. It must stay stable, stay identical in both
   # directions, and stay distinctive enough not to collide with real tool
   # output. Improving the wording is a breaking change.
-  COMPENSATION_PLACEHOLDER = "[elelem: content returned separately in the following message]"
+  #
+  # Now an alias for the one definition in `Capability::Carrier`, kept under
+  # the protocol's own name because that is how this file reads: three
+  # protocols share the marker precisely because a session mapped by one may
+  # be exported by another.
+  COMPENSATION_PLACEHOLDER = Capability::Carrier::PLACEHOLDER
 
   class Mapper
     getter profile : Capability::Profile
@@ -96,19 +102,6 @@ module Elelem::Protocol::ChatCompletions
       end
     end
 
-    # Emits the buffered carrier, if any, and clears the buffer.
-    #
-    # Ordering is not cosmetic. A single assistant turn may request several
-    # tools in parallel, and strict servers — Azure's OpenAI endpoint among them
-    # — require every `role: "tool"` message answering that turn to appear
-    # before anything else. Emitting a carrier inline after each result
-    # interleaves scaffolding between tool responses and is rejected, even
-    # though permissive servers such as Ollama and LM Studio accept it.
-    #
-    # So carriers are deferred until the run of tool messages ends, and several
-    # results' worth of content may ride in one carrier. This is a
-    # sequence-level adaptation, which is why it is recorded through
-    # `Structural` rather than resolved per block.
     # Tool declarations and generation options, translated per protocol.
     #
     # Added as a trailing parameter rather than folded in with `policy` and
@@ -121,22 +114,21 @@ module Elelem::Protocol::ChatCompletions
       end
     end
 
+    # The rule, the flush points and the reason they are what they are live in
+    # `Capability::Carrier`. What is left here is the one thing that is this
+    # protocol's own: the shape of the message that carries it.
+    #
+    # The synthetic turn exists so the request is legal, carries content the
+    # protocol could not put where it belonged, and is flagged so that an
+    # export in this same process discards it rather than re-importing an
+    # OpenAI workaround as conversation. A real export, reading JSON from a
+    # server, has no flag and must recognise it structurally.
     private def flush_compensation(wire : Array(Wire::Message),
                                    pending : Array(Wire::Part),
                                    report : Capability::Report) : Nil
-      return if pending.empty?
-
-      report.record(
-        Capability::Structural.outcome(Capability::Structural::Adaptation::DeferCompensationCarrier),
-        "compensation carrier deferred past #{pending.size} tool result(s)")
-
-      # The synthetic turn. It exists so the request is legal, carries content
-      # the protocol could not put where it belonged, and is flagged so that an
-      # export in this same process discards it rather than re-importing an
-      # OpenAI workaround as conversation. A real export, reading JSON from a
-      # server, has no flag and must recognise it structurally.
-      wire << Wire::Message.new("user", pending.dup, synthetic: true)
-      pending.clear
+      Capability::Carrier.flush(pending, report) do |parts|
+        wire << Wire::Message.new("user", parts, synthetic: true)
+      end
     end
 
     # A user message may become several wire messages: tool results split out

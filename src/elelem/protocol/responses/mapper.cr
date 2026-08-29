@@ -6,14 +6,16 @@ require "../../capability/policy"
 require "../../capability/retention"
 require "../../capability/reasoning_control"
 require "../../capability/structural"
+require "../../capability/carrier"
 require "../../mpsh/session"
 require "../../mpsh/translation"
 
 module Elelem::Protocol::Responses
   # Same marker as Chat Completions, and the same rules apply: it is a protocol
   # marker rather than a note to a human, it must stay byte-identical in both
-  # directions, and improving the wording is a breaking change.
-  COMPENSATION_PLACEHOLDER = "[elelem: content returned separately in the following message]"
+  # directions, and improving the wording is a breaking change. "Same" is now
+  # literal — one definition in `Capability::Carrier`, named here.
+  COMPENSATION_PLACEHOLDER = Capability::Carrier::PLACEHOLDER
 
   # MPSH view in, request body out.
   #
@@ -88,9 +90,6 @@ module Elelem::Protocol::Responses
       end
     end
 
-    # Carriers are deferred here for the same reason as on Chat Completions:
-    # every `function_call_output` answering one assistant turn should precede
-    # anything else, and several results' content may ride in one carrier.
     # Tool declarations and generation options, translated per protocol.
     #
     # Added as a trailing parameter rather than folded in with `policy` and
@@ -103,17 +102,16 @@ module Elelem::Protocol::Responses
       end
     end
 
+    # Deferred for the same reason as on Chat Completions — every
+    # `function_call_output` answering one assistant turn should precede
+    # anything else — which is now the same *code* as well as the same reason.
+    # Only the item this protocol spells a carrier with is local.
     private def flush_compensation(items : Array(Wire::Item),
                                    pending : Array(Wire::Part),
                                    report : Capability::Report) : Nil
-      return if pending.empty?
-
-      report.record(
-        Capability::Structural.outcome(Capability::Structural::Adaptation::DeferCompensationCarrier),
-        "compensation carrier deferred past #{pending.size} tool result(s)")
-
-      items << Wire::MessageItem.new("user", pending.dup, synthetic: true)
-      pending.clear
+      Capability::Carrier.flush(pending, report) do |parts|
+        items << Wire::MessageItem.new("user", parts, synthetic: true)
+      end
     end
 
     private def map_user(message : MPSH::Message, index : Int32,

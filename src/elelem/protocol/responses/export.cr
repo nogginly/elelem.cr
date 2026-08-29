@@ -1,6 +1,7 @@
 require "./wire/request"
 require "./wire/response"
 require "./mapper"
+require "../../capability/carrier"
 require "../../mpsh/session"
 require "../../mpsh/translation"
 
@@ -117,57 +118,23 @@ module Elelem::Protocol::Responses
       session << MPSH::Message.new(MPSH::Role::User, parts_to_blocks(item.content))
     end
 
-    # Same ambiguity as on Chat Completions, and the same limits: a foreign
-    # session using different placeholder text is undetectable, and a genuine
-    # user message following a tool output and carrying an image is
-    # indistinguishable from a carrier.
+    # Same ambiguity as on Chat Completions, the same three signals, and the
+    # same limits — all of them in `Capability::Carrier` now. Unlike Chat
+    # Completions, an item's content is always parts, so there is no local
+    # precondition and nothing to pass as `nil`.
     private def carrier?(item : Wire::MessageItem, run : Array(MPSH::ToolResultBlock)) : Bool
-      return false if run.empty?
-      return true if item.synthetic?
-      return false unless run.any? { |result| placeholders(result) > 0 }
-      item.content.none?(Wire::TextPart)
+      Capability::Carrier.carrier?(run, item.synthetic?, item.content) do |part|
+        part.is_a?(Wire::TextPart)
+      end
     end
 
     private def absorb_carrier(item : Wire::MessageItem,
                                run : Array(MPSH::ToolResultBlock)) : Nil
-      queue = item.content.dup
-      run.each do |result|
-        placeholders(result).times do
-          part = queue.shift?
-          break unless part
-          block = part_to_block(part)
-          replace_placeholder(result, block) if block
-        end
-      end
-    end
-
-    private def placeholders(result : MPSH::ToolResultBlock) : Int32
-      result.content.count do |block|
-        block.is_a?(MPSH::TextBlock) && block.text == COMPENSATION_PLACEHOLDER
-      end
-    end
-
-    private def replace_placeholder(result : MPSH::ToolResultBlock,
-                                    block : MPSH::Block) : Nil
-      index = result.content.index do |existing|
-        existing.is_a?(MPSH::TextBlock) && existing.text == COMPENSATION_PLACEHOLDER
-      end
-      result.content[index] = block if index
+      Capability::Carrier.absorb(run, item.content) { |part| part_to_block(part) }
     end
 
     private def split_placeholders(body : String) : Array(MPSH::Block)
-      return [] of MPSH::Block if body.empty?
-
-      blocks = [] of MPSH::Block
-      segments = body.split(COMPENSATION_PLACEHOLDER)
-
-      segments.each_with_index do |segment, index|
-        trimmed = segment.strip('\n')
-        blocks << MPSH::TextBlock.new(trimmed) unless trimmed.empty?
-        blocks << MPSH::TextBlock.new(COMPENSATION_PLACEHOLDER) if index < segments.size - 1
-      end
-
-      blocks
+      Capability::Carrier.split(body)
     end
 
     private def flush_assistant(session : MPSH::Session,
