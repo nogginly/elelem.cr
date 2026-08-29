@@ -14,6 +14,7 @@ Document                    |Why
 `docs/protocols/*.md`       |One per protocol: declared capabilities, limits, the bugs each produced        
 `docs/servers/*.md`         |One per server: what it serves, where it diverges, what a green run misses     
 `docs/CLI_DESIGN.md`        |The `elelem` executable: config, session storage, verb grammar, what's deferred
+`README.md`                 |The front door: what the shard is for, and the handoff in twenty lines         
 
 Where this file and `docs/MPSH_SPECIFICATION.md` disagree, the specification
 wins.
@@ -42,11 +43,11 @@ its 1,024-token floor are accepted as documented
 
 Request options are complete: tool declarations, output caps and reasoning
 controls, the last of which introduced `Capability::Catalog` — the fourth
-identity, opened one axis wide. Two protocols spell reasoning control in two
-units and reject being handed both, and which unit a deployment wants is a fact
-about the *model*, so the catalog resolves it per call by narrowing the same
-`Profile`. Read *A model catalog* in `SCOPE.md` before adding a second axis to
-it.
+identity. It now carries **two axes**: the reasoning unit two protocols spell
+differently and reject being handed both, and whether a model authenticates
+its own tool calls. Both narrow the same `Profile` per call. Read *A model
+catalog* in `SCOPE.md` before adding a third — the two reach the same
+optimistic default by *opposite* arguments, and neither generalises.
 
 **Gemini is now executed, the last of the four.** Ollama never served it, so
 unlike Anthropic this had no compatibility port to have already exercised the
@@ -59,9 +60,13 @@ silently ignoring it, both now handled
 the reasoning-off budget genuinely disables thinking on Flash, and
 `reasoning_signature_required` correctly stays `false` here — Anthropic's fix
 does not generalize to this protocol's plain-text reasoning, only to its tool
-calls. Still open: a `ToolCallBlock` handed to this protocol from another one
-has no signature to offer, and nothing yet checks for that before sending
-(`SCOPE.md`).
+calls. **Now closed too:** a `ToolCallBlock` handed to this protocol from
+another has no signature to offer, and `Resolver` checks for that ahead of
+`own?`, reporting `Degraded` rather than sending a request that cannot
+succeed. Keyed on the model via `Catalog`, not declared on the protocol,
+because the requirement arrived with Gemini 3 and the 2.5 series lacks it —
+`docs/protocols/GEMINI.md` records why the protocol-wide version was written
+first and rejected.
 
 Recording practice, and why re-recording is more disruptive than it looks:
 *Live specs* in `DEVELOPMENT.md`.
@@ -91,17 +96,29 @@ survive past one process. Tested against the full MPSH fixture set through
 — a stricter bar than any protocol gets, since this isn't a capability
 adaptation and has no matrix to excuse a difference.
 
-And `elelem` now ships as more than a library: `start`/`continue`
-(`src/elelem_cli/`, entrypoint `src/elelem_cli.cr`) build one
-`elelem.yaml`-configured deployment into a session snapshot per turn.
-`continue` remembers which deployment last answered a given session by
-reading it off the snapshot's own filename, rather than falling back to a
-global config default — `docs/CLI_DESIGN.md` records that a `default_deployment`
-config key was tried first and rejected, not merely skipped, because it
-answered "what does the config prefer" when what `continue` needs is "what
-was this conversation already having." Live-tested in-process against a
-sandboxed config and session store, recorded against Ollama
-(`spec/elelem_cli/commands/`).
+And `elelem` now ships as more than a library. Verbs: `start` (with `--id`),
+`continue`, `list`, `show` (`--snapshots`, `--json`). `continue` remembers
+which deployment last answered a session by reading it off the snapshot's own
+filename rather than a config default — `docs/CLI_DESIGN.md` records that a
+`default_deployment` key was tried first and rejected, not merely skipped,
+because it answered "what does the config prefer" when what `continue` needs
+is "what was this conversation already having."
+
+`elelem.yaml` is two tables: a **server** is a url plus the protocol it
+speaks, a **deployment** names one model on one server. Deployments may also
+carry `reasoning` and `reasoning_retention`, which settled the question
+`Capability::Retention` had parked — those are soft preferences read off a
+model card, not hard protocol facts, so they live in config rather than in
+`Catalog`, and adding a model needs no release.
+
+`Progress` shows a spinner and elapsed seconds while a request is in flight,
+on stderr and only when stderr is a terminal. It is a fiber and a clock, not
+an event queue; `docs/CLI_DESIGN.md` records what streaming will want from it,
+which is why `#start`/`#stop` are public and `#label` is mutable.
+
+Live-tested in-process against a sandboxed config and session store, recorded
+against Ollama (`spec/elelem_cli/commands/`). `spec/support/cli_output.cr`
+keeps a spec run quiet.
 
 ## The live layer
 
@@ -117,15 +134,28 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-All four protocols, a fifth deployment (Azure), `Archive`, and a first-party
-CLI are now built and live-tested. Two separate worklists, not one:
+`SCOPE.md`'s `MUST FIX` is down to **one item**, and it is the largest thing
+left: interrupted-turn session repair.
 
-- **Protocol side** — `SCOPE.md`'s `MUST FIX`: a Gemini tool call carrying a
-  foreign or missing thought signature, and interrupted-turn session repair.
-  Both real, both confirmed live-reproducible, neither built yet.
-- **CLI side** — `docs/CLI_DESIGN.md`'s own *Deliberately deferred, not
-  forgotten*: tool support, streaming, session-inspection verbs
-  (`list`/`show`). None chosen or sequenced yet.
+It has a prerequisite the entry does not name. `SCOPE.md` sketches
+`report.interrupted?`, but `Capability::Report` is a request-side ledger with
+no concept of what came back, and the fact it would need does not exist
+portably anywhere — each protocol stashes its own spelling in
+`provider_metadata` and stops (`stop_reason`, `finish_reason`, `finishReason`,
+`status`). Deciding *where the portable "this turn was cut short" fact lives*
+is a design fork that leaks into MPSH, and is worth proposing before building.
+
+The other worklist is `docs/CLI_DESIGN.md`'s *Deliberately deferred, not
+forgotten*: tool support (open question: text-only first?), streaming (blocked
+— the library has no streaming seam), and session pruning (unblocked, small).
+Tool support is downstream of interrupted-turn repair, since repair is what
+shapes the turn loop.
+
+Also due, and unblocked: **carrier deferral extraction** (`SCOPE.md`'s *WILL
+FIX*). It is reimplemented in three mappers and three exporters, was written
+differently each time, and was wrong once. Its own entry says to do it *before*
+a fifth protocol, not after; there are four and they are stable, so this is the
+moment. Pure refactor, conformance suite is the safety net, no recording.
 
 ### On Ollama
 
@@ -163,6 +193,18 @@ than a green run here to settle it. See `docs/protocols/ANTHROPIC.md`.
   process's CWD at all: sandbox exactly what the code under test reads,
   never anything downstream of it that happens to read the same ambient
   state.
+- **A guard at the right seam still needs a non-raising twin.** Session id
+  validation went into `Sessions.path_for` — correct, since an id becomes
+  dangerous exactly when it becomes a path, and no future verb can forget it
+  there. But `list` enumerates the folder through the same method, so one
+  `.DS_Store` took the whole listing down on first real use. A validator for
+  *input* and a predicate for *enumeration* are different questions;
+  `validate_id` and `valid_id?` are both needed.
+- **Crystal is not Ruby, in three places this shard has already hit.** `out` is
+  a reserved word and cannot name a property or a local. There is no trailing
+  `while` modifier, only trailing `if`/`unless`. And a variable captured by a
+  block — an `OptionParser` handler, typically — will not narrow out of `T?`
+  however it is tested; copy it to a fresh local first.
 - **Corrections cluster in the capability model, not the format.** Three came
   from declaring profiles and round-tripping fixtures; all three changed the
   capability model. Gemini, the protocol most likely to break MPSH, changed only

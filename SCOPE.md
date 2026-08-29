@@ -65,19 +65,6 @@ streaming is not purely additive later.
 
 No fixture covers this. Build alongside the client.
 
-### The specification is silent on request parameters
-
-`docs/MPSH_SPECIFICATION.md` covers tool *calls and results* in detail and says
-nothing about tool *definitions*, output caps or reasoning controls. `Options`
-is now complete and every part of it was built past the edge of the spec rather
-than against it — reasoning controls most of all, since they also drove a new
-`Profile` field and the first model catalog.
-
-That is not obviously wrong — the spec describes a portable *session*, and these
-are per-call concerns that deliberately never enter one. But the omission should
-be a recorded decision rather than an accident, so a future reader does not
-assume the spec ruled on it. Resolve when the spec is next revised.
-
 ---
 
 ## WILL FIX
@@ -220,11 +207,3 @@ Anthropic's web search and Gemini's code execution have rough counterparts, but
 they take different parameters and return different shapes, so the mapping
 cannot be right by construction. It is the same class of problem as the model
 catalog, one layer up.
-
-### README.md
-
-Was deferred to "when Phase 2 passes." Phase 3 is done now — the deferral
-already lapsed, this note just hadn't caught up. The quick-start example is
-the handoff — start on Chat Completions, export, resume on Responses — and
-that example can be written honestly now. Not written yet; do it next, not
-"later."

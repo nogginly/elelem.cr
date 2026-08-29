@@ -66,6 +66,38 @@ This rules out modelling tool results as a message role — a design that only l
 
 ---
 
+## 3a. What a Session Deliberately Does Not Hold
+
+This specification covers tool *calls and results* in detail and says nothing
+about tool *definitions*, output caps, or reasoning controls. That omission is
+a decision, not an oversight, and it is recorded here so a later reader does
+not mistake silence for the question never having been asked.
+
+The rule is the same one that produced the field-vs-block table: **a session
+holds what was said, not what was asked of the model when it was said.**
+
+Concern                                   |Where it lives  |Why                                                
+------------------------------------------|----------------|---------------------------------------------------
+Tool call, tool result, reasoning content |The session     |It is conversation; the next turn reads it         
+Tool *definitions* offered on a call      |`Options`       |What the caller offers *now*, not what was said    
+Output cap                                |`Options`       |A property of one request                          
+Reasoning effort or budget                |`Options`       |Ditto — and the vendors disagree about the unit    
+Playback preference (`ReasoningRetention`)|Caller, per call|A preference about replay, not a fact about history
+
+A stored conversation that remembered how hard the model was asked to think, or
+which tools happened to be on offer that afternoon, would have acquired a
+provider's assumptions and a moment's context. Portability is the thing this
+format refuses to give up, so those stay outside it.
+
+The practical consequence: `Elelem::Options` was built past the edge of this
+specification rather than against it, and correctly so. Reasoning controls in
+particular drove a new `Capability::Profile` field and the first model catalog
+without any of it entering a session. If a future concern is genuinely a
+property of *the conversation* rather than of *a request*, that is when this
+section needs revisiting.
+
+---
+
 ## 4. Content Block Catalog
 
 ### Universal fields
