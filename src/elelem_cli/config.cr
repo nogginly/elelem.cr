@@ -5,27 +5,49 @@ module Elelem::Cli
   class ConfigError < Exception
   end
 
-  # One named entry in `elelem.yaml`. Deliberately not `ProtocolKind` directly
-  # in the config file's own vocabulary — the file says "anthropic",
-  # "chat_completions", "responses", "gemini", parsed here, not `Provider`'s
-  # problem.
-  struct Deployment
+  # Azure OpenAI is not a protocol, it is a way of addressing one — a
+  # different URL shape and a mandatory `api-version`. Modelled as a present-
+  # or-absent block on the *server* rather than a boolean on a model entry,
+  # which is where it used to live.
+  #
+  # Two things fall out of that. `api_version` is non-nilable here, so
+  # "azure with no api_version" stops being a runtime error in `provider_for`
+  # and becomes a shape that cannot be written down. And the fact lands on the
+  # thing it describes: Azure is about where the request goes, not about which
+  # model answers it.
+  struct AzureAddressing
+    getter api_version : String
+
+    def initialize(@api_version : String)
+      raise ConfigError.new("azure block needs an api_version") if @api_version.empty?
+    end
+  end
+
+  # An endpoint: somewhere to send requests, and the protocol it speaks.
+  #
+  # Split out from `Deployment` because a local Ollama serving six models had
+  # to repeat its URL and protocol six times, and because everything that was
+  # awkward about the flat table turned out to be a server fact wearing a
+  # model entry's clothes. `max_tokens_field` belongs here for the same
+  # reason `protocol` does — `Provider.for_azure` already rejects it on
+  # anything but ChatCompletions, which makes it a property of the protocol,
+  # and protocol is a property of the endpoint.
+  struct ServerConfig
+    getter name : String
     getter protocol : ProtocolKind
-    getter server_url : String
-    getter model : String
+    getter url : String
     getter credential_env : String?
-    getter? azure : Bool
-    getter api_version : String?
+    getter azure : AzureAddressing?
     getter max_tokens_field : Protocol::ChatCompletions::Wire::MaxTokensField?
 
-    def initialize(@protocol : ProtocolKind, @server_url : String, @model : String,
-                   @credential_env : String? = nil, @azure : Bool = false,
-                   @api_version : String? = nil,
+    def initialize(@name : String, @protocol : ProtocolKind, @url : String,
+                   @credential_env : String? = nil,
+                   @azure : AzureAddressing? = nil,
                    @max_tokens_field : Protocol::ChatCompletions::Wire::MaxTokensField? = nil)
     end
 
     # `nil` here, silently, is deliberate: an unset credential means an
-    # unauthenticated call, which some deployments (a local Ollama) genuinely
+    # unauthenticated call, which some servers (a local Ollama) genuinely
     # want. What this does *not* do is warn about a set-but-empty environment
     # variable — that failure surfaces as a 401 from the server itself, which
     # already carries more information than a guess made here could.
@@ -34,10 +56,30 @@ module Elelem::Cli
     end
   end
 
+  # One named way to reach one model: a server, and what to ask of it.
+  #
+  # The name is what `start`/`continue` take and what a snapshot filename
+  # records, so it stays the CLI's unit of identity even though it no longer
+  # carries the endpoint itself.
+  struct Deployment
+    getter name : String
+    getter server : ServerConfig
+    getter model : String
+
+    def initialize(@name : String, @server : ServerConfig, @model : String)
+    end
+
+    def protocol : ProtocolKind
+      server.protocol
+    end
+  end
+
   class Config
+    getter servers : Hash(String, ServerConfig)
     getter deployments : Hash(String, Deployment)
 
-    def initialize(@deployments : Hash(String, Deployment))
+    def initialize(@servers : Hash(String, ServerConfig),
+                   @deployments : Hash(String, Deployment))
     end
 
     # `$CWD/elelem.yaml`, then `$HOME/elelem.yaml`. See `docs/CLI_DESIGN.md`.
@@ -52,8 +94,8 @@ module Elelem::Cli
     # already exists for `Sessions`. Not just a testing convenience: without
     # it, a sandboxed test has no way to avoid being shadowed by whatever
     # real `elelem.yaml` an actual invocation happens to have left sitting in
-    # `$CWD` or `$HOME` — checking `$CWD` first is right for normal use, but
-    # gives an explicit override nothing to override *with*.
+    # `$CWD` or `$HOME`, and checking `$CWD` first gives an explicit override
+    # nothing to override *with*.
     def self.locate : String?
       return ENV["ELELEM_CONFIG"]? if ENV["ELELEM_CONFIG"]?
 
@@ -70,34 +112,93 @@ module Elelem::Cli
 
     def self.from_yaml(text : String) : Config
       root = YAML.parse(text)
+
+      servers_node = root["servers"]?.try(&.as_h?) ||
+                     raise ConfigError.new(legacy?(root) ? LEGACY_HELP : "elelem.yaml has no 'servers' key")
+
+      servers = {} of String => ServerConfig
+      servers_node.each do |key, node|
+        name = key.as_s
+        servers[name] = parse_server(name, node)
+      end
+
       table = root["deployments"]?.try(&.as_h?) || raise ConfigError.new("elelem.yaml has no 'deployments' key")
 
       deployments = {} of String => Deployment
       table.each do |key, node|
         name = key.as_s
-        deployments[name] = parse_deployment(name, node)
+        deployments[name] = parse_deployment(name, node, servers)
       end
 
-      new(deployments)
+      new(servers, deployments)
     end
 
-    private def self.parse_deployment(name : String, node : YAML::Any) : Deployment
+    # The old flat table said `server: https://…` on the deployment itself.
+    # Under the new shape that parses as a reference to a server *named* after
+    # a URL, and would fail with "no server named
+    # \"http://localhost:11434\"" — technically accurate and useless.
+    #
+    # Sniffed once, at load, to produce an error that says what to change.
+    # Deliberately not supported as an alternative shape: accepting both
+    # forever would mean `server:` means two things depending on whether it
+    # contains a colon-slash-slash, which is exactly the kind of cleverness
+    # this restructure exists to remove.
+    LEGACY_HELP = "elelem.yaml has no 'servers' key, but its deployments carry inline server URLs — " \
+                  "the format changed. Move 'protocol', 'server' (now 'url'), 'credential_env', " \
+                  "'max_tokens_field' and any azure settings into a top-level 'servers:' entry, then " \
+                  "point each deployment at it with 'server: <name>'. See docs/CLI_DESIGN.md."
+
+    private def self.legacy?(root : YAML::Any) : Bool
+      deployments = root["deployments"]?.try(&.as_h?)
+      return false unless deployments
+
+      deployments.each_value do |node|
+        url = node["server"]?.try(&.as_s?)
+        return true if url && url.includes?("://")
+        return true if node["protocol"]?
+      end
+      false
+    end
+
+    private def self.parse_server(name : String, node : YAML::Any) : ServerConfig
       protocol_name = node["protocol"]?.try(&.as_s?) ||
-                      raise ConfigError.new("deployment #{name.inspect} has no 'protocol'")
-      server_url = node["server"]?.try(&.as_s?) ||
-                   raise ConfigError.new("deployment #{name.inspect} has no 'server'")
+                      raise ConfigError.new("server #{name.inspect} has no 'protocol'")
+      url = node["url"]?.try(&.as_s?) ||
+            raise ConfigError.new("server #{name.inspect} has no 'url'")
+
+      ServerConfig.new(
+        name: name,
+        protocol: parse_protocol(name, protocol_name),
+        url: url,
+        credential_env: node["credential_env"]?.try(&.as_s?),
+        azure: parse_azure(name, node["azure"]?),
+        max_tokens_field: node["max_tokens_field"]?.try(&.as_s?).try { |field| parse_max_tokens_field(name, field) },
+      )
+    end
+
+    private def self.parse_azure(name : String, node : YAML::Any?) : AzureAddressing?
+      return nil if node.nil? || node.raw.nil?
+
+      block = node.as_h? || raise ConfigError.new(
+        "server #{name.inspect} has an 'azure' that is not a block — expected 'azure:' with an 'api_version' under it")
+      version = block["api_version"]?.try(&.as_s?) ||
+                raise ConfigError.new("server #{name.inspect} has an 'azure' block with no 'api_version'")
+
+      AzureAddressing.new(version)
+    end
+
+    private def self.parse_deployment(name : String, node : YAML::Any,
+                                      servers : Hash(String, ServerConfig)) : Deployment
+      server_name = node["server"]?.try(&.as_s?) ||
+                    raise ConfigError.new("deployment #{name.inspect} has no 'server'")
       model = node["model"]?.try(&.as_s?) ||
               raise ConfigError.new("deployment #{name.inspect} has no 'model'")
 
-      Deployment.new(
-        protocol: parse_protocol(name, protocol_name),
-        server_url: server_url,
-        model: model,
-        credential_env: node["credential_env"]?.try(&.as_s?),
-        azure: node["azure"]?.try(&.as_bool?) || false,
-        api_version: node["api_version"]?.try(&.as_s?),
-        max_tokens_field: node["max_tokens_field"]?.try(&.as_s?).try { |field| parse_max_tokens_field(name, field) },
-      )
+      server = servers[server_name]? || raise ConfigError.new(
+        "deployment #{name.inspect} names server #{server_name.inspect}, which is not defined " \
+        "— have: #{servers.keys.join(", ")}")
+
+      Deployment.new(name: name, server: server, model: model)
     end
 
     private def self.parse_protocol(name : String, protocol_name : String) : ProtocolKind
@@ -107,7 +208,7 @@ module Elelem::Cli
       when "anthropic"        then ProtocolKind::Anthropic
       when "gemini"           then ProtocolKind::Gemini
       else
-        raise ConfigError.new("deployment #{name.inspect} has unrecognised protocol #{protocol_name.inspect} " \
+        raise ConfigError.new("server #{name.inspect} has unrecognised protocol #{protocol_name.inspect} " \
                               "— expected chat_completions, responses, anthropic, or gemini")
       end
     end
@@ -118,7 +219,7 @@ module Elelem::Cli
       when "max_tokens"            then Protocol::ChatCompletions::Wire::MaxTokensField::MaxTokens
       when "max_completion_tokens" then Protocol::ChatCompletions::Wire::MaxTokensField::MaxCompletionTokens
       else
-        raise ConfigError.new("deployment #{name.inspect} has unrecognised max_tokens_field #{field.inspect} " \
+        raise ConfigError.new("server #{name.inspect} has unrecognised max_tokens_field #{field.inspect} " \
                               "— expected max_tokens or max_completion_tokens")
       end
     end
@@ -128,20 +229,24 @@ module Elelem::Cli
         "no deployment named #{name.inspect} in elelem.yaml — have: #{deployments.keys.join(", ")}")
     end
 
-    # The deployment name is also the `Server`'s own name, deliberately — it's
-    # what lets `Provider.for`'s existing vendor default work unchanged: a
-    # deployment the operator called `anthropic` is treated as authentically
-    # Anthropic by the same comparison every other caller already relies on.
+    # The *server* name is the `Server`'s own name, which is what keeps
+    # `Provider.for`'s vendor default working: a server the operator called
+    # `anthropic` is treated as authentically Anthropic by the same comparison
+    # every other caller relies on.
+    #
+    # This changed with the split, and the change is the right way round. It
+    # used to be the deployment name, which meant `claude-haiku` and
+    # `claude-sonnet` pointed at the same endpoint under two different vendor
+    # identities. The vendor claim is a fact about the endpoint, so it now
+    # follows the endpoint.
     def provider_for(name : String) : Provider
-      d = deployment(name)
-      server = Server.new(name, d.server_url, d.credential)
+      s = deployment(name).server
+      server = Server.new(s.name, s.url, s.credential)
 
-      if d.azure?
-        api_version = d.api_version || raise ConfigError.new(
-          "deployment #{name.inspect} has azure: true but no api_version")
-        Provider.for_azure(server, d.protocol, api_version, max_tokens_field: d.max_tokens_field)
+      if azure = s.azure
+        Provider.for_azure(server, s.protocol, azure.api_version, max_tokens_field: s.max_tokens_field)
       else
-        Provider.for(server, d.protocol, max_tokens_field: d.max_tokens_field)
+        Provider.for(server, s.protocol, max_tokens_field: s.max_tokens_field)
       end
     end
   end

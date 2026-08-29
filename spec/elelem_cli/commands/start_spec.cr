@@ -16,10 +16,13 @@ private def with_sandbox(&) : Nil
   Dir.mkdir_p(File.join(tmp, ".elelem"))
   config_path = File.join(tmp, "elelem.yaml")
   File.write(config_path, <<-YAML)
-    deployments:
+    servers:
       ollama:
         protocol: chat_completions
-        server: http://localhost:11434
+        url: http://localhost:11434
+    deployments:
+      ollama:
+        server: ollama
         model: #{MODEL}
     YAML
 

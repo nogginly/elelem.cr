@@ -95,40 +95,90 @@ calls `Client#send`, hands back the reply and report.
 Search order: `$ELELEM_CONFIG` if set — the literal path, no search — else
 `$CWD/elelem.yaml`, then `$HOME/elelem.yaml`. Explicit beats implicit: an
 env var naming the file directly always wins over guessing from what
-happens to exist. A deployment
-name is a config-level identity, deliberately distinct from a protocol —
-the same separation `Provider.for` already enforces between server, protocol,
-and vendor claim, so a name like `anthropic` can't be quietly ambiguous
-between "the vendor" and "whatever's actually listening."
+happens to exist.
+
+Two tables. A **server** is somewhere to send requests and the protocol it
+speaks; a **deployment** is a named way to reach one model on one server.
 
 ```yaml
-deployments:
+servers:
   anthropic:
     protocol: anthropic
-    server: https://api.anthropic.com
+    url: https://api.anthropic.com
     credential_env: ANTHROPIC_API_KEY
-    model: claude-haiku-4-5
 
-  azure-mini:
+  azure-alpha:
     protocol: chat_completions
-    azure: true
-    server: https://oxaro-alpha.openai.azure.com
-    api_version: "2025-04-01-preview"
+    url: https://oxaro-alpha.openai.azure.com
     credential_env: AZURE_OPENAI_API_KEY
-    model: gpt5.4mini
     max_tokens_field: max_completion_tokens
+    azure:
+      api_version: "2025-04-01-preview"
 
   home-ollama:
     protocol: chat_completions
-    server: http://localhost:11434
-    model: llama3.2
+    url: http://localhost:11434
+
+deployments:
+  haiku:
+    server: anthropic
+    model: claude-haiku-4-5
+
+  azure-mini:
+    server: azure-alpha
+    model: gpt5.4mini
+
+  qwen:
+    server: home-ollama
+    model: qwen3.8
+
+  gemma:
+    server: home-ollama
+    model: gemma4-27b
 ```
 
 Credentials are referenced by environment variable name, never stored in the
-file. `azure: true` selects `Provider.for_azure` over `Provider.for` at
-resolution time — everything else in a deployment entry maps directly onto
-that call's own parameters, so this table shouldn't need to invent a second
-vocabulary as new deployment amendments arrive.
+file.
+
+### Why the split
+
+One flat table meant a local Ollama serving six models repeated its URL and
+protocol six times. Worse, everything awkward about that table turned out to
+be a **server fact wearing a model entry's clothes** — which is why this one
+change fixes two complaints rather than one.
+
+`azure` is the clearest case. It was a boolean on a deployment, paired with
+an `api_version` that had to accompany it; "azure with no api_version" was
+writable and failed at provider-construction time. Nested on the server it is
+present or absent, `api_version` is non-nilable, and the bad shape cannot be
+written down. It also now sits on the thing it describes: Azure is about
+where a request goes and how it is addressed, not about which model answers.
+
+`max_tokens_field` moved for the same reason. `Provider.for_azure` already
+rejects it on anything but ChatCompletions, which makes it a fact about the
+protocol — and protocol is now a property of the endpoint.
+
+### One behavioural change: whose name the vendor claim follows
+
+`Provider.for`'s vendor default compares the `Server`'s name against the
+protocol's canonical vendor, so a server called `anthropic` is treated as
+authentically Anthropic. That name used to come from the *deployment*, which
+meant `haiku` and `sonnet` were two different vendor identities for one
+endpoint. It now comes from the server entry, which is the right way round:
+the vendor claim is a fact about the endpoint.
+
+### The old format is rejected, not accommodated
+
+An old config says `server: https://…` on the deployment itself. Under the
+new shape that parses as a reference to a server *named* after a URL, and
+would fail with an accurate and useless "no server named
+`http://localhost:11434`". `Config` sniffs for the old shape once at load and
+raises something that says what to change.
+
+Deliberately not supported as an alternative form. Accepting both forever
+would mean `server:` means two different things depending on whether it
+contains `://` — exactly the kind of cleverness this restructure exists to
+remove.
 
 ## Session storage
 
