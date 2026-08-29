@@ -105,43 +105,52 @@ module Elelem::Capability
 
     # Returns carrier content to the results that referenced it, in order.
     #
-    # The queue is consumed against marker *counts*, not positions, which is
-    # what lets one carrier serve several results: each result takes as many
-    # parts as it left markers, in the order it left them. The block converts
-    # one wire part to a block, or `nil` for a part this protocol cannot
-    # express — in which case the slot is spent and one marker survives, though
-    # not in its original position: `replace_placeholder` fills the first
-    # marker still open, so a later part slides up into the skipped one. The
-    # count stays right and the ordering within that result drifts. Behaviour
-    # inherited from the three implementations this replaces, pinned in
-    # `spec/capability/carrier_spec.cr` as it is rather than as it ought to be.
+    # Each result takes as many parts as it left markers, in the order it left
+    # them, which is what lets one carrier serve a whole run of results.
+    #
+    # Placement is *positional*: the markers are located once, up front, and
+    # each part is written to the slot its own marker occupies. The three
+    # implementations this module replaced all counted markers but filled the
+    # first one still open, and those two only agree while every part converts.
+    # A part the target cannot express returns `nil`, and under first-open
+    # filling the next part that did convert slid up into the skipped slot,
+    # leaving the surviving marker trailing at the end — right count, wrong
+    # order, inside a single tool result. Addressing the slot directly removes
+    # the discrepancy rather than documenting it.
+    #
+    # Locating the markers before writing anything is what makes that safe: a
+    # replacement swaps one block for another and never resizes the array, so
+    # an index taken up front still points where it did.
     def absorb(run : Array(MPSH::ToolResultBlock), parts : Array(T),
                & : T -> MPSH::Block?) : Nil forall T
       queue = parts.dup
 
       run.each do |result|
-        placeholders(result).times do
+        marker_indices(result).each do |index|
           part = queue.shift?
           break unless part
           block = yield part
-          replace_placeholder(result, block) if block
+          result.content[index] = block if block
         end
       end
     end
 
     # How many markers this result is still holding open.
     def placeholders(result : MPSH::ToolResultBlock) : Int32
-      result.content.count do |block|
-        block.is_a?(MPSH::TextBlock) && block.text == PLACEHOLDER
-      end
+      marker_indices(result).size
     end
 
-    # Fills the first marker still open, in place.
-    def replace_placeholder(result : MPSH::ToolResultBlock, block : MPSH::Block) : Nil
-      index = result.content.index do |existing|
-        existing.is_a?(MPSH::TextBlock) && existing.text == PLACEHOLDER
+    # Where they are, in order. Public because it is the honest expression of
+    # what a marker count means, and because `absorb` needs the positions
+    # rather than the tally.
+    def marker_indices(result : MPSH::ToolResultBlock) : Array(Int32)
+      indices = [] of Int32
+
+      result.content.each_with_index do |block, index|
+        indices << index if block.is_a?(MPSH::TextBlock) && block.text == PLACEHOLDER
       end
-      result.content[index] = block if index
+
+      indices
     end
 
     # A tool result arrives from the wire as one string, and the markers inside

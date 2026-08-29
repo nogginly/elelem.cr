@@ -100,9 +100,12 @@ callers guard ahead of it: both preconditions sat *below* the synthetic check
 and hoisting them would have changed the answer. Unit-tested directly for the
 first time (`spec/capability/carrier_spec.cr`) — the old arrangement could only
 test each copy through its own protocol's fixtures, which is exactly how one
-copy stayed wrong. That spec also turned up an inherited infelicity in
-`absorb`, pinned as-is and recorded in `SCOPE.md` rather than fixed inside a
-refactor claiming to change nothing.
+copy stayed wrong. That spec immediately earned itself: it caught an
+inherited infelicity in `absorb`, which counted markers but filled the first
+one still open, so a part the target could not express left the surviving
+marker trailing at the end of the result instead of standing where it belonged.
+Placement is positional now, and `SCOPE.md` is one item shorter than it was
+rather than level.
 
 **Two things now exist beyond the live protocol layer itself.**
 `MPSH::Archive` (`src/elelem/mpsh/archive.cr`) round-trips a `Session` to

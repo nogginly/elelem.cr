@@ -126,10 +126,10 @@ describe Elelem::Capability::Carrier do
       target.content[1].as(M::ImageBlock).text_fallback.should eq("a cat")
     end
 
-    # The reason one carrier can serve a whole run: parts are dealt out against
-    # each result's *marker count*, in order, not matched by position or
-    # identifier. Getting this wrong gives every result the first image.
-    it "deals parts across several results by marker count, in order" do
+    # The reason one carrier can serve a whole run: parts are dealt out to each
+    # result's markers in turn, not matched by identifier. Getting this wrong
+    # gives every result the first image.
+    it "deals parts across several results, in order" do
       first = result(markers: 2, text: "first")
       second = result(markers: 1, text: "second")
 
@@ -150,23 +150,52 @@ describe Elelem::Capability::Carrier do
       second.content[1].as(M::TextBlock).text.should eq(C::Carrier::PLACEHOLDER)
     end
 
-    # A part this protocol cannot express consumes its slot, and one marker
-    # survives — but not the one it was meant for. `replace_placeholder` fills
-    # the *first* marker still open, so the next part that does convert slides
-    # up into the skipped position and the surviving marker trails at the end.
-    #
-    # Pinned as it behaves, not as it ought to. This predates the extraction
-    # and is unchanged by it; the count is right and only the ordering within
-    # one tool result drifts, which is why it is recorded here rather than
-    # quietly fixed inside a refactor whose whole safety argument is that it
-    # changes nothing.
-    it "consumes the slot for a part it cannot convert, leaving one marker behind" do
+    # A part the target cannot express spends its slot and leaves that marker
+    # standing — in the position it always occupied. The three implementations
+    # this module replaced counted markers but filled the first one still open,
+    # so the next part that did convert slid up into the skipped slot and the
+    # surviving marker trailed at the end. Right count, wrong order.
+    it "keeps the marker in place for a part it cannot convert" do
       target = result(markers: 2)
 
       C::Carrier.absorb([target], ["unmappable", "b"]) { |part| to_block(part) }
 
-      target.content[1].as(M::ImageBlock).text_fallback.should eq("b")
-      target.content[2].as(M::TextBlock).text.should eq(C::Carrier::PLACEHOLDER)
+      target.content[1].as(M::TextBlock).text.should eq(C::Carrier::PLACEHOLDER)
+      target.content[2].as(M::ImageBlock).text_fallback.should eq("b")
+    end
+
+    # The same rule across a result boundary, which first-open filling also got
+    # wrong: a skipped slot in one result must not draw the following result's
+    # content forward into it.
+    it "keeps a skipped slot from pulling a later result's content into it" do
+      first = result(markers: 1, text: "first")
+      second = result(markers: 1, text: "second")
+
+      C::Carrier.absorb([first, second], ["unmappable", "b"]) { |part| to_block(part) }
+
+      first.content[1].as(M::TextBlock).text.should eq(C::Carrier::PLACEHOLDER)
+      second.content[1].as(M::ImageBlock).text_fallback.should eq("b")
+    end
+
+    # Markers are located before anything is written, so the indices taken up
+    # front stay valid. This is the case that would break if a replacement ever
+    # resized the content array.
+    it "writes each part to its own marker when text surrounds them" do
+      target = M::ToolResultBlock.new("call-1", [
+        M::TextBlock.new("before").as(M::Block),
+        M::TextBlock.new(C::Carrier::PLACEHOLDER).as(M::Block),
+        M::TextBlock.new("between").as(M::Block),
+        M::TextBlock.new(C::Carrier::PLACEHOLDER).as(M::Block),
+        M::TextBlock.new("after").as(M::Block),
+      ])
+
+      C::Carrier.absorb([target], ["a", "b"]) { |part| to_block(part) }
+
+      target.content[0].as(M::TextBlock).text.should eq("before")
+      target.content[1].as(M::ImageBlock).text_fallback.should eq("a")
+      target.content[2].as(M::TextBlock).text.should eq("between")
+      target.content[3].as(M::ImageBlock).text_fallback.should eq("b")
+      target.content[4].as(M::TextBlock).text.should eq("after")
     end
 
     it "does nothing to a result holding no markers" do
@@ -175,6 +204,30 @@ describe Elelem::Capability::Carrier do
       C::Carrier.absorb([target], ["a"]) { |part| to_block(part) }
 
       target.content.size.should eq(1)
+    end
+  end
+
+  describe ".marker_indices" do
+    it "reports where the markers are, in order" do
+      target = M::ToolResultBlock.new("call-1", [
+        M::TextBlock.new("before").as(M::Block),
+        M::TextBlock.new(C::Carrier::PLACEHOLDER).as(M::Block),
+        M::TextBlock.new("between").as(M::Block),
+        M::TextBlock.new(C::Carrier::PLACEHOLDER).as(M::Block),
+      ])
+
+      C::Carrier.marker_indices(target).should eq([1, 3])
+      C::Carrier.placeholders(target).should eq(2)
+    end
+
+    # Text that merely resembles the marker is not one. It is matched exactly,
+    # which is the whole reason it may never be localized.
+    it "ignores text that only looks like the marker" do
+      target = M::ToolResultBlock.new("call-1", [
+        M::TextBlock.new("[elelem: content returned separately]").as(M::Block),
+      ])
+
+      C::Carrier.marker_indices(target).should be_empty
     end
   end
 

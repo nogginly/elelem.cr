@@ -128,26 +128,6 @@ default. Still open, and the reason this stays in WILL FIX:
 - Per-model *rung* support, if a rejection ever demands it. A second axis on
   the same entry, not a second mechanism.
 
-### `absorb` fills the first open marker, not the one it consumed
-
-Found while pinning `Capability::Carrier` with its own spec, and older than
-that module — all three implementations it replaced behaved this way.
-
-`absorb` deals carrier parts out against each result's marker *count*, but
-`replace_placeholder` fills the **first** marker still open. The two agree only
-while every part converts. A part the target protocol cannot express spends its
-slot and returns nothing, so the next part that does convert slides up into the
-skipped position and the surviving marker trails behind it. The count stays
-right; the ordering inside that one tool result drifts.
-
-Small blast radius — one result's internal ordering, and only when a protocol
-absorbs a carrier holding media it cannot express — and it surfaces as a
-conformance divergence rather than a wrong answer. The fix is to consume markers
-positionally, which is a handful of lines and a behaviour change, so it was
-deliberately kept out of the extraction commit, whose entire safety argument was
-that it changed nothing. Pinned as-is in `spec/capability/carrier_spec.cr`;
-delete this entry when the follow-up lands.
-
 ### A localizable content synthesizer
 
 Mappers insert two kinds of text, and conflating them would break export.
