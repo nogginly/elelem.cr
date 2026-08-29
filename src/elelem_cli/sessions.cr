@@ -46,23 +46,87 @@ module Elelem::Cli
       File.join(root, "sessions")
     end
 
+    # Letters, digits, dot, dash, underscore; must start with a letter or
+    # digit; 64 characters at most.
+    #
+    # Permissive enough for anything someone would sensibly name a
+    # conversation, strict enough that an id can never be anything but a
+    # single folder name directly under `folder`.
+    ID_PATTERN = /\A[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}\z/
+
+    # Ids have always been user input — `continue SESSID` and `show SESSID`
+    # take one straight from argv — and `path_for` used to join it unchecked,
+    # so `show ../../somewhere` walked out of the sessions folder. `--id`
+    # makes that a *write* path as well, which is why this landed with it,
+    # but it is a fix to something that predates it.
+    #
+    # Enforced in `path_for` rather than at each call site, deliberately: an
+    # id becomes dangerous at exactly the moment it becomes a path, so that is
+    # the one place a future verb cannot forget to check.
+    def validate_id(id : String) : String
+      unless ID_PATTERN.matches?(id)
+        raise SessionError.new(
+          "#{id.inspect} is not a usable session id — letters, digits, dot, dash and underscore only, " \
+          "starting with a letter or digit, 64 characters at most")
+      end
+
+      # `a..b` satisfies the pattern and is a perfectly good folder name, but
+      # nothing good is ever named that, and refusing it means no reader has
+      # to reason about whether some path normalisation elsewhere could turn
+      # it into a traversal.
+      raise SessionError.new("#{id.inspect} is not a usable session id — '..' is not allowed") if id.includes?("..")
+
+      id
+    end
+
+    # The same question without the exception, for callers *enumerating* the
+    # folder rather than being handed an id.
+    #
+    # Those are genuinely different situations. An id from argv that fails
+    # validation is a mistake worth reporting; a directory entry that fails is
+    # debris — `.DS_Store`, an editor swap file, whatever else a filesystem
+    # leaves lying about — and listing sessions should no more die on it than
+    # on a session folder with no snapshots in it.
+    def valid_id?(id : String) : Bool
+      ID_PATTERN.matches?(id) && !id.includes?("..")
+    end
+
     def path_for(id : String) : String
-      File.join(folder, id)
+      File.join(folder, validate_id(id))
     end
 
     def exists?(id : String) : Bool
       Dir.exists?(path_for(id))
     end
 
-    # Retried, not guaranteed — the id space is small enough on purpose (a
-    # few hundred combinations) that a collision is worth handling cheaply
-    # rather than reaching for a hash the person would never want to type.
+    # 31 adjectives by 30 nouns is 930 names, and this checks before it
+    # returns, so a duplicate is never produced — the old failure mode was
+    # running out of *tries*. Twenty tries is comfortable to around 500 stored
+    # sessions, deteriorating past 700 and hopeless near 900, which at a few
+    # conversations a day is months rather than years. Nothing prunes, so it
+    # only ever grows.
+    #
+    # Hence the fallback: when the two-word space is crowded, number it.
+    # Deliberately *only* then — a `-2` never appears until the day it has to,
+    # so the first several hundred sessions pay nothing for it, unlike a random
+    # suffix that would tax every name from day one against a problem most
+    # users will never have. And because the numbering is unbounded, this can
+    # no longer fail at all.
+    #
+    # The real answer for anyone generating sessions in bulk is `--id`, which
+    # sidesteps this entirely.
     def generate_id : String
       20.times do
         id = "#{ADJECTIVES.sample}-#{NOUNS.sample}"
         return id unless exists?(id)
       end
-      raise SessionError.new("could not find an unused session id after 20 tries")
+
+      base = "#{ADJECTIVES.sample}-#{NOUNS.sample}"
+      suffix = 2
+      while exists?("#{base}-#{suffix}")
+        suffix += 1
+      end
+      "#{base}-#{suffix}"
     end
 
     # Writes a new timestamped snapshot. Nothing already on disk is touched —
@@ -127,15 +191,18 @@ module Elelem::Cli
     # Every session on disk, most recently active first.
     #
     # Deliberately returns ids rather than loaded `Session`s: listing is the
-    # cheap verb and a caller wanting content can ask for it per id. A folder
-    # with no snapshots in it is skipped rather than raised on — a crashed
-    # `start` can leave one, and a listing that dies on the debris is worse
-    # than a listing that omits it.
+    # cheap verb and a caller wanting content can ask for it per id.
+    #
+    # Two kinds of debris are skipped rather than raised on. A folder with no
+    # snapshots is what a crashed `start` leaves. An entry that is not a valid
+    # id at all is what the filesystem leaves — `.DS_Store` being the one that
+    # found this the hard way. A listing that dies on either is worse than one
+    # that omits them.
     def list : Array(String)
       return [] of String unless Dir.exists?(folder)
 
       Dir.children(folder)
-        .select { |id| Dir.exists?(path_for(id)) }
+        .select { |id| valid_id?(id) && Dir.exists?(path_for(id)) }
         .compact_map { |id| (last = snapshots(id).last?) ? {id, last} : nil }
         .sort_by! { |(_, last)| last }
         .reverse!

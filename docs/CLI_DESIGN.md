@@ -174,7 +174,7 @@ replayed. They share a word because it is the honest word for each key.
 deliberately do not go in it. The line is between **hard protocol facts** and
 **soft quality preferences**:
 
-            |`SIGNED_TOOL_CALLS`|`reasoning`, `reasoning_retention`
+&nbsp;      |`SIGNED_TOOL_CALLS`|`reasoning`, `reasoning_retention`
 ------------|-------------------|----------------------------------
 Wrong ⇒     |400, request fails |Answers are merely worse          
 Authority   |The vendor's API   |A model card, read by the operator
@@ -225,6 +225,49 @@ Deliberately not supported as an alternative form. Accepting both forever
 would mean `server:` means two different things depending on whether it
 contains `://` — exactly the kind of cleverness this restructure exists to
 remove.
+
+### Naming a session: `--id`
+
+`elelem start <deployment> <prompt...> [--id <session-id>]`. Absent, a name is
+generated as before.
+
+For anyone driving `elelem` from a script, who would rather the session be
+called `nightly-summary` than have to capture whatever two words came out. It
+is also the honest answer to running out of generated names: 31 adjectives by
+30 nouns is 930, comfortable to around 500 stored sessions and deteriorating
+past 700, and someone creating sessions in bulk was always better served by a
+meaningful name than by a bigger word list.
+
+**An existing id is refused, not continued.** `start` means start, and
+silently appending to a conversation because a script reused a name is the
+kind of surprise that costs someone a day. The error points at `continue`,
+which says what it does.
+
+The generator also stopped being able to fail. It used to raise after twenty
+colliding tries; it now falls back to numbering — `brisk-comet-2` — but only
+once the two-word space is genuinely crowded, so the first several hundred
+sessions pay nothing for it. A random suffix on every name would have taxed
+day one to protect against a problem most users never reach.
+
+### Session ids are validated, because they always were user input
+
+Letters, digits, dot, dash and underscore, starting with a letter or digit, 64
+characters at most, and no `..`.
+
+`continue SESSID` and `show SESSID` have always taken an id straight from
+argv, and `path_for` joined it unchecked — so `elelem show ../../somewhere`
+walked out of the sessions folder. `--id` makes that a write path too, which
+is what prompted the fix, but the hole predates it.
+
+Enforced inside `path_for` rather than at each call site: an id becomes
+dangerous at exactly the moment it becomes a path, so that is the one place a
+future verb cannot forget to check.
+
+`Sessions.valid_id?` is the same question without the exception, for callers
+*enumerating* the folder rather than being handed an id. The two situations
+are genuinely different: an id from argv that fails validation is a mistake
+worth reporting, while a directory entry that fails is debris. `list` uses the
+predicate, having first shipped without it and fallen over a `.DS_Store`.
 
 ## Session storage
 

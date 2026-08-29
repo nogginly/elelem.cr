@@ -9,7 +9,7 @@ USAGE = <<-USAGE
   elelem — a portable session history
 
   Usage:
-    elelem start <deployment> <prompt...>
+    elelem start <deployment> <prompt...> [--id <session-id>]
     elelem continue <session-id> <prompt...> [--on <deployment>]
     elelem list
     elelem show <session-id> [--snapshots] [--json]

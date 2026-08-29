@@ -82,4 +82,51 @@ describe Elelem::Cli::Sessions do
       end
     end
   end
+
+  describe ".validate_id" do
+    it "accepts the shapes people actually use" do
+      %w[brisk-comet nightly_run_42 v2.1-tax-questions A1].each do |id|
+        Elelem::Cli::Sessions.validate_id(id).should eq(id)
+      end
+    end
+
+    # The hole this closes. `show`/`continue` have always taken an id straight
+    # from argv, and `path_for` used to join it unchecked.
+    it "refuses anything that would leave the sessions folder" do
+      ["../escape", "a/b", "a\\b", "..", "nested/../..", ".hidden"].each do |id|
+        expect_raises(Elelem::Cli::SessionError, /not a usable session id/) do
+          Elelem::Cli::Sessions.validate_id(id)
+        end
+      end
+    end
+
+    it "refuses an empty or over-long id" do
+      expect_raises(Elelem::Cli::SessionError) { Elelem::Cli::Sessions.validate_id("") }
+      expect_raises(Elelem::Cli::SessionError) { Elelem::Cli::Sessions.validate_id("x" * 65) }
+    end
+
+    it "is enforced through path_for, so no verb can bypass it" do
+      with_sandbox do
+        expect_raises(Elelem::Cli::SessionError, /not a usable session id/) do
+          Elelem::Cli::Sessions.path_for("../escape")
+        end
+      end
+    end
+  end
+
+  # The old failure mode was twenty misses and a raise. Filling every
+  # combination makes the first twenty tries certain to miss.
+  it "falls back to a numbered name rather than failing when the space is full" do
+    with_sandbox do
+      Elelem::Cli::Sessions::ADJECTIVES.each do |adjective|
+        Elelem::Cli::Sessions::NOUNS.each do |noun|
+          Dir.mkdir_p(Elelem::Cli::Sessions.path_for("#{adjective}-#{noun}"))
+        end
+      end
+
+      id = Elelem::Cli::Sessions.generate_id
+      id.should match(/\A[a-z]+-[a-z]+-\d+\z/)
+      Elelem::Cli::Sessions.exists?(id).should be_false
+    end
+  end
 end

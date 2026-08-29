@@ -95,6 +95,22 @@ describe Elelem::Cli::Commands::List do
       printed.should_not contain("empty-husk")
     end
   end
+
+  # And this is what the filesystem leaves. Found the hard way on macOS, where
+  # a single .DS_Store in the sessions folder took the whole listing down.
+  it "skips entries that are not session ids at all" do
+    with_sandbox do
+      seed("brisk-comet", "ollama", "intact")
+      File.write(File.join(Elelem::Cli::Sessions.folder, ".DS_Store"), "junk")
+      Dir.mkdir_p(File.join(Elelem::Cli::Sessions.folder, ".hidden-thing"))
+
+      printed, _ = captured { Elelem::Cli::Commands::List.run([] of String) }
+
+      printed.should contain("brisk-comet")
+      printed.should_not contain("DS_Store")
+      printed.should_not contain("hidden-thing")
+    end
+  end
 end
 
 describe Elelem::Cli::Commands::Show do

@@ -67,6 +67,26 @@ describe Elelem::Cli::Commands::Start do
     end
   end
 
+  # Both of these raise before the request is made, so they need no cassette.
+  # That is also the behaviour under test: a refusal is only useful if it
+  # arrives before the money is spent.
+  it "refuses an --id that is already a session, and points at continue" do
+    with_sandbox do
+      Dir.mkdir_p(Elelem::Cli::Sessions.path_for("tax-questions"))
+      expect_raises(Elelem::Cli::SessionError, /already exists.*elelem continue tax-questions/) do
+        Elelem::Cli::Commands::Start.run(["ollama", "hello", "--id", "tax-questions"])
+      end
+    end
+  end
+
+  it "refuses an --id that would leave the sessions folder" do
+    with_sandbox do
+      expect_raises(Elelem::Cli::SessionError, /not a usable session id/) do
+        Elelem::Cli::Commands::Start.run(["ollama", "hello", "--id", "../escape"])
+      end
+    end
+  end
+
   it "raises naming the deployment, before ever calling out, for an unknown one" do
     with_sandbox do
       expect_raises(Elelem::Cli::ConfigError, /"nonexistent"/) do
