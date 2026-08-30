@@ -154,22 +154,34 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-`SCOPE.md`'s `MUST FIX` is down to **one item**, and it is the largest thing
-left: interrupted-turn session repair.
+`SCOPE.md`'s `MUST FIX` is down to **one item** — interrupted-turn session
+repair — and as of August 2026 it is **held until streaming lands**. Read its
+entry before reopening it: the investigation is recorded there and the
+conclusion is not "not yet worth doing" but "not yet decidable".
 
-It has a prerequisite the entry does not name. `SCOPE.md` sketches
-`report.interrupted?`, but `Capability::Report` is a request-side ledger with
-no concept of what came back, and the fact it would need does not exist
-portably anywhere — each protocol stashes its own spelling in
-`provider_metadata` and stops (`stop_reason`, `finish_reason`, `finishReason`,
-`status`). Deciding *where the portable "this turn was cut short" fact lives*
-is a design fork that leaks into MPSH, and is worth proposing before building.
+The short version. Interruption is three classes, not one cause with
+variations. Pre-request rejections and model-side stops are already handled or
+already fixture-covered. The third — a failure part-way through generation —
+does not exist without streaming, because nothing has reached the wire and the
+server simply discards the partial and returns an error. With streaming it
+exists in a form that carries no vendor field at all: a stream that ends
+without its terminal event. That absence is what constrains where the portable
+"this turn was cut short" fact must live — it has to be settable from a
+transport observation, not merely parsed from a response — and choosing that
+home while unable to test the case that constrains it is how the wrong home
+gets chosen.
 
-The other worklist is `docs/CLI_DESIGN.md`'s *Deliberately deferred, not
-forgotten*: tool support (open question: text-only first?), streaming (blocked
-— the library has no streaming seam), and session pruning (unblocked, small).
-Tool support is downstream of interrupted-turn repair, since repair is what
-shapes the turn loop.
+So the design fork this section used to describe is *answered in outline* and
+deliberately not built: a canonical `Ending` on `MPSH::Message`, additive in
+`Archive`, with repair as a pure-MPSH `MPSH::Repair`. `SCOPE.md` has the
+reasoning and the fixture plan, which costs nothing when it resumes.
+
+**Unblocked and next**, from `docs/CLI_DESIGN.md`'s *Deliberately deferred, not
+forgotten*: **session pruning and deletion** — small, no design fork. Also
+there: tool support (open question: text-only first?) and streaming itself
+(the library has no streaming seam). Tool support is downstream of
+interrupted-turn repair, since repair is what shapes the turn loop — which now
+puts both of them behind streaming.
 
 ### On Ollama
 

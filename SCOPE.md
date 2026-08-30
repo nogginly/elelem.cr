@@ -58,12 +58,54 @@ report.interrupted?   # cause attached
 The cause matters only for the caller's next move — await input, back off,
 retry. Session repair is identical in all three.
 
-**Quota needs one distinction.** A pre-request rejection leaves the session
-untouched and is a plain retry; mid-response truncation is the third state
-above. Streaming exposes the second far more often, which is another reason
-streaming is not purely additive later.
+**Three classes, not one cause with variations.** Investigated August 2026; the
+entry above collapsed them, which is what made the item look buildable.
 
-No fixture covers this. Build alongside the client.
+1. **Pre-request rejection** — quota, rate limit, context window exceeded, bad
+   auth. Rejected before generation: 429, 400, 413, no partial content in
+   either mode. The session is untouched and this is a plain retry.
+   `transmit` already raises. Nothing to repair.
+2. **Model-side stop** — `max_tokens`, stop sequence, safety. A complete,
+   well-formed 200 with the reason in its own field, identical streaming or
+   not. This is the truncation case, and today it is the *only* one that
+   reaches repair.
+3. **Mid-generation server failure** — and here the two modes diverge sharply.
+
+Without streaming there is no third state. Nothing has reached the wire, so the
+server discards the partial generation and returns an HTTP error; the tokens
+are gone and there is no partial response to repair. With streaming the outer
+status is already committed at 200, so the failure arrives *in band*: an
+`error` event in place of the terminal one, or — worse and reportedly common —
+the stream simply ending with no terminal event at all.
+
+**Context windows create no new state.** Input too large is rejected up front,
+class 1. A model running out of room mid-generation is not a server decision;
+it is class 2 under another name.
+
+**The absence is the finding.** A dropped stream carries the "cut short" fact
+as the *lack* of a terminal event. There is no vendor field to read, so any
+design that *derives* the fact by normalising `provider_metadata` cannot
+express it. Whatever holds this must be something the client can **set** from a
+transport observation, not only something a response reader parses. That is the
+strongest argument for a canonical field on `MPSH::Message` rather than a
+lookup over the four existing spellings — and it is an argument that only
+appears once streaming is in view, which is why this waits for it.
+
+**Held until streaming lands.** Classes 1 and 2 are already handled or already
+fixture-covered; class 3 is unreachable without a streaming seam, and it is the
+class that shapes where the fact lives. Building the truncation half now would
+mean choosing that home while unable to test the case that constrains it. The
+invariant above is what this closes on, and it stays the acceptance test.
+
+**When it resumes, the fixtures cost nothing.** Truncation is recorded already
+(the `max_output_tokens: 24` transcript). Ollama's small-context and
+fail-when-full flags give a genuine class-1 rejection. A real vendor 400 comes
+free from requesting `max_tokens` above a model's ceiling — rejected before
+generation, so no output tokens are billed. Class 3 should be *deliberately*
+synthetic: a stream cut after three deltas, or an error frame in place of the
+terminal event, is a transport shape rather than model output, so a
+hand-authored transcript tests our parser rather than our guess about a vendor.
+Copy the error envelopes verbatim from provider documentation.
 
 ---
 
