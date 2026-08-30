@@ -176,12 +176,17 @@ deliberately not built: a canonical `Ending` on `MPSH::Message`, additive in
 `Archive`, with repair as a pure-MPSH `MPSH::Repair`. `SCOPE.md` has the
 reasoning and the fixture plan, which costs nothing when it resumes.
 
-**Unblocked and next**, from `docs/CLI_DESIGN.md`'s *Deliberately deferred, not
-forgotten*: **session pruning and deletion** — small, no design fork. Also
-there: tool support (open question: text-only first?) and streaming itself
-(the library has no streaming seam). Tool support is downstream of
-interrupted-turn repair, since repair is what shapes the turn loop — which now
-puts both of them behind streaming.
+Session pruning and deletion, which was the unblocked item here, is **built**:
+`elelem prune SESSID --keep N` and `elelem delete SESSID`, with the design
+record in `docs/CLI_DESIGN.md`'s *Removing things*. Neither touches a network,
+so both are fully spec-covered without a recording.
+
+What remains on `docs/CLI_DESIGN.md`'s *Deliberately deferred, not forgotten*
+is tool support (open question: text-only first?) and streaming itself (the
+library has no streaming seam). Tool support is downstream of interrupted-turn
+repair, since repair is what shapes the turn loop — which now puts both of
+them behind streaming. **Streaming is the next real piece of work**, and it
+has stopped being merely additive: two other items are queued behind it.
 
 ### On Ollama
 

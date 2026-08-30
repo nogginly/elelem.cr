@@ -50,8 +50,33 @@ describe Elelem::Cli::Commands::List do
 
       printed.should contain("brisk-comet")
       printed.should contain("ollama")
-      printed.should contain("2 turns")
+      # One exchange is one turn, not two messages. `list` printed
+      # `messages.size` until someone compared it with `show --snapshots`, and
+      # this expectation is what agreed with the bug.
+      printed.should contain("1 turns")
       printed.should contain("what is the tallest mountain?")
+    end
+  end
+
+  # Tool results are user-role messages but are not user input, so a
+  # call-and-result exchange belongs to the turn that prompted it. Counting
+  # roles instead would report three turns here.
+  it "counts a tool exchange as part of the turn that prompted it" do
+    with_sandbox do
+      session = M::Session.new
+      session << M::Message.user("what is the weather?")
+      session << M::Message.new(M::Role::Assistant, [
+        M::ToolCallBlock.new("call-1", "weather").as(M::Block),
+      ])
+      session << M::Message.new(M::Role::User, [
+        M::ToolResultBlock.new("call-1", [M::TextBlock.new("cold").as(M::Block)]).as(M::Block),
+      ])
+      session << M::Message.assistant("Cold.")
+      Elelem::Cli::Sessions.snapshot("brisk-comet", session, "ollama")
+
+      printed, _ = captured { Elelem::Cli::Commands::List.run([] of String) }
+
+      printed.should contain("1 turns")
     end
   end
 

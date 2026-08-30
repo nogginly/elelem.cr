@@ -312,17 +312,73 @@ filename. Treated as genuinely unknown rather than guessed at: `continue`
 against one of these asks for `--on` once, and every snapshot after that
 carries the answer.
 
-## Verbs: `list`, `show`
+## Verbs: `list`, `show`, `prune`, `delete`
 
 ```
 elelem list                                → one line per session
 elelem show SESSID                         → the transcript
 elelem show SESSID --snapshots             → the append-only turn history
 elelem show SESSID --json                  → the stored archive, verbatim
+elelem prune SESSID --keep N               → trim to the newest N snapshots
+elelem delete SESSID                       → remove the session outright
 ```
 
-Two read-only verbs. Neither touches a network, which makes them the only
-commands here fully testable without a recording.
+Four verbs that touch no network, which makes them the only commands here
+fully testable without a recording. Two read, two remove.
+
+### Turns and snapshots are not the same number
+
+`list` reports turns; `show --snapshots` reports save points. In the ordinary
+case they agree — one `start` or `continue` writes one snapshot and adds one
+genuine user input — which is why `list` counting `messages.size` went unnoticed
+until someone compared the two and saw ten against five.
+
+They can legitimately differ, because **a snapshot is a complete archive rather
+than a delta**. Snapshot five is not turn five; it is the whole conversation as
+of turn five. So `prune --keep 1` shortens no conversation at all: the surviving
+snapshot still holds every turn, and what is lost is the ability to read the
+session as it stood earlier. A pruned session therefore shows many turns and few
+snapshots, correctly. The reverse — one snapshot holding a long conversation —
+is possible for an archive placed by hand, though nothing in the CLI produces it.
+
+The turn count itself defers to `MPSH::Turns`, which already knows the subtlety
+that a tool result is a user-role message but not user *input*, so a
+call-and-result exchange stays inside the turn that prompted it.
+
+### Removing things
+
+Two verbs rather than one with a mode flag. `delete` and `prune` have very
+different blast radii, and behind a flag on `delete` a mistyped flag is a lost
+conversation rather than a lost turn or two. Separate words also match the
+grammar, which is all plain verbs.
+
+**Naming the id is the confirmation.** No prompt, and no `--yes` to dismiss
+one. This CLI is non-interactive and single-shot, prompting needs a stdin the
+recorded-command specs do not have, and `rm foo` does not ask either. That
+posture holds only while the blast radius is one typed name, so there is no
+`--all`, no glob and no bulk mode; a verb that could remove an unknown number
+of sessions would need a different answer to the confirmation question, and
+would be a different verb.
+
+**`--keep` has no default and must be at least one.** Every value is a
+judgement about how much history is worth keeping. A session with no snapshots
+is indistinguishable from a corrupt one, and `delete` is the verb for meaning
+that.
+
+**Neither verb parses an archive.** They work from filenames alone. An
+unreadable session is among the likeliest reasons to want one gone — `list`
+already renders those as `<unreadable>` — and a delete that insisted on
+reading what it was about to remove would fail exactly when it was most
+wanted.
+
+**Both report to stderr**, with the session id and the fidelity warnings,
+rather than to stdout with the listings: a receipt for work already done is
+information about the invocation, not the thing you would pipe somewhere.
+
+Pruning is only meaningful because `Sessions.snapshots` is genuinely
+chronological, which is newer than it looks. Before `snapshot` began bumping
+shared milliseconds, "the newest three" was a lexical accident that could name
+the wrong file.
 
 **Every block is rendered, not just the text ones.** `Message#text`
 concatenates text blocks and drops the rest — correct for printing a reply,
@@ -436,6 +492,3 @@ returns. Recorded so it is not rediscovered as a bug.
 - **Interrupted-turn repair.** `SCOPE.md` MUST FIX, unbuilt. A `continue`
   against a session left dangling by a cut-short turn behaves however the
   library currently behaves — honest, not (yet) repaired.
-- **Session deletion or pruning.** Nothing removes a session or trims its
-  snapshot history yet. `list` and `show` make the accumulation visible,
-  which is the point at which someone will want to; not designed in now.

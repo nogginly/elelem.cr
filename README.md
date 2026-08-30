@@ -120,6 +120,8 @@ elelem start <deployment> <prompt...> [--id <session-id>]
 elelem continue <session-id> <prompt...> [--on <deployment>]
 elelem list
 elelem show <session-id> [--snapshots] [--json]
+elelem prune <session-id> --keep <n>
+elelem delete <session-id>
 ```
 
 ```console

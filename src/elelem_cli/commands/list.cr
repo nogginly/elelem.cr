@@ -5,6 +5,17 @@ module Elelem::Cli::Commands
   # `elelem list` — what conversations exist, and which deployment each one
   # was last having.
   #
+  # **Turns, not messages.** This counted `messages.size` until someone noticed
+  # `list` claiming ten turns where `show --snapshots` listed five: five
+  # exchanges are ten messages. `MPSH::Turns` already defines a turn precisely
+  # — one genuine user input to the next, with a tool result correctly *not*
+  # counting as input — so the count defers to it rather than approximating.
+  #
+  # It will not always match the snapshot count, and that is not a residual
+  # bug. A snapshot is a complete archive rather than a delta, so the two
+  # measure different axes: save points against conversation. A pruned session
+  # has fewer snapshots than turns and has lost none of its conversation.
+  #
   # Reads the newest snapshot per session and nothing else. That one file is
   # already a complete point-in-time record (`docs/CLI_DESIGN.md`, *Session
   # storage*), so the turn count and opening prompt come free from a read the
@@ -31,11 +42,17 @@ module Elelem::Cli::Commands
         # other nineteen.
         begin
           session = Sessions.latest(id)
-          Output.session_line(id, session.messages.size, deployment, at, preview(session))
+          Output.session_line(id, turns(session), deployment, at, preview(session))
         rescue e : Exception
           Output.session_line(id, 0, deployment, at, "<unreadable: #{e.class}>")
         end
       end
+    end
+
+    # A session too corrupt to segment is still worth listing, so this stays
+    # inside the caller's rescue rather than raising past it.
+    private def turns(session : MPSH::Session) : Int32
+      MPSH::Turns.segment(session.messages).size
     end
 
     # The opening user turn, which is what anyone scanning a list is actually

@@ -103,5 +103,27 @@ module Elelem::Cli
     def snapshot_line(index : Int32, at : Time, deployment : String?) : Nil
       stream.puts "#{(index + 1).to_s.rjust(3)}. #{at.to_s("%Y-%m-%d %H:%M:%S")}  #{deployment || "unknown"}"
     end
+
+    # What the destructive verbs removed.
+    #
+    # On stderr, with the session id and the fidelity warnings, rather than on
+    # stdout with the listings. The rule at the top of this file is that stdout
+    # carries the thing you would pipe somewhere and stderr carries everything
+    # about the invocation itself; a receipt for work already done is the
+    # second kind. It also keeps `delete` and `prune` from being the only
+    # verbs whose stdout a script would have to learn to ignore.
+    def deleted(id : String, snapshots : Int32) : Nil
+      error_stream.puts "Deleted #{id} and its #{snapshots} #{snapshots == 1 ? "snapshot" : "snapshots"}."
+    end
+
+    # Named counts rather than a bare number: pruning is irreversible, and the
+    # useful thing to read afterwards is what survived, not what went.
+    def pruned(id : String, removed : Int32, kept : Int32) : Nil
+      if removed.zero?
+        error_stream.puts "Nothing to prune in #{id} — #{kept} #{kept == 1 ? "snapshot" : "snapshots"} kept."
+      else
+        error_stream.puts "Pruned #{removed} #{removed == 1 ? "snapshot" : "snapshots"} from #{id}, #{kept} kept."
+      end
+    end
   end
 end

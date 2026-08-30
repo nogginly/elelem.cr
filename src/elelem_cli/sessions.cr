@@ -1,3 +1,4 @@
+require "file_utils"
 require "../elelem"
 
 module Elelem::Cli
@@ -168,6 +169,52 @@ module Elelem::Cli
 
       File.write(file, MPSH::Archive.write(session))
       file
+    end
+
+    # ---- Removal -------------------------------------------------------
+
+    # Removes a session outright, returning how many snapshots went with it so
+    # the caller can say what it cost.
+    #
+    # Nothing here reads an archive, deliberately. An unreadable session is one
+    # of the likeliest reasons to want it gone — `list` already renders those
+    # as `<unreadable>` — and a delete that first insisted on parsing what it
+    # was about to remove would fail exactly when it was most wanted.
+    #
+    # `path_for` validates, so the traversal question is already settled before
+    # `rm_rf` sees anything: an id can only ever name one folder directly under
+    # `folder`. That guard predates this verb and is why it needs no guard of
+    # its own.
+    def delete(id : String) : Int32
+      dir = path_for(id)
+      raise SessionError.new("no session named #{id.inspect} in #{folder}") unless Dir.exists?(dir)
+
+      count = Dir.children(dir).count(&.ends_with?(".json"))
+      FileUtils.rm_rf(dir)
+      count
+    end
+
+    # Trims a session's snapshot history to its newest `keep` turns, returning
+    # the filenames removed, oldest first.
+    #
+    # `keep` has no default and must be at least one. A session with no
+    # snapshots is indistinguishable from a corrupt one, and `delete` is the
+    # verb for meaning that.
+    #
+    # Trustworthy only because `snapshots` is genuinely chronological, which is
+    # a newer guarantee than it looks: before `snapshot` started bumping shared
+    # milliseconds, "the newest three" was a lexical accident that could and
+    # did name the wrong file.
+    def prune(id : String, keep : Int32) : Array(String)
+      raise SessionError.new("keeping fewer than one snapshot would leave nothing to continue") if keep < 1
+
+      files = snapshots(id)
+      return [] of String if files.size <= keep
+
+      doomed = files[0, files.size - keep]
+      dir = path_for(id)
+      doomed.each { |file| File.delete(File.join(dir, file)) }
+      doomed
     end
 
     # Whether any snapshot in this folder already claims that millisecond,
