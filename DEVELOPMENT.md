@@ -14,13 +14,14 @@ Five kinds of content, separated by how often they change. The separation is the
 point: interleaving them is how a development document becomes unreadable, since
 nobody can tell which paragraphs are still true.
 
-Document                                   |Changes                     |Holds                                                   
--------------------------------------------|----------------------------|--------------------------------------------------------
-`docs/MPSH_SPECIFICATION.md` and companions|Rarely; a change is an event|Why MPSH is shaped this way                             
-`DEVELOPMENT.md` (this file)               |Slowly                      |Layering, conventions, invariants, how to add a protocol
-`docs/protocols/<name>.md`                 |Per mapper                  |One protocol's declaration, gotchas, compensations      
-`HANDOFF.md`                               |When a phase completes      |Where the work stands, what is next, how to work here   
-`SCOPE.md`                                 |Fast; shrinks               |What is outstanding                                     
+Document                                        |Changes                     |Holds                                                    
+------------------------------------------------|----------------------------|---------------------------------------------------------
+`docs/MPSH_SPECIFICATION.md` and companions     |Rarely; a change is an event|Why MPSH is shaped this way                              
+`DEVELOPMENT.md` (this file)                    |Slowly                      |Layering, conventions, invariants, how to add a protocol 
+`docs/protocols/<name>.md`                      |Per mapper                  |One protocol's declaration, gotchas, compensations       
+`docs/CLI_DESIGN.md`, `docs/STREAMING_DESIGN.md`|Per feature                 |Why one subsystem is shaped this way, decided before code
+`HANDOFF.md`                                    |When a phase completes      |Where the work stands, what is next, how to work here    
+`SCOPE.md`                                      |Fast; shrinks               |What is outstanding                                      
 
 `HANDOFF.md` and `SCOPE.md` are the pair most likely to drift into each other.
 The division: HANDOFF *names* the next pieces and points at SCOPE for their

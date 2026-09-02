@@ -188,6 +188,17 @@ repair, since repair is what shapes the turn loop — which now puts both of
 them behind streaming. **Streaming is the next real piece of work**, and it
 has stopped being merely additive: two other items are queued behind it.
 
+It is now **designed but not built** — read `docs/STREAMING_DESIGN.md` before
+starting. The short version: frames assemble into each protocol's own
+`Wire::Response` and then take the *existing* `export_reply(Wire::Response)`,
+so there is exactly one translation path and a streamed reply is the same
+`MPSH::Message` as a non-streamed one by construction. The seam was built for
+this — `Adapter::Exchange`, `Server#post` and `Client#transmit` all say so, and
+every exporter already separates parsing from translating. Four assemblers, in
+increasing difficulty: Responses, Gemini, Anthropic, Chat Completions. Wiretap
+already records and replays SSE, so the fixture story costs nothing beyond
+re-recording the live specs per mode.
+
 ### On Ollama
 
 What it serves, where it diverges, and what a green run there does *not* prove:
