@@ -484,11 +484,81 @@ returns. Recorded so it is not rediscovered as a bug.
   start`/`continue` take tool declarations at all in v1, or ship text-only
   first, is still open — leaning text-only first, since it's the smaller
   surface to get the verb grammar and storage shape right against.
-- **Streaming.** Doesn't exist in the library yet (`DEVELOPMENT.md`'s event-block
-  sketch is forward-looking design prose, not built) — so it can't exist in
-  the CLI either. Not this document's problem to solve. When it does arrive,
-  see *What streaming will want from it* above: `Progress` is built to be
-  reused mid-stream rather than replaced.
+- **Streaming.** Decided in outline, deliberately unbuilt until the library's
+  own streaming seam is finished and stable — this shard is a library that
+  ships a CLI to prove itself, and a CLI written against a moving seam would
+  end up answering the library's design questions by accident. The decision is
+  recorded in *Streaming: decided, waiting on the library* below rather than
+  left open, because settling it was cheap and rediscovering it would not be.
 - **Interrupted-turn repair.** `SCOPE.md` MUST FIX, unbuilt. A `continue`
   against a session left dangling by a cut-short turn behaves however the
   library currently behaves — honest, not (yet) repaired.
+
+## Streaming: decided, waiting on the library
+
+Nothing here is built. It is written down because the two questions
+`docs/STREAMING_DESIGN.md` ended with were settled before the first assembler,
+and one of the two answers is this document's.
+
+### The default is a tty test on stdout
+
+**Stream when `stdout` is a terminal.** Not stderr. `Progress` asks
+`STDERR.tty?` because it *writes* to stderr; deltas write to stdout, so the
+analogous rule is the same question asked of the other stream. Copying the
+expression rather than the rule would stream into a file under
+`elelem start ollama "…" > answer.txt 2>&1`, where stderr is a terminal and
+stdout is not.
+
+**`--stream` and `--no-stream` override it, and win.** Not decoration: it is
+how both modes get recorded per protocol, and it is the escape hatch the
+library's own design argues for — the caller who has just asked for a very
+large output and would rather the connection stayed warm.
+
+### Transport follows rendering
+
+A redirected run displays nothing incrementally, so streaming buys it nothing
+— while costing it a failure class it does not otherwise have. `SCOPE.md`'s
+class 3, the stream that ends without its terminal frame, **exists only when
+you stream**. Accepting a new way to be silently truncated in exchange for no
+visible benefit is a bad trade, so the non-tty path asks for one body.
+
+### Printed bytes precede repair
+
+This is the load-bearing argument for the tty rule, and it is stronger than
+"a person is probably watching".
+
+Interrupted-turn repair operates on the assembled message and may remove
+content from it — a dangling tool call, most obviously. Repair cannot un-print.
+Streaming to stdout is reading a page as it comes off the press: fine when you
+are standing there and can see the correction slip, less fine when you wanted
+the corrected edition.
+
+The tty rule confines that irreversibility to the terminal, where a person can
+see what happened and a stderr warning reaches them. Redirected stdout — the
+thing a script consumes — is never streamed, so it always receives the repaired
+reply. Streaming and non-streaming stdout are therefore not quite the same
+artifact, and this is the sentence that says so out loud rather than leaving it
+to be found.
+
+### Reasoning is not the reply, and does not go to stdout
+
+The library emits reasoning deltas under every retention setting — see
+`docs/STREAMING_DESIGN.md` for why that is forced rather than chosen. What the
+CLI does with them is a separate question, and the answer preserves an existing
+guarantee: `Output.reply` prints `Message#text`, which concatenates text blocks
+only, so reasoning has never reached stdout. Streaming must not be the thing
+that changes that.
+
+So: **reasoning deltas go to stderr, behind `--show-reasoning`, off by
+default.** Someone who set `reasoning_retention: none` on a deployment and sees
+no reasoning in their terminal gets what they expected — by way of the control
+that actually governs display, rather than by the library second-guessing a
+playback preference. Someone who wants to watch the model think asks for it.
+
+### `Progress` survives, as its own doc predicted
+
+Up before the first delta, down on it, up again with a new `label` during the
+stretches that cannot be shown — a tool call spread over several deltas has to
+be aggregated before it is parseable. Started and stopped repeatedly within one
+turn rather than wrapping the whole call. `#start`/`#stop` being public and
+`#label` being mutable is exactly this, and no part of it needs rewriting.

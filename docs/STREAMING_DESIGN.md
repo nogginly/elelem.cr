@@ -2,7 +2,8 @@
 
 **Status**: designed, not built. Nothing described here exists yet. This is the
 record of *why*, written before the code so the decisions are reviewable while
-they are still cheap to change.
+they are still cheap to change. The two questions this document originally
+ended with are now answered — see *Settled before the first assembler*.
 
 **Scope**: how a streamed response reaches an `MPSH::Message` — the transport
 seam, per-protocol frame assembly, the event stream, and where the streaming
@@ -110,6 +111,71 @@ Chat Completions|No shell; tool calls arrive as index-keyed fragments with argum
 Chat Completions last, deliberately. It is the one where inventing the shape
 under pressure would go worst.
 
+## Building it: the library first, one protocol at a time
+
+**This shard is a library that ships a CLI to prove itself, not a tool with a
+library attached.** The order follows: everything below lands, is specced and
+is stable before `elelem start` learns the word `stream`. A CLI built against
+a seam still moving would have to be rebuilt, and — worse — would start
+answering design questions that belong to the library by whichever way the
+CLI happened to be written.
+
+**Vertical slices, not a horizontal sweep.** The seam is not built once and the
+four assemblers bolted on afterwards; each protocol is taken end to end and
+stopped at, so a slice can be read, compiled and run before the next begins.
+Reviewing four assemblers at once means reviewing none of them.
+
+Slice|Carries                                                                                             |Free Ollama step?                             
+-----|----------------------------------------------------------------------------------------------------|----------------------------------------------
+1    |The seam — event union, `Server#stream`, `Client` flag, `StreamError` — plus the Responses assembler|Yes                                           
+2    |Gemini assembler                                                                                    |**No** — Ollama has never served this protocol
+3    |Anthropic assembler                                                                                 |Yes                                           
+4    |Chat Completions assembler, plus `stream_options.include_usage`                                     |Yes                                           
+
+Slice 1 is much the largest, because everything shared arrives with it. That is
+the right place for the weight: the seam is proved against the protocol whose
+assembler is nearly free, so a failure there is unambiguously the seam's.
+
+**Slice 2 costs money on first contact and the others do not.** Ollama never
+served Gemini, so unlike the rest there is no compatibility port to shake the
+assembler out against before spending. Moving it after Anthropic was considered
+and rejected.
+
+Two things decided it. **Responses is barely an assembler** — `response.completed`
+carries the whole object, so slice 1 proves the plumbing and exercises no
+accumulation at all. Gemini is the first genuine accumulation and the cheapest
+possible place to discover that path is wrong; taking Anthropic second would
+mean debugging a new seam and the first stateful index-merge at the same time.
+And **the re-record risk is smaller than it looks**: `DEVELOPMENT.md`'s warning
+that re-recording re-cuts every turn applies to *multi-turn* transcripts, and a
+first streaming spec is single-turn. Reordering would have saved no money at
+all — only a modest chance of cutting one short transcript twice — in exchange
+for a harder second slice.
+
+### What each slice is tested against
+
+**Per assembler, offline: frames in, `Wire::Response` out, asserted field by
+field.** This is ordinary fixture work against a recorded transcript, and it is
+the whole of what an assembler can be held to.
+
+**Responses gets a real equality check, free.** Its `response.completed` frame
+carries the entire response object, so the assembled result can be compared
+against the vendor's own assembly of the same stream — on live data, with no
+hand-written expectation in between. None of the other three offers this;
+noted because it makes slice 1 a stronger proof of the seam than its position
+in the difficulty order suggests.
+
+**The same-message guarantee stays structural, and is deliberately not
+asserted.** It would be tempting to record a streamed and a non-streamed reply
+to the same prompt and assert the two `MPSH::Message`s match. That test would
+fail, and it would be right to: two generations differ. What is actually
+guaranteed — one translation path — is enforced by construction rather than by
+comparison, and the construction is checkable by reading: an assembler returns
+the protocol's `Wire::Response` and nothing else, and `export_reply` has one
+implementation. A test that appeared to check this would be checking the
+model's determinism instead, which is worse than no test because it would
+sometimes pass.
+
 ## Events are presentation
 
 Emitted from frames as they arrive, never consulted for state.
@@ -148,12 +214,30 @@ delivery preference into generation settings blurs a line currently kept clean,
 and `stream` ending up as a body field is an implementation detail of the
 protocol rather than a reason to reclassify it.
 
-**Deployments get a say, as capability rather than configuration.** An endpoint
-that cannot stream declares so in `Capability::Profile`, alongside everything
-else it cannot do. A request to stream where the endpoint will not gets a
-`Report` annotation and a non-streamed reply. Degrading loudly rather than
-failing is what happens everywhere else here, and it means `streaming: true` in
-an application's config never breaks a deployment that lacks it.
+**Deployments get a say — but not in `Profile`, and not yet.** An earlier draft
+of this document put the declaration on `Capability::Profile`, alongside
+everything else an endpoint cannot do. That is the wrong home, for a reason
+this shard has already met twice. `Profile` declares what a *protocol* can
+express, and all four of these protocols stream; the field would read `true`
+in four files and declare nothing. What actually varies is the deployment —
+which is the shape `reasoning_unit` and `Wire::MaxTokensField` both took after
+being tried protocol-wide first and moved.
+
+**And the divergence to expect comes from emulators, not vendors.** Ollama's
+SSE is its own approximation of each vendor's framing, and an emulator
+supporting less than the protocol it imitates is the pattern behind half the
+findings in `docs/servers/OLLAMA.md`. A canonical endpoint refusing to stream
+is nearly unimaginable; a compatibility port that streams a thinner frame set,
+or omits a field the canonical protocol carries, is close to expected.
+
+So: **no declaration until a live call names one.** Declaring ahead of evidence
+here is guessing, and guessing pessimistically would silently stop streaming
+against endpoints that stream fine. When the first divergence arrives, the home
+is a per-adapter override — same threading as `reasoning_unit` through
+`Provider.for`/`.for_azure` — and the behaviour is the one used everywhere else:
+a `Report` annotation plus a non-streamed reply, so `streaming: true` in an
+application's config degrades loudly rather than breaking a deployment that
+lacks it.
 
 ### Prompt caching is not affected
 
@@ -230,13 +314,78 @@ alone would prove the wrong thing.
   model this design rejects.
 - **Backpressure.** Frames are consumed as fast as they arrive.
 
-## Open questions
+## Settled before the first assembler
 
-- **Does the CLI stream by default?** `progress.cr` draws a spinner while
-  waiting, which streaming makes obsolete. Streaming when stdout is a terminal
-  seems right and matches how the progress renderer already decides, but it
-  changes what `elelem start` looks like.
-- **Do reasoning deltas reach the event stream when retention is `None`?**
-  Retention governs what goes back to the *provider* next turn, not what a
-  person may watch now. Probably yes — but getting it wrong leaks reasoning
-  into a terminal someone believed was configured not to keep it.
+Both questions this document originally ended with are answered, and a third
+surfaced while answering them. They sit at different layers, which is itself
+the useful part: two constrain the library and one does not.
+
+### Reasoning deltas reach the event stream regardless of retention — yes
+
+**Library, and it gates the event union.** Not "probably yes": the existing code
+has already decided it.
+
+`Capability::Retention.plan` is called in exactly four places, all of them
+inside `Mapper#map`. No exporter takes a retention argument. So under
+`retention: None` today, a reply's `ReasoningBlock` is exported into the
+`MPSH::Message`, handed to the caller, and — in the CLI — written to disk.
+Retention drops reasoning only on the way *out*, on the following turn. Its own
+doc comment says as much: a playback preference, not a capability.
+
+Which makes suppression the incoherent option rather than the cautious one. An
+event stream that omitted reasoning while the message delivered alongside it
+contained reasoning would be a false account of what happened — breaking
+*Events are presentation; the session is state* in the one direction that
+matters, since the reply is authoritative and every caller is told to read it.
+Events over-reporting relative to the reply is a nuisance; events
+under-reporting it is a lie.
+
+**The leak worry is real and belongs to a different control.** "I set
+retention to `None` and reasoning still appeared in my terminal" is a
+legitimate complaint, and the fix is a display default in whatever is doing the
+displaying — not a suppression rule in the library. See the CLI half below.
+
+**A third control does not exist, and retention is not it.** Retention governs
+neither display nor storage: a reasoning block reaches the session and the
+archive under every retention setting. Recorded in `SCOPE.md` so the next
+reader does not assume otherwise.
+
+### The CLI streams when stdout is a terminal — yes, and it waits
+
+**CLI, and it constrains nothing in the library.** Settled early because it was
+cheap, deferred to after the library because it is downstream of every piece of
+it. The full record is in `docs/CLI_DESIGN.md`; the decision in three lines:
+stream when **stdout** — not stderr — is a terminal, with an explicit
+`--stream`/`--no-stream` that wins, and transport following rendering rather
+than running ahead of it.
+
+The one argument worth repeating here, because it is about this design rather
+than the CLI's: **printed bytes precede repair.** Interrupted-turn repair
+operates on the message and may drop content from it; it cannot un-print. The
+tty rule confines that irreversibility to the case where a person is watching
+and can see what happened, and guarantees that a redirected run — which is what
+a script consumes — always receives the repaired reply.
+
+### The event block takes `|event, turn|` from the first slice — yes
+
+**Library, and it is public API in every example in the repository.** A third
+question, surfaced by the first two: `DEVELOPMENT.md` sketches
+`client.send(session) { |event, turn| … }`, where `turn` is `SCOPE.md`'s
+cooperative stop handle — and that handle belongs to interrupted-turn repair,
+which is queued *behind* streaming. So slice 1 has to pick one.
+
+**It ships with both parameters.** Adding a second block parameter afterwards
+changes every call site, every doc snippet and the README's own twenty-line
+handoff, for no benefit over declaring it once. The handle has to live there
+eventually regardless, since a signal the block can set is the whole point of
+preferring cooperation to an exception raised through a mid-parse client.
+
+**`turn` carries only `#stop` at first, and stopping is not repairing.** The
+boundary matters, or repair gets dragged forward into a slice that cannot test
+it. Slice 1 delivers: `turn.stop` sets a flag, the client stops consuming
+frames at the next frame boundary, and finalisation proceeds normally — same
+assembler, same `export_reply`, same `MPSH::Message`. A deliberately stopped
+turn is therefore indistinguishable from a silently truncated one at this
+stage, which is correct: both are a stream that ended early, and *what that
+should mean* for a session carrying a half-finished tool call is exactly the
+question `SCOPE.md`'s MUST FIX exists to answer. It is not answered here.

@@ -111,6 +111,32 @@ Copy the error envelopes verbatim from provider documentation.
 
 ## WILL FIX
 
+### Retention governs replay, not display and not storage
+
+Surfaced settling a streaming question, and recorded because the assumption is
+natural and wrong. `Capability::ReasoningRetention` is applied in exactly one
+place — `Capability::Retention.plan`, called from the four `Mapper#map`
+implementations. No exporter consults it. So under `None`, a reply's
+`ReasoningBlock` is still exported into the `MPSH::Message`, still handed to the
+caller, and still written to disk by the CLI. Only the *next* request omits it.
+
+That is the correct behaviour and the enum's own comment already says so — it
+is a playback preference, not a capability. What is missing is anything that
+answers the other two questions someone might reasonably think it answers:
+
+- **Display.** Whether reasoning is shown live. Belongs to the consumer, and
+  the CLI answers it with `--show-reasoning`, defaulting off
+  (`docs/CLI_DESIGN.md`).
+- **Storage.** Whether reasoning is retained in the session and archive at all.
+  Nothing offers this. A caller who wants reasoning never persisted has to
+  strip it from the reply themselves before `session << reply`.
+
+Whether the third one deserves a control is genuinely open, and there is no
+evidence yet that anyone wants it. Do not reach for `ReasoningRetention` when
+they do: conflating the three axes is the exact failure its comment warns
+against, and a fourth `None`-like member that silently meant something else on
+each axis would be worse than a new type.
+
 ### `max_tokens` vs `max_completion_tokens` is per-deployment, not yet per-model
 
 Confirmed live: `gpt5.4mini` on Azure rejects `max_tokens` outright and wants
