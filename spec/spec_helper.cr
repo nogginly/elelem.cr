@@ -72,6 +72,7 @@ Spec.after_suite { Wiretap.verify! unless ENV["RECORD"]? }
 # redefinition error.
 alias M = Elelem::MPSH
 alias C = Elelem::Capability
+alias S = Elelem::Streaming
 
 module SpecHelpers
   extend self

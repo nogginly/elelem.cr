@@ -295,3 +295,35 @@ describe "reasoning retention" do
     plan.retain?(5).should be_false
   end
 end
+
+describe "streaming is not a fidelity outcome" do
+  # Placed beside the degradation policy on purpose: this is where someone
+  # would come to check whether not streaming counts as damage, and the answer
+  # needs to be findable there rather than inferable from its absence.
+
+  it "reports nothing streamed by default" do
+    C::Report.new(CHAT.provider).streamed?.should be_false
+  end
+
+  it "records that a reply streamed without touching the fidelity record" do
+    report = C::Report.new(CHAT.provider)
+    report.streamed = true
+
+    report.streamed?.should be_true
+    report.annotations.should be_empty
+    report.worst.should eq(M::Outcome::Exact)
+  end
+
+  it "records that a reply did not stream under the strictest policy" do
+    # The reason this is a plain fact rather than an annotation: `record`
+    # raises on anything the policy disallows, so a `Degraded` annotation for
+    # a fallback would refuse the request instead of describing it. Under
+    # `Strict` — where that would bite hardest — saying so must stay silent.
+    report = C::Report.new(CHAT.provider, C::Policy::Strict)
+    report.streamed = false
+
+    report.streamed?.should be_false
+    report.annotations.should be_empty
+    report.worst.should eq(M::Outcome::Exact)
+  end
+end

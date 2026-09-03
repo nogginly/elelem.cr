@@ -234,10 +234,18 @@ So: **no declaration until a live call names one.** Declaring ahead of evidence
 here is guessing, and guessing pessimistically would silently stop streaming
 against endpoints that stream fine. When the first divergence arrives, the home
 is a per-adapter override — same threading as `reasoning_unit` through
-`Provider.for`/`.for_azure` — and the behaviour is the one used everywhere else:
-a `Report` annotation plus a non-streamed reply, so `streaming: true` in an
-application's config degrades loudly rather than breaking a deployment that
-lacks it.
+`Provider.for`/`.for_azure` — and the fallback is a non-streamed reply.
+
+**The fallback is reported on `Report#streamed`, not as an annotation.** An
+earlier draft of this section said annotation, and the code says otherwise:
+`Report#record` raises on any outcome the policy disallows, and `Degraded` is
+disallowed under both `Strict` and the default `Compensating`, so annotating a
+fallback would refuse the request rather than describe it. The deeper reason is
+that streaming is not a fidelity axis at all — a streamed reply and a
+non-streamed one are the same `MPSH::Message` by construction, so nothing is
+lost by not streaming and there is nothing for a channel meaning *loss* to
+record. `Report#reasoning_dropped` is the precedent: a plain fact, on the
+report, deliberately outside the annotation channel.
 
 ### Prompt caching is not affected
 

@@ -57,6 +57,24 @@ module Elelem::Capability
     # and the annotation channel is only useful while it means the latter.
     property reasoning_dropped : Int32
 
+    # Whether the reply actually arrived as a stream.
+    #
+    # A plain fact for the same reason `reasoning_dropped` is a plain count,
+    # and the reasoning is worth spelling out because the obvious alternative
+    # is actively broken. Annotating a fallback would call `record`, `record`
+    # raises on anything the policy disallows, and `Degraded` is disallowed
+    # under both `Strict` and the default `Compensating` — so "this deployment
+    # did not stream" would refuse the request outright.
+    #
+    # It would also be a category error. Streaming is not a fidelity axis at
+    # all: a streamed reply and a non-streamed one are the *same*
+    # `MPSH::Message` by construction, since they meet at `export_reply` having
+    # differed only as far as the wire type. Nothing is lost by not streaming,
+    # so there is nothing for the annotation channel to record — and putting a
+    # transport preference in the channel that means silent damage is precisely
+    # what `ReasoningRetention`'s own comment warns against.
+    property? streamed : Bool = false
+
     # Single funnel: every mapper reports every outcome here, and this is where
     # policy is enforced. A mapper that wants to lose something has to say so.
     def record(outcome : MPSH::Outcome, detail : String,

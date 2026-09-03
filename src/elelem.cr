@@ -22,6 +22,16 @@ require "./elelem/capability/retention"
 require "./elelem/capability/reasoning_control"
 require "./elelem/capability/catalog"
 
+# Streaming vocabulary. Sits between the capability and protocol layers: it
+# depends on the canonical types and on nothing below it, and both the protocol
+# assemblers and the live layer depend on it. A directory rather than a flat
+# file because the condition `DEVELOPMENT.md` sets for one is met — several
+# concrete things sharing a vocabulary — and because `Sse` in particular is the
+# one part of streaming all four protocols genuinely share.
+require "./elelem/streaming/sse"
+require "./elelem/streaming/event"
+require "./elelem/streaming/turn"
+
 # Protocol layer. One directory per protocol: capabilities, wire vocabulary
 # (request out, response in), mapper and exporter.
 require "./elelem/options"

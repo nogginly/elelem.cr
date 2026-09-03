@@ -1,5 +1,6 @@
 require "http/client"
 require "uri"
+require "./streaming/sse"
 
 module Elelem
   # A live call failed at the transport, not at the translation.
@@ -33,6 +34,29 @@ module Elelem
   class RateLimitedError < TransportError; end
 
   class OverloadedError < TransportError; end
+
+  # A streamed generation failed after the response had already begun.
+  #
+  # **A sibling of `TransportError`, deliberately not a subclass.** Once the
+  # outer status is committed at 200 there is no status left to describe the
+  # failure, so a mid-stream error arrives as an error frame in place of the
+  # terminal one. Inheriting would bring `status` along, and `status` would
+  # have to lie — either repeating the 200 that succeeded or inventing a code
+  # the server never sent. It would also inherit `transient?`, and the
+  # distinction that method exists to draw is exactly the one being lost: a 429
+  # is worth waiting on, this is not.
+  #
+  # `type` is the vendor's own name for what went wrong, taken from the error
+  # frame verbatim. Nullable because a frame may carry no type at all, and
+  # inventing one would put a guess where a caller expects a provider's word.
+  class StreamError < Exception
+    getter server : String
+    getter type : String?
+
+    def initialize(@server : String, detail : String, @type : String? = nil)
+      super(@type ? "#{@server}: #{@type} — #{detail}" : "#{@server}: #{detail}")
+    end
+  end
 
   # One deployment: a host, a credential, and the connection to it.
   #
@@ -69,6 +93,44 @@ module Elelem
 
       explanation = detail.try(&.call(response.body))
       raise error_for(response.status_code, explanation)
+    end
+
+    # The streaming half of `post`, and the seam this class's comment promised.
+    #
+    # Frames are yielded as they arrive. The block answers `true` to carry on
+    # and `false` to stop early, which is clumsier than letting it `break` and
+    # is chosen for one reason: **this method has to know that it stopped.** A
+    # stream abandoned part-way leaves a socket positioned in the middle of a
+    # response body, and this server's connection is shared — Ollama serves
+    # three protocols from one port through one keep-alive socket. Handing that
+    # socket to the next request would fail somewhere far away from here. So an
+    # early stop drops the connection, and the next call opens a fresh one.
+    #
+    # Status handling is identical to `post`'s, because a pre-request rejection
+    # is a pre-request rejection whether or not a stream was asked for: it
+    # arrives as a status before any frame, and `error_for` classifies it
+    # unchanged. Everything that can go wrong *after* the 200 is the
+    # assembler's to notice.
+    def stream(path : String, headers : HTTP::Headers, body : String,
+               detail : Proc(String, String?)? = nil,
+               & : Streaming::Sse::Frame -> Bool) : Nil
+      stopped = false
+
+      client.post(path, headers: headers, body: body) do |response|
+        unless response.success?
+          explanation = detail.try(&.call(response.body_io.gets_to_end))
+          raise error_for(response.status_code, explanation)
+        end
+
+        Streaming::Sse.each_frame(response.body_io) do |frame|
+          unless yield frame
+            stopped = true
+            break
+          end
+        end
+      end
+
+      close if stopped
     end
 
     # Status is near-universal HTTP and belongs here.
