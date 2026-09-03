@@ -242,11 +242,26 @@ module Elelem::Protocol::Responses
       # as on Chat Completions — the same value, one wrapper deeper, which is
       # this protocol's habit throughout.
       getter reasoning_effort : String?
+      # Asks for the reply as a frame stream rather than one body. Not set by
+      # the mapper: whether to stream is a fact about how this call is being
+      # made, not about what the session contains, and the mapper's whole job
+      # is the latter. `with_stream` is how the adapter says so.
+      getter? stream : Bool
 
       def initialize(@model : String, @input : Array(Item), @instructions : String? = nil,
                      @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
                      @max_output_tokens : Int32? = nil,
-                     @reasoning_effort : String? = nil)
+                     @reasoning_effort : String? = nil,
+                     @stream : Bool = false)
+      end
+
+      # The same request, streamed. A copy rather than a setter, following
+      # `Profile#with_metadata_key`: these are value types and a mutating
+      # setter on a struct is a trap, since it silently edits whichever copy
+      # you happened to be holding.
+      def with_stream(value : Bool) : Request
+        Request.new(@model, @input, @instructions, @tools,
+          @max_output_tokens, @reasoning_effort, value)
       end
 
       def to_json(json : JSON::Builder)
@@ -265,6 +280,10 @@ module Elelem::Protocol::Responses
           @reasoning_effort.try do |value|
             json.field("reasoning") { json.object { json.field "effort", value } }
           end
+          # Emitted only when true, so a non-streamed body is byte-identical to
+          # what it was before streaming existed — which keeps every recorded
+          # transcript valid.
+          json.field "stream", true if @stream
         end
       end
 

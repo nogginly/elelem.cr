@@ -60,19 +60,39 @@ module Elelem::Protocol::Responses
           raise MalformedResponseError.new(NAME, "response body is not JSON: #{error.message}")
         end
 
+        from_any(parsed)
+      end
+
+      # The same reader, from an object someone else already parsed.
+      #
+      # Streaming needs this: a terminal frame carries the whole response
+      # nested under `response`, so the reader has a `JSON::Any` in hand and no
+      # body to hand back. Re-serializing it just to parse it again would be
+      # silly, and — worse — would make the streamed and non-streamed readers
+      # two different readers that happen to agree today.
+      def self.from_any(parsed : JSON::Any) : Response
         raw = parsed["output"]?.try(&.as_a?)
         unless raw
           raise MalformedResponseError.new(NAME, "response has no `output` array")
         end
 
-        output = [] of Item
-        raw.each { |entry| items(entry, output) }
-
-        new(output,
+        new(from_items(raw),
           id: parsed["id"]?.try(&.as_s?),
           model: parsed["model"]?.try(&.as_s?),
           status: parsed["status"]?.try(&.as_s?),
           usage: Usage.parse(parsed["usage"]?))
+      end
+
+      # Item reading with no envelope around it.
+      #
+      # An assembler collecting `response.output_item.done` frames has items
+      # and never sees an envelope, so it needs the item half on its own. That
+      # it is the *same* half is the point: a partial reply and a complete one
+      # translate their items through identical code, so the two cannot drift.
+      def self.from_items(raw : Array(JSON::Any)) : Array(Item)
+        output = [] of Item
+        raw.each { |entry| items(entry, output) }
+        output
       end
 
       # One wire item can yield more than one `Item`: a message whose content

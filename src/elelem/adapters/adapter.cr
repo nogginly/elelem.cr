@@ -1,6 +1,7 @@
 require "http/headers"
 require "../options"
 require "../capability/catalog"
+require "../streaming/assembler"
 
 module Elelem
   # Everything a protocol knows about being spoken over a wire: where to post,
@@ -54,6 +55,23 @@ module Elelem
       end
     end
 
+    # The streamed counterpart of `Exchange`.
+    #
+    # A separate struct rather than a nullable field on `Exchange`, because the
+    # two states an `Exchange?` with an `Assembler?` inside it can be in that
+    # nobody wants — a streamed exchange with no assembler, an unstreamed one
+    # with — do not exist here at all. One nullable, at one level, meaning one
+    # thing.
+    struct StreamExchange
+      getter body : String
+      getter report : Capability::Report
+      getter assembler : Streaming::Assembler
+
+      def initialize(@body : String, @report : Capability::Report,
+                     @assembler : Streaming::Assembler)
+      end
+    end
+
     abstract def profile : Capability::Profile
     abstract def path(model : String) : String
     abstract def prepare(session : MPSH::Session, model : String,
@@ -61,6 +79,30 @@ module Elelem
                          retention : Capability::ReasoningRetention,
                          max_tokens : Int32,
                          options : Options) : Exchange
+
+    # The same, asking for a stream. `nil` means this adapter cannot yet.
+    #
+    # **Concrete rather than abstract, defaulting to `nil`**, which is what
+    # lets streaming arrive one protocol at a time: an adapter that has not
+    # grown an assembler says nothing, `Client` quietly sends one body instead,
+    # and `Report#streamed` is how a caller finds out. The alternative — a
+    # `streaming` flag threaded through `prepare` — would have made every
+    # adapter accept an argument three of them had no answer for, and would
+    # have had them silently prepare an unstreamable body for a client about to
+    # read frames.
+    #
+    # This is also the seam a *deployment* refusing to stream will use when one
+    # turns up. `docs/STREAMING_DESIGN.md` declines to guess at that ahead of
+    # evidence; when the evidence arrives it belongs in an override here, not
+    # in `Capability::Profile`, since all four protocols stream and only
+    # deployments vary.
+    def prepare_stream(session : MPSH::Session, model : String,
+                       policy : Capability::Policy,
+                       retention : Capability::ReasoningRetention,
+                       max_tokens : Int32,
+                       options : Options = Options.new) : StreamExchange?
+      nil
+    end
 
     # Protocol-specific auth and versioning. The credential is the server's;
     # how it is spelled on the wire is the protocol's.

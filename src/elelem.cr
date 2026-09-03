@@ -31,6 +31,7 @@ require "./elelem/capability/catalog"
 require "./elelem/streaming/sse"
 require "./elelem/streaming/event"
 require "./elelem/streaming/turn"
+require "./elelem/streaming/assembler"
 
 # Protocol layer. One directory per protocol: capabilities, wire vocabulary
 # (request out, response in), mapper and exporter.
@@ -48,6 +49,7 @@ require "./elelem/protocol/responses/wire/request"
 require "./elelem/protocol/responses/wire/response"
 require "./elelem/protocol/responses/mapper"
 require "./elelem/protocol/responses/export"
+require "./elelem/protocol/responses/stream"
 # - Anthropic
 require "./elelem/protocol/anthropic/capabilities"
 require "./elelem/protocol/anthropic/wire/request"

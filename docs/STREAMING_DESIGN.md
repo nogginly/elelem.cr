@@ -101,12 +101,12 @@ Not equivalent — the same, by construction, because they meet at
 Build in this order. Each assembler is independently testable, and by the
 fourth the pattern has been proved three times.
 
-Protocol        |Framing                                                                                         |Assembly                       
-----------------|------------------------------------------------------------------------------------------------|-------------------------------
-Responses       |Typed events; `response.completed` carries the whole response object                            |Nearly free — keep the last one
-Gemini          |Each chunk is a complete `GenerateContentResponse`                                              |Easy — concatenate parts       
-Anthropic       |`message_start` shell, indexed `content_block_delta`s, `message_delta` with `stop_reason`       |Moderate — merge by block index
-Chat Completions|No shell; tool calls arrive as index-keyed fragments with arguments accumulated as string pieces|Hardest — merge by position    
+Protocol        |Framing                                                                                              |Assembly                                 
+----------------|-----------------------------------------------------------------------------------------------------|-----------------------------------------
+Responses       |Typed events; finished items arrive whole, and `response.completed` carries the whole response object|Easy — collect items, terminal frame wins
+Gemini          |Each chunk is a complete `GenerateContentResponse`                                                   |Easy — concatenate parts                 
+Anthropic       |`message_start` shell, indexed `content_block_delta`s, `message_delta` with `stop_reason`            |Moderate — merge by block index          
+Chat Completions|No shell; tool calls arrive as index-keyed fragments with arguments accumulated as string pieces     |Hardest — merge by position              
 
 Chat Completions last, deliberately. It is the one where inventing the shape
 under pressure would go worst.
@@ -134,23 +134,24 @@ Slice|Carries                                                                   
 
 Slice 1 is much the largest, because everything shared arrives with it. That is
 the right place for the weight: the seam is proved against the protocol whose
-assembler is nearly free, so a failure there is unambiguously the seam's.
+assembler is the simplest of the four, so a failure there is unambiguously
+the seam's.
 
 **Slice 2 costs money on first contact and the others do not.** Ollama never
 served Gemini, so unlike the rest there is no compatibility port to shake the
 assembler out against before spending. Moving it after Anthropic was considered
 and rejected.
 
-Two things decided it. **Responses is barely an assembler** — `response.completed`
-carries the whole object, so slice 1 proves the plumbing and exercises no
-accumulation at all. Gemini is the first genuine accumulation and the cheapest
-possible place to discover that path is wrong; taking Anthropic second would
-mean debugging a new seam and the first stateful index-merge at the same time.
-And **the re-record risk is smaller than it looks**: `DEVELOPMENT.md`'s warning
-that re-recording re-cuts every turn applies to *multi-turn* transcripts, and a
-first streaming spec is single-turn. Reordering would have saved no money at
-all — only a modest chance of cutting one short transcript twice — in exchange
-for a harder second slice.
+Two things decided it. **Gemini is the cheapest place for a second opinion.**
+Responses accumulates finished items, which is the simplest accumulation of the
+four; Gemini's is the second, and getting two protocols to agree on the shape
+before meeting a hard one is worth more than the order of the difficulty ramp.
+Taking Anthropic second would mean debugging a new seam and the first stateful
+index-merge at the same time. And **the re-record risk is smaller than it
+looks**: `DEVELOPMENT.md`'s warning that re-recording re-cuts every turn applies
+to *multi-turn* transcripts, and a first streaming spec is single-turn.
+Reordering would have saved no money at all — only a modest chance of cutting
+one short transcript twice — in exchange for a harder second slice.
 
 ### What each slice is tested against
 
@@ -158,12 +159,23 @@ for a harder second slice.
 field.** This is ordinary fixture work against a recorded transcript, and it is
 the whole of what an assembler can be held to.
 
-**Responses gets a real equality check, free.** Its `response.completed` frame
-carries the entire response object, so the assembled result can be compared
-against the vendor's own assembly of the same stream — on live data, with no
-hand-written expectation in between. None of the other three offers this;
-noted because it makes slice 1 a stronger proof of the seam than its position
-in the difficulty order suggests.
+**Responses gets a real equality check, free — but only because it assembles.**
+Its `response.completed` frame carries the entire response object, so an
+independently accumulated result can be compared against the vendor's own
+assembly of the same stream, on live data, with no hand-written expectation in
+between. None of the other three offers this.
+
+This is why the obvious shortcut was rejected. Keeping *only* the terminal frame
+would make Responses trivial and would cost two things: the oracle becomes
+vacuous, since comparing the terminal frame against itself checks nothing, and
+`Turn#stop` returns nothing at all, because on this protocol the entire reply
+lives in that one frame. A stop button that discards the answer is not a stop
+button. So assemblers follow one rule — **assemble from complete units; deltas
+are for events** — and here that means collecting `response.output_item.done`
+frames, which arrive in exactly the shape the reader already takes. The partial
+reply is then made of complete parts by construction, and a tool call still
+receiving its arguments when the stream ended never enters a session, which is
+the outcome repair would have had to arrange for anyway.
 
 **The same-message guarantee stays structural, and is deliberately not
 asserted.** It would be tempting to record a streamed and a non-streamed reply

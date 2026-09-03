@@ -35,28 +35,10 @@ module Elelem
 
   class OverloadedError < TransportError; end
 
-  # A streamed generation failed after the response had already begun.
-  #
-  # **A sibling of `TransportError`, deliberately not a subclass.** Once the
-  # outer status is committed at 200 there is no status left to describe the
-  # failure, so a mid-stream error arrives as an error frame in place of the
-  # terminal one. Inheriting would bring `status` along, and `status` would
-  # have to lie — either repeating the 200 that succeeded or inventing a code
-  # the server never sent. It would also inherit `transient?`, and the
-  # distinction that method exists to draw is exactly the one being lost: a 429
-  # is worth waiting on, this is not.
-  #
-  # `type` is the vendor's own name for what went wrong, taken from the error
-  # frame verbatim. Nullable because a frame may carry no type at all, and
-  # inventing one would put a guess where a caller expects a provider's word.
-  class StreamError < Exception
-    getter server : String
-    getter type : String?
-
-    def initialize(@server : String, detail : String, @type : String? = nil)
-      super(@type ? "#{@server}: #{@type} — #{detail}" : "#{@server}: #{detail}")
-    end
-  end
+  # A mid-stream failure is `Protocol::StreamError`, not a `TransportError`.
+  # It lives a layer down, next to `MalformedResponseError`: once the outer
+  # status is committed at 200 there is no status left to carry, so `status`
+  # and `transient?` would both have to lie here.
 
   # One deployment: a host, a credential, and the connection to it.
   #
