@@ -93,19 +93,34 @@ module Elelem
     # arrives as a status before any frame, and `error_for` classifies it
     # unchanged. Everything that can go wrong *after* the 200 is the
     # assembler's to notice.
+    #
+    # The frame block is named, and so captured as a `Proc`, rather than being
+    # yielded to. It has to be: the block eventually reaches
+    # `HTTP::Client#exec(request, &)`, and `yield` is illegal anywhere within a
+    # captured block. Calling a proc there is not.
+    #
+    # **`exec` directly rather than `post`, and that is not a style choice.**
+    # `post(path, headers:, body:, &)` routes through an intermediate stdlib
+    # overload whose whole body is `exec(new_request(...)) { |r| yield r }`.
+    # Wiretap redefines `exec(request, &block : Response ->)` with a *captured*
+    # block, so that stdlib block — which contains a `yield` — is being handed
+    # to a capturing method, and the program will not compile. Building the
+    # request here skips the intermediate entirely. Anything that reinstates
+    # `post` with a block will reintroduce the failure, so leave it.
     def stream(path : String, headers : HTTP::Headers, body : String,
                detail : Proc(String, String?)? = nil,
-               & : Streaming::Sse::Frame -> Bool) : Nil
+               &block : Streaming::Sse::Frame -> Bool) : Nil
       stopped = false
+      request = HTTP::Request.new("POST", path, headers, body)
 
-      client.post(path, headers: headers, body: body) do |response|
+      client.exec(request) do |response|
         unless response.success?
           explanation = detail.try(&.call(response.body_io.gets_to_end))
           raise error_for(response.status_code, explanation)
         end
 
         Streaming::Sse.each_frame(response.body_io) do |frame|
-          unless yield frame
+          unless block.call(frame)
             stopped = true
             break
           end

@@ -89,6 +89,36 @@ the same shape as the runaway that put a cap on every live request in this
 suite. Reasoning and answer share one ceiling, so a request that asks for
 thinking needs headroom for both.
 
+### Streaming over Responses behaves, which was not the expectation
+
+`docs/STREAMING_DESIGN.md` argues that streaming divergence, when it comes,
+will come from emulators rather than vendors — a compatibility port sending a
+thinner frame set than the protocol it imitates. Ollama's Responses port was
+the first test of that and it passed cleanly.
+
+Recorded facts, each pinned by a live example in
+`spec/live/ollama_streaming_spec.cr`:
+
+- **Finished items arrive whole**, as `response.output_item.done`, in the same
+  shape `Wire::Response` already reads. This is what makes partial replies
+  possible here: a turn stopped part-way yields everything that finished, and
+  `Turn#stop` returns a real answer rather than nothing.
+- **The stream terminates with `response.completed`**, carrying the whole
+  response object.
+- **The body ends with the blank line** SSE requires before a frame is
+  dispatched. Worth stating because `Streaming::Sse` discards an undispatched
+  trailing frame, deliberately, so that a cut stream is detectable — and a
+  server omitting that final newline would lose its terminal frame to the same
+  rule. This one does not.
+- **Our accumulation agrees with the provider's own**, item for item, on live
+  data. Responses is the only one of the four protocols where that check is
+  available at all, since its terminal frame carries the vendor's assembly of
+  the very stream we assembled independently.
+
+None of this generalises. It is one endpoint on one day, and the other three
+protocols are unproven here — Ollama does not serve Gemini at all, and its
+Anthropic and Chat Completions ports have not been asked to stream yet.
+
 ## Operational notes
 
 **Always cap output.** An uncapped small model spent 4,096 tokens reasoning

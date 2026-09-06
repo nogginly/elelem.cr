@@ -126,6 +126,66 @@ Same session, same system prompt, same result as Chat Completions:
 equivalent note gives — this is a fact about MPSH's own shape, not this
 protocol's declared placement, so it was never going to differ by server.
 
+## Streaming
+
+The assembler is `Protocol::Responses::Assembler`. It follows the rule every
+protocol's does — **assemble from complete units; deltas are for events** —
+which here means collecting `response.output_item.done` frames, each carrying
+one finished item in the shape `Wire::Response.from_items` already reads.
+
+### Live finding: the frame vocabulary is OpenAI's, unchanged
+
+Recorded against Ollama's Responses port, which is the emulator this design
+expected to diverge and which did not. Every event name observed:
+
+Frame                                  |What this does with it                        
+---------------------------------------|----------------------------------------------
+`response.created`                     |Ignored — lifecycle                           
+`response.in_progress`                 |Ignored — lifecycle                           
+`response.output_item.added`           |`ToolCallStarted`, and only for function calls
+`response.content_part.added`          |Ignored                                       
+`response.output_text.delta`           |`TextDelta`                                   
+`response.output_text.done`            |Ignored — the item arrives whole later        
+`response.reasoning_summary_text.delta`|`ReasoningDelta`                              
+`response.reasoning_summary_text.done` |Ignored                                       
+`response.content_part.done`           |Ignored                                       
+`response.output_item.done`            |**Accumulated** — this is the reply           
+`response.completed`                   |**Terminal** — the vendor's own assembly      
+
+Three things follow.
+
+**The `event:` line is always present**, so the assembler's fallback to the
+payload's own `type` field is defensive here rather than load-bearing. It stays
+because a bare-`data:` emulator is cheap to tolerate and expensive to discover,
+but nothing currently exercises it and a spec claiming otherwise would be
+claiming too much.
+
+**Most frames are ignored, and that is the design working.** Six of the eleven
+say nothing this shard needs, because the reply is built from finished items
+rather than stitched from fragments. A protocol adding a twelfth costs nothing.
+
+**Four documented frames were not observed**, because nothing provoked them:
+`response.function_call_arguments.delta` (no tools were declared),
+`response.incomplete`, `response.failed` and `error`. The assembler handles all
+four and the offline spec covers them; they are simply unproven against this
+server. `response.incomplete` in particular is treated as terminal rather than
+as a failure — the model hitting a limit is an honest short answer, not an
+error — and that path deserves a live turn with a tiny cap when someone is next
+recording here.
+
+### Live finding: the oracle holds
+
+Responses is the only one of the four protocols that can check its own
+assembler against the provider's. `response.completed` carries the entire
+response object, so the independently accumulated items can be compared with
+the vendor's assembly of the very same stream, on live data, with no
+hand-written expectation in between. They matched, item for item.
+
+This is why Responses was built first, and why keeping only the terminal frame
+was rejected: that shortcut assembles nothing, so there would be nothing left
+to compare — and `Turn#stop` would return nothing at all, since on this
+protocol the whole reply lives in that one frame.
+
 ## Conformance
 
 `spec/conformance/responses_spec.cr`. Sixteen fixtures round-trip untouched.

@@ -70,12 +70,18 @@ module Elelem
     # Adapters that have not grown an assembler yet fall through to one body.
     # Silent in the events — there are none — but not silent in the result:
     # `Report#streamed` says what happened.
+    # **The event block is captured rather than yielded to**, which is why it
+    # is named. It is called from inside `Server#stream`, which is itself
+    # inside `HTTP::Client#post`'s block, and the standard library captures
+    # that one — `yield` is illegal anywhere within a captured block, while
+    # calling a proc is fine. Nothing about the caller's side changes; it is
+    # still an ordinary block.
     def send(session : MPSH::Session, model : String,
              policy : Capability::Policy? = nil,
              retention : Capability::ReasoningRetention? = nil,
              max_tokens : Int32? = nil,
              options : Options = Options.new,
-             & : Streaming::Event, Streaming::Turn ->) : {MPSH::Message, Capability::Report}
+             &block : Streaming::Event, Streaming::Turn ->) : {MPSH::Message, Capability::Report}
       adapter = provider.adapter
       streamed = adapter.prepare_stream(session, model,
         policy || @policy,
@@ -99,13 +105,13 @@ module Elelem
       # `annotation` is a keyword and the parser reads a bare one in expression
       # position as the start of a definition.
       report.annotations.each do |raised|
-        yield Streaming::AnnotationRaised.new(raised), turn
+        block.call(Streaming::AnnotationRaised.new(raised), turn)
       end
 
       server = provider.server
       server.stream(adapter.path(model), adapter.headers(server.credential), streamed.body,
         ->(body : String) { adapter.error_detail(body) }) do |frame|
-        assembler.absorb(frame) { |event| yield event, turn }
+        assembler.absorb(frame) { |event| block.call(event, turn) }
         !turn.stopped?
       end
 

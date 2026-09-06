@@ -182,22 +182,60 @@ record in `docs/CLI_DESIGN.md`'s *Removing things*. Neither touches a network,
 so both are fully spec-covered without a recording.
 
 What remains on `docs/CLI_DESIGN.md`'s *Deliberately deferred, not forgotten*
-is tool support (open question: text-only first?) and streaming itself (the
-library has no streaming seam). Tool support is downstream of interrupted-turn
-repair, since repair is what shapes the turn loop — which now puts both of
-them behind streaming. **Streaming is the next real piece of work**, and it
-has stopped being merely additive: two other items are queued behind it.
+is tool support (open question: text-only first?) and streaming in the CLI.
+Tool support is downstream of interrupted-turn repair, since repair is what
+shapes the turn loop — which puts both of them behind streaming. **Streaming
+is the work in progress**, and it has stopped being merely additive: two other
+items are queued behind it.
 
-It is now **designed but not built** — read `docs/STREAMING_DESIGN.md` before
-starting. The short version: frames assemble into each protocol's own
-`Wire::Response` and then take the *existing* `export_reply(Wire::Response)`,
-so there is exactly one translation path and a streamed reply is the same
-`MPSH::Message` as a non-streamed one by construction. The seam was built for
-this — `Adapter::Exchange`, `Server#post` and `Client#transmit` all say so, and
-every exporter already separates parsing from translating. Four assemblers, in
-increasing difficulty: Responses, Gemini, Anthropic, Chat Completions. Wiretap
-already records and replays SSE, so the fixture story costs nothing beyond
-re-recording the live specs per mode.
+The CLI half is *decided and deliberately waiting*: stream when **stdout** is a
+terminal, `--stream`/`--no-stream` overriding, reasoning to stderr behind
+`--show-reasoning`. Recorded in `docs/CLI_DESIGN.md`. It waits because this is
+a library that ships a CLI to prove itself, and a CLI built against a moving
+seam ends up answering the library's design questions by accident.
+
+Streaming is **being built, one protocol at a time** — read
+`docs/STREAMING_DESIGN.md` before continuing. The short version: frames
+assemble into each protocol's own `Wire::Response` and then take the *existing*
+`export_reply(Wire::Response)`, so there is exactly one translation path and a
+streamed reply is the same `MPSH::Message` as a non-streamed one by
+construction.
+
+**Slice 1 of four is done: the seam, and Responses.** What exists now:
+
+- `Elelem::Streaming` — `Sse` framing shared by all four protocols, a closed
+  five-variant `Event` union, `Turn` (the cooperative stop handle), and the
+  abstract `Assembler`.
+- `Server#stream`, and `Protocol::StreamError` beside `MalformedResponseError`.
+- `Client#send` with a second overload taking `|event, turn|`. **Passing a
+  block is the request to stream**; there is no flag. Adapters opt in by
+  overriding `Adapter#prepare_stream`, which returns `nil` by default, and
+  `Report#streamed` says which way a turn actually went.
+- `Protocol::Responses::Assembler`, plus offline and live specs.
+
+**The rule every remaining assembler follows: assemble from complete units;
+deltas are for events.** Nothing is stitched from fragments. This was not the
+original plan — the design first called for keeping only the terminal frame on
+Responses, which is trivial and wrong: the whole reply lives in that frame, so
+`Turn#stop` would return nothing at all, and the free correctness oracle would
+be vacuous. `docs/STREAMING_DESIGN.md` records the correction.
+
+**Remaining: Gemini, Anthropic, Chat Completions**, in that order and one slice
+each, each a stopping point. Gemini is second despite being the only one with
+no free Ollama step — Ollama has never served it — because it is the cheapest
+second opinion on the accumulation shape.
+
+**Two traps worth knowing before touching `Server#stream`.** Nothing within its
+reach may `yield`: the block reaches `HTTP::Client#exec(request, &)`, which
+Wiretap redefines with a *captured* block, and `yield` is illegal inside one.
+Relatedly, it calls `exec` directly rather than `post` — `post`'s block form
+routes through a stdlib overload that yields, which cannot compile at all while
+Wiretap is loaded. That is a latent Wiretap bug affecting any consumer calling
+a verb with a block; it has not been reported upstream yet.
+
+Wiretap does record and replay SSE, but it buffers the whole body before
+handing it on, so **no spec here exercises incremental arrival** — only frame
+vocabulary and assembly.
 
 ### On Ollama
 
