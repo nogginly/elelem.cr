@@ -85,6 +85,19 @@ module Elelem::Protocol::ChatCompletions
           usage: Usage.parse(parsed["usage"]?))
       end
 
+      # One assistant message, from an object someone else assembled.
+      #
+      # Streaming needs it: this protocol never sends a whole message, so the
+      # assembler builds the object a non-streamed reply would have carried and
+      # reads it here. That matters more on this protocol than on the others,
+      # because `message` is where the two spellings of the reasoning field are
+      # reconciled — a streaming path with its own reader would have dropped
+      # the trace from whichever server chose the other spelling, silently, in
+      # exactly the way that was found by recording rather than by reasoning.
+      def self.from_message(any : JSON::Any) : Message
+        message(any)
+      end
+
       private def self.choice(any : JSON::Any, position : Int32) : Choice
         body = any["message"]?
         unless body

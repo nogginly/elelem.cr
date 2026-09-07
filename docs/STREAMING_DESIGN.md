@@ -1,9 +1,14 @@
 # Streaming Design
 
-**Status**: designed, not built. Nothing described here exists yet. This is the
-record of *why*, written before the code so the decisions are reviewable while
-they are still cheap to change. The two questions this document originally
-ended with are now answered — see *Settled before the first assembler*.
+**Status**: built, for the library. All four assemblers exist, each with
+offline and live specs. What remains is the CLI half, recorded in
+`docs/CLI_DESIGN.md` and deliberately held until the library was finished.
+
+This document was written before the code, so the reasoning below is the
+reasoning that produced it rather than a tidy-up afterwards — including the two
+places the design was wrong and had to be corrected mid-build, both marked.
+The two questions it originally ended with are answered under *Settled before
+the first assembler*.
 
 **Scope**: how a streamed response reaches an `MPSH::Message` — the transport
 seam, per-protocol frame assembly, the event stream, and where the streaming

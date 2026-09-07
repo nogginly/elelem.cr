@@ -224,12 +224,25 @@ module Elelem::Protocol::ChatCompletions
       # A bare string at the top level: the flattest of the four spellings of
       # this idea. `nil` omits the field, leaving the model's own default.
       getter reasoning_effort : String?
+      # Asks for the reply as a frame stream. Not set by the mapper: whether to
+      # stream is a fact about how this call is made, not about what the
+      # session contains. `with_stream` is how the adapter says so.
+      getter? stream : Bool
 
       def initialize(@model : String, @messages : Array(Message),
                      @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
                      @max_tokens : Int32? = nil,
                      @reasoning_effort : String? = nil,
-                     @max_tokens_field : MaxTokensField = MaxTokensField::MaxTokens)
+                     @max_tokens_field : MaxTokensField = MaxTokensField::MaxTokens,
+                     @stream : Bool = false)
+      end
+
+      # The same request, streamed. A copy rather than a setter, following
+      # `Profile#with_metadata_key`: these are value types, and a mutating
+      # setter on a struct edits whichever copy you happened to be holding.
+      def with_stream(value : Bool) : Request
+        Request.new(@model, @messages, @tools, @max_tokens,
+          @reasoning_effort, @max_tokens_field, value)
       end
 
       def to_json(json : JSON::Builder)
@@ -244,6 +257,15 @@ module Elelem::Protocol::ChatCompletions
             json.field field, value
           end
           @reasoning_effort.try { |value| json.field "reasoning_effort", value }
+          if @stream
+            json.field "stream", true
+            # Without this, a streamed reply reports no usage at all — the
+            # one protocol of the four where the token count has to be asked
+            # for. Servers that do not know the option ignore it; servers that
+            # do send a final chunk with an empty `choices` array carrying
+            # nothing but `usage`.
+            json.field("stream_options") { json.object { json.field "include_usage", true } }
+          end
         end
       end
 

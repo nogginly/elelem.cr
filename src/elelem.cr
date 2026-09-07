@@ -43,6 +43,7 @@ require "./elelem/protocol/chat_completions/wire/request"
 require "./elelem/protocol/chat_completions/wire/response"
 require "./elelem/protocol/chat_completions/mapper"
 require "./elelem/protocol/chat_completions/export"
+require "./elelem/protocol/chat_completions/stream"
 # - Responses
 require "./elelem/protocol/responses/capabilities"
 require "./elelem/protocol/responses/wire/request"

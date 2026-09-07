@@ -130,16 +130,42 @@ Notable because Anthropic's streaming shape is the most intricate of the four
 compatibility port had every opportunity to implement a simpler subset. It
 did not.
 
+### The Chat Completions port streams too, `include_usage` included
+
+The last of the three, and the one with the least safe assumption in it.
+`stream_options.include_usage` is the only way to get a token count from a
+streamed Chat Completions reply, it is delivered on a final chunk whose
+`choices` array is empty, and that is an odd enough shape for a compatibility
+port to skip. This one honours it. It also streams the reasoning trace, under
+the bare `reasoning` spelling the non-streamed path already uses here.
+
+### All three ports stream, which is itself the finding
+
+`docs/STREAMING_DESIGN.md` predicted that streaming divergence, when it came,
+would come from emulators rather than vendors — a compatibility port
+supporting less of the protocol it imitates than the protocol does. Across
+Responses, Anthropic and Chat Completions, on this server, that has not
+happened once. Each port implements the shape its protocol specifies,
+including the fiddly parts: indexed content blocks, `input_json_delta`
+fragments, empty-`choices` usage chunks.
+
+That is worth recording precisely because it argues against the prediction.
+The prediction is still the right default — it costs nothing to hold and this
+is one server on one day — but it should now be held as a caution rather than
+as an expectation.
+
 ### What remains unproven here
 
-Two protocols on this server have not been asked to stream: Chat Completions,
-which is simply not built yet, and Gemini, which Ollama has never served at
-all.
+Gemini, which Ollama has never served at all, so this server can say nothing
+about it.
 
-And nothing above generalises beyond this endpoint on this day. The reverse
-gap is worth naming too: **Anthropic's own API has never been streamed by this
-shard**, so that protocol is proven against an emulator and not its vendor,
-while Gemini is proven against its vendor and no emulator.
+And the reverse gaps are worth naming, since they are the mirror image:
+**Anthropic's own API and OpenAI's own Chat Completions endpoint have never
+been streamed by this shard.** Those two protocols are proven against an
+emulator and not their vendors, while Gemini is proven against its vendor and
+no emulator. Azure is unstreamed on both counts, and is the more interesting
+of them — `max_tokens` versus `max_completion_tokens` already differs there
+per deployment.
 
 ## Operational notes
 

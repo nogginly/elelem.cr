@@ -202,6 +202,69 @@ native. `azure_spec.cr` confirms the same claim against Azure specifically:
 nothing about the live 400 or the field-name fix above changed this, and no
 live call has ever produced `Exact` with a system prompt present.
 
+## Streaming
+
+`Protocol::ChatCompletions::Assembler`, over `"stream": true`.
+
+### The least structured of the four, which is why it was built last
+
+No frame names. No block boundaries. And **nothing that says a tool call has
+finished arriving** — Anthropic closes a block with `content_block_stop`,
+Responses hands over a finished item, and here a call's arguments simply stop
+growing while nothing announces it.
+
+That produces the strictest application of `Streaming::Assembler`'s rule
+anywhere in this shard: **a tool call is materialised only once a
+`finish_reason` has arrived.** Content and reasoning are kept from a cut
+stream, as everywhere; calls are not, even calls whose arguments look whole.
+
+The reasoning inverts the obvious intuition, so it is worth stating directly:
+**arguments that parse are the dangerous case, not the reassuring one.**
+`{"city":"Par` is visibly incomplete and no one would be fooled. But
+`{"city":"Paris"}` may be a prefix of `{"city":"Paris","unit":"c"}`, and a call
+released on the strength of parseable JSON would be a fabrication that looks
+perfect — dispatched against the wrong arguments, with nothing anywhere to
+suggest a problem. Both sides are pinned in
+`spec/streaming/chat_completions_assembler_spec.cr`: the same fragments
+withheld without a finish reason and released with one.
+
+### Two shapes that exist only here
+
+**`[DONE]` is not JSON.** It is the retroactive justification for
+`Sse::Frame#data` being a `String` rather than a parsed object — a parser in
+the shared framing layer would have had to fail on this or special-case one
+protocol. The assembler treats a `finish_reason` as sufficient on its own, so
+a server omitting `[DONE]` costs nothing.
+
+**Usage must be asked for.** `stream_options.include_usage` is set whenever
+the request streams; without it a streamed reply reports no token count at all.
+The chunk carrying it has an **empty `choices` array**, so a reader that
+required a choice would throw the count away.
+
+### The streamed message is read by the ordinary reader
+
+The assembler rebuilds the message object a non-streamed reply would have
+carried and hands it to `Wire::Response.from_message`. That matters more here
+than on the other protocols, because `message` is where the two spellings of
+the reasoning field are reconciled — vLLM and DeepSeek emit
+`reasoning_content`, Ollama emits the bare `reasoning`. A streaming path with
+its own reader would have dropped the trace from whichever server chose the
+other spelling, silently and with no error to notice, which is exactly how that
+divergence was found in the first place: by recording, not by reasoning.
+
+### Live finding: Ollama's port implements the whole shape, `include_usage` included
+
+Recorded in `spec/live/ollama_chat_streaming_spec.cr`. It streams text,
+reasoning and indexed tool-call fragments, reports a finish reason, and
+**honours `stream_options.include_usage`** — the least safe of the assumptions
+here, since that option's empty-`choices` final chunk is an odd shape and an
+easy one for a compatibility port to skip.
+
+OpenAI's own Chat Completions endpoint remains unstreamed by this shard, as
+does Azure's. The Azure case is the more interesting gap: `max_tokens` versus
+`max_completion_tokens` already differs there per deployment, and nothing yet
+says whether its streaming shape differs too.
+
 ## Conformance
 
 `spec/conformance/chat_completions_spec.cr`. Fourteen fixtures must round-trip

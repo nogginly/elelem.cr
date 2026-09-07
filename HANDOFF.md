@@ -201,8 +201,8 @@ assemble into each protocol's own `Wire::Response` and then take the *existing*
 streamed reply is the same `MPSH::Message` as a non-streamed one by
 construction.
 
-**Slices 1 to 3 of four are done: the seam, Responses, Gemini, and
-Anthropic.** What exists now:
+**All four slices are done. Streaming is built for the library.** What
+exists now:
 
 - `Elelem::Streaming` — `Sse` framing shared by all four protocols, a closed
   five-variant `Event` union, `Turn` (the cooperative stop handle), and the
@@ -212,8 +212,8 @@ Anthropic.** What exists now:
   block is the request to stream**; there is no flag. Adapters opt in by
   overriding `Adapter#prepare_stream`, which returns `nil` by default, and
   `Report#streamed` says which way a turn actually went.
-- `Protocol::Responses::Assembler`, `Protocol::Gemini::Assembler` and
-  `Protocol::Anthropic::Assembler`, each with offline and live specs.
+- An assembler for each of the four protocols — `Responses`, `Gemini`,
+  `Anthropic`, `ChatCompletions` — each with offline and live specs.
 - `Adapter#stream_path`, defaulting to `path`. Gemini is the only protocol
   where streaming is a different method on the URL rather than a flag in the
   body, and `alt=sse` is required or the endpoint streams a chunked JSON array
@@ -232,14 +232,22 @@ finished units at all. `docs/STREAMING_DESIGN.md` records both corrections;
 expect Anthropic and Chat Completions to test the rule again rather than to
 fit it quietly.
 
-**Remaining: Chat Completions**, the last slice. It was left until last
-deliberately — it is the one where inventing the shape under pressure would go
-worst, and the one whose framing is least like the others: indexed tool-call
-fragments with no explicit block boundaries, usage only if `stream_options`
-asks for it, and a `[DONE]` sentinel that is not JSON.
+**Next: `SCOPE.md`'s interrupted-turn repair**, which streaming was holding up
+and which is now unblocked. Read that entry before touching it — the
+conclusion recorded there was "not yet decidable", not "not yet worth doing",
+and streaming is what makes it decidable. Two things the build has already
+settled feed straight into it: a stopped turn and a cut turn are
+indistinguishable to an assembler, and every assembler already refuses to
+emit a tool call it cannot vouch for, which is most of what repair would
+otherwise have had to arrange.
 
-After that, `SCOPE.md`'s interrupted-turn repair, which streaming was holding
-up, and then the CLI half.
+**Then the CLI half**, decided and waiting in `docs/CLI_DESIGN.md`.
+
+**How the rule was arrived at matters more than the rule.** It was rewritten
+twice under contact — first from "keep the terminal frame", then from
+"assemble from complete units" — and each rewrite came from a protocol
+refusing to fit. Expect the same of anything added later rather than assuming
+the current phrasing is final.
 
 **Two traps worth knowing before touching `Server#stream`.** Nothing within its
 reach may `yield`: the block reaches `HTTP::Client#exec(request, &)`, which
