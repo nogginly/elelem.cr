@@ -1,0 +1,40 @@
+{
+  "name": "gemini_stream_tools",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "531",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"Use the supplied tools when they apply.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]}],\"tools\":[{\"functionDeclarations\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}],\"generationConfig\":{\"maxOutputTokens\":512,\"thinkingConfig\":{\"thinkingLevel\":\"MEDIUM\",\"includeThoughts\":true}}}",
+        "body_digest": "2a1b7855e38dacb993e8bf13ba59c1cb4a54dd72f6a03893190c25555f8b26cd"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream",
+          "Content-Disposition": "attachment",
+          "Vary": "Origin, X-Origin, Referer",
+          "Transfer-Encoding": "chunked",
+          "Date": "Mon, 07 Sep 2026 00:08:36 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=968",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+        },
+        "body": "data: {\"candidates\": [{\"content\": {\"parts\": [{\"functionCall\": {\"name\": \"get_weather\",\"args\": {\"city\": \"Paris\"},\"id\": \"call_1757718\"},\"thoughtSignature\": \"ErwDCrkDARFNMg/L6OSlYokEY/BUEFEy8KJtZK/4IPlgTKWP0jQomrHCPHGI9Vsx51EWCRVLR5cH7HYyeB16RZ8yWWWCN2F9M7yRz4JY6tZl6gmBXWYihSDSbKPMMA4L1Rdx5Rfioo0LJMogKMc5jDuVDkUnjhKaZ357TVgqkxtUVbPDqkPpqJSzA5rIMgmpTvJY+r2suBMBb4XrELt8YqSpv/A8MZqzeGDzk2Z15wn3eEoRI0bs2XMJuXdI8p1cwspyT+4ya+yEQN5Eobd2p4QthqrWL71HXU6ldCsf6hTH+LgDBczAe+hLic3dDw9todL0opuN5kcngklPm3OxBc3b7AsIq8G7mKEmz2Y8KGoHTFin84XmDq1SIAMVBFmA4+bMhTxDxuy5pQB/L5DXU5P+H1f3+Hq81NwR6bIKde8TdnmX7qQ4auSKm6tyAFfgwMbsH629vR98heXmUyByRVmvEz9auWDMIJvo6R8nJED0QcXC2QLfhLtyb2fqFsoHHIrrxZ/sB6Ixww0kG3Bl9x7uSBS41ys7t0TKyt6SkEa7Q2TlaRAMJPbvHXbYGi5qIZv4UDJ4OSHaht7JvcxG\"}],\"role\": \"model\"},\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 75,\"candidatesTokenCount\": 16,\"totalTokenCount\": 159,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 75}],\"thoughtsTokenCount\": 68,\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.5-flash\",\"responseId\": \"gwCeasDyDKaajMcP1PKV0Q4\"}\r\n\r\ndata: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"\"}],\"role\": \"model\"},\"finishReason\": \"STOP\",\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 75,\"candidatesTokenCount\": 16,\"totalTokenCount\": 159,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 75}],\"thoughtsTokenCount\": 68,\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.5-flash\",\"responseId\": \"gwCeasDyDKaajMcP1PKV0Q4\"}\r\n\r\n"
+      },
+      "recorded_at": "2026-09-07T00:08:36Z"
+    }
+  ]
+}

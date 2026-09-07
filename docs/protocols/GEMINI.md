@@ -200,6 +200,83 @@ precondition that a carrier is a `user` content and never a `model` one —
 passed as `eligible` rather than checked ahead of the call, because it sat
 below the synthetic test and hoisting it would change the answer.
 
+## Streaming
+
+`Protocol::Gemini::Assembler`, over `:streamGenerateContent?alt=sse`.
+
+### Streaming is a different URL, not a flag
+
+The one protocol of the four where this is true, and the reason
+`Adapter#stream_path` exists at all. The body is byte-identical to the
+non-streamed one; only the method on the URL changes. `alt=sse` is not
+optional — without it the endpoint streams a chunked JSON *array*, which is a
+second framing nobody wants to write a second parser for.
+
+### There are no finished units, and that changed the shared rule
+
+Every chunk is a whole `GenerateContentResponse` — envelope, `candidates`,
+`content`, `parts` — and the parts inside are fragments. Text arrives as
+`{"text": "Mount "}` then `{"text": "Everest"}`. There is no equivalent of
+Responses' `output_item.done`, and no terminal chunk carrying the provider's
+own assembly of what came before, so this protocol has no correctness oracle.
+
+That forced the assembler rule to be restated. It had been *assemble from
+complete units; deltas are for events*, which describes Responses exactly and
+would produce, here, a reply consisting of the final fragment. It is now
+**never stitch anything whose partial form is invalid** — text concatenates,
+a `functionCall` does not. `docs/STREAMING_DESIGN.md` carries the argument.
+
+Each chunk is parsed by `Wire::Response.from_any`, the ordinary reader.
+Merging happens afterwards, on the parsed `Part`, and touches only the last
+one — so a reply that speaks, calls a tool, then speaks again keeps three
+parts in that order rather than folding its text together.
+
+### Live finding: thinking must be asked for, or it is invisible and still billed
+
+Discovered by asserting the opposite and being wrong. Gemini reasons on a
+question whether or not you ask it to, and bills for it — but returns neither
+the thought text nor the signature unless `includeThoughts` is set, which the
+mapper emits only alongside a thinking budget or level. So
+`Options.new(max_output_tokens:)` with no `reasoning` yields a stream with no
+thoughts in it at all, and a caller who never mentions reasoning is paying for
+reasoning they cannot see.
+
+`spec/live/gemini_streaming_spec.cr` keeps an example asserting that silence,
+because the failure mode is quiet: nothing errors, and the only symptom is an
+absence.
+
+### Live finding: thought summaries need not fragment
+
+Answer text arrived in many parts; the entire thought summary arrived in one.
+So a live example asserting that thoughts fragment was asserting something this
+protocol does not promise. What is pinned instead is the invariant that holds
+either way — contiguous thoughts fold into a single reasoning block — with the
+merging arithmetic itself covered offline, where fragments can be arranged
+rather than hoped for.
+
+### Live finding: a streamed `thoughtSignature` survives, and there is one of it
+
+This matters more than anything else here. Signatures must be replayed
+unmodified or the following turn is rejected, which makes a stream the place
+where this protocol's portable history could break.
+
+It does not break. The recorded tools transcript carries a signature, and it
+reaches the exported reply intact.
+
+**Exactly one signature, across the whole stream.** Not one per thought
+fragment, not one per part — which is worth knowing because it means an
+assembler that dropped a signature while merging would leave *no* signature at
+all rather than a diminished set, and because a spec inspecting only one kind
+of block can miss it. The exporter writes `thought_signature` from both
+`ThoughtPart#signature` and `FunctionCallPart#thought_signature`; an earlier
+version of the live example looked only at reasoning blocks and was green
+while proving nothing.
+
+**Still unsettled: replay.** What is confirmed is that a signature arrives and
+survives export. What is not is that the provider accepts it back — a streamed
+turn *resumed* on a following request is the check that would show a signature
+subtly damaged rather than merely absent, and nothing here does that yet.
+
 ## Conformance
 
 `spec/conformance/gemini_spec.cr`. Fourteen fixtures round-trip untouched,

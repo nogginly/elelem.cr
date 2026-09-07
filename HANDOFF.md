@@ -201,7 +201,8 @@ assemble into each protocol's own `Wire::Response` and then take the *existing*
 streamed reply is the same `MPSH::Message` as a non-streamed one by
 construction.
 
-**Slice 1 of four is done: the seam, and Responses.** What exists now:
+**Slices 1 and 2 of four are done: the seam, Responses, and Gemini.** What
+exists now:
 
 - `Elelem::Streaming` — `Sse` framing shared by all four protocols, a closed
   five-variant `Event` union, `Turn` (the cooperative stop handle), and the
@@ -211,19 +212,29 @@ construction.
   block is the request to stream**; there is no flag. Adapters opt in by
   overriding `Adapter#prepare_stream`, which returns `nil` by default, and
   `Report#streamed` says which way a turn actually went.
-- `Protocol::Responses::Assembler`, plus offline and live specs.
+- `Protocol::Responses::Assembler` and `Protocol::Gemini::Assembler`, each
+  with offline and live specs.
+- `Adapter#stream_path`, defaulting to `path`. Gemini is the only protocol
+  where streaming is a different method on the URL rather than a flag in the
+  body, and `alt=sse` is required or the endpoint streams a chunked JSON array
+  instead of server-sent events.
 
-**The rule every remaining assembler follows: assemble from complete units;
-deltas are for events.** Nothing is stitched from fragments. This was not the
-original plan — the design first called for keeping only the terminal frame on
-Responses, which is trivial and wrong: the whole reply lives in that frame, so
-`Turn#stop` would return nothing at all, and the free correctness oracle would
-be vacuous. `docs/STREAMING_DESIGN.md` records the correction.
+**The rule every remaining assembler follows: never stitch anything whose
+partial form is invalid.** Text concatenates — a prefix is a legitimate short
+answer. A tool call does not: half an arguments blob cannot be dispatched, so a
+call still arriving when the stream ended must not appear in the reply.
 
-**Remaining: Gemini, Anthropic, Chat Completions**, in that order and one slice
-each, each a stopping point. Gemini is second despite being the only one with
-no free Ollama step — Ollama has never served it — because it is the cheapest
-second opinion on the accumulation shape.
+Both halves of that were learned rather than designed. Responses first called
+for keeping only the terminal frame, which is trivial and wrong — the whole
+reply lives in that frame, so `Turn#stop` would return nothing. Gemini then
+broke the replacement wording (*assemble from complete units*) by emitting no
+finished units at all. `docs/STREAMING_DESIGN.md` records both corrections;
+expect Anthropic and Chat Completions to test the rule again rather than to
+fit it quietly.
+
+**Remaining: Anthropic, then Chat Completions**, one slice each, each a
+stopping point. Chat Completions is last deliberately: it is the one where
+inventing the shape under pressure would go worst.
 
 **Two traps worth knowing before touching `Server#stream`.** Nothing within its
 reach may `yield`: the block reaches `HTTP::Client#exec(request, &)`, which

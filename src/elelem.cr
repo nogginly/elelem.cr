@@ -62,6 +62,7 @@ require "./elelem/protocol/gemini/wire/request"
 require "./elelem/protocol/gemini/wire/response"
 require "./elelem/protocol/gemini/mapper"
 require "./elelem/protocol/gemini/export"
+require "./elelem/protocol/gemini/stream"
 
 # The live layer: a deployment, the protocol it speaks, and one request per
 # send. `Server`, `Provider` and `Client` stay flat files — none has grown

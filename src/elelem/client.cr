@@ -109,7 +109,7 @@ module Elelem
       end
 
       server = provider.server
-      server.stream(adapter.path(model), adapter.headers(server.credential), streamed.body,
+      server.stream(adapter.stream_path(model), adapter.headers(server.credential), streamed.body,
         ->(body : String) { adapter.error_detail(body) }) do |frame|
         assembler.absorb(frame) { |event| block.call(event, turn) }
         !turn.stopped?

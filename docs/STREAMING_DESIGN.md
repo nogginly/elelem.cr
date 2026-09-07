@@ -170,12 +170,22 @@ would make Responses trivial and would cost two things: the oracle becomes
 vacuous, since comparing the terminal frame against itself checks nothing, and
 `Turn#stop` returns nothing at all, because on this protocol the entire reply
 lives in that one frame. A stop button that discards the answer is not a stop
-button. So assemblers follow one rule — **assemble from complete units; deltas
-are for events** — and here that means collecting `response.output_item.done`
-frames, which arrive in exactly the shape the reader already takes. The partial
-reply is then made of complete parts by construction, and a tool call still
-receiving its arguments when the stream ended never enters a session, which is
-the outcome repair would have had to arrange for anyway.
+button. So assemblers follow one rule — **never stitch anything whose partial
+form is invalid** — and on Responses that means collecting
+`response.output_item.done` frames, which arrive in exactly the shape the
+reader already takes, and discarding the deltas. A tool call still receiving
+its arguments when the stream ended never enters a session, which is the
+outcome repair would have had to arrange for anyway.
+
+That rule was first written as *assemble from complete units; deltas are for
+events*, which describes Responses exactly and turned out to be a description
+rather than a rule. Gemini emits no finished units at all — every chunk is a
+whole envelope wrapping fragmentary parts — so following the older phrasing
+literally would have produced a reply consisting of the final fragment. Text
+must be concatenated there, and may be: its partial form is valid text, a
+prefix is a legitimate short answer, and nothing about it can be misread. A
+half-received arguments blob is none of those things. The rule above asks the
+question that actually distinguishes them, and both protocols obey it.
 
 **The same-message guarantee stays structural, and is deliberately not
 asserted.** It would be tempting to record a streamed and a non-streamed reply

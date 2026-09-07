@@ -74,6 +74,21 @@ module Elelem
 
     abstract def profile : Capability::Profile
     abstract def path(model : String) : String
+
+    # Where a *streamed* request goes, when that is somewhere else.
+    #
+    # Only Gemini needs this, and it needs it badly: streaming there is not a
+    # flag in the body but a different method on the URL —
+    # `:streamGenerateContent?alt=sse` in place of `:generateContent`. The
+    # other three ask for a stream in the body and post to the same place.
+    #
+    # A method here rather than a path on `StreamExchange`, so that both URLs
+    # can be read side by side in the adapter that owns them, instead of one
+    # being visible and the other buried in whatever `prepare_stream` returns.
+    def stream_path(model : String) : String
+      path(model)
+    end
+
     abstract def prepare(session : MPSH::Session, model : String,
                          policy : Capability::Policy,
                          retention : Capability::ReasoningRetention,

@@ -1,0 +1,40 @@
+{
+  "name": "gemini_stream_thinking",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "273",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"Answer in one short sentence.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is the tallest mountain on Earth?\"}]}],\"generationConfig\":{\"maxOutputTokens\":512,\"thinkingConfig\":{\"thinkingLevel\":\"MEDIUM\",\"includeThoughts\":true}}}",
+        "body_digest": "39a5d4b2b471a9c963ac536b5788ccb852cc2ca0d74fad5a6da1bd7e3627fb01"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream",
+          "Content-Disposition": "attachment",
+          "Vary": "Origin, X-Origin, Referer",
+          "Transfer-Encoding": "chunked",
+          "Date": "Mon, 07 Sep 2026 00:08:34 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=1537",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+        },
+        "body": "data: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"**Defining \\\"Tallest\\\"**\\n\\nI've been wrestling with the definition of \\\"tallest.\\\" It appears the core of the issue hinges on how we measure height. Does it mean highest above sea level, like Everest, or the greatest distance from base to peak, where Mauna Kea surpasses? It seems the common usage defaults to sea level height for general understanding.\\n\\n\\n\",\"thought\": true}],\"role\": \"model\"},\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 15,\"totalTokenCount\": 15,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 15}],\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.5-flash\",\"responseId\": \"gQCeap60F9fV_uMP2Y-c-AI\"}\r\n\r\ndata: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"The tallest mountain on Earth is Mount Everest.\"}],\"role\": \"model\"},\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 15,\"candidatesTokenCount\": 9,\"totalTokenCount\": 254,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 15}],\"thoughtsTokenCount\": 230,\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.5-flash\",\"responseId\": \"gQCeap60F9fV_uMP2Y-c-AI\"}\r\n\r\ndata: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"\",\"thoughtSignature\": \"EvsJCvgJARFNMg83BMXZ3X6EcXBAcj4NlVJKdjslMyWtjW1jxKhPDEgQmee1KHHMy9k0kdqt2wwPSHttEgQe23n975LvpG0vmWoCFmvjpl17Zylho4n1UIInhqVfPKZBxwoRXMo/lPTO3AIYJsDNHdFSBhVerkCG9BGmFVvP9dQIOFo3IA03SwPmGwOrt6NOd9O0j2qX1Td/n8k8ZZIamtOOv7hrV/RwHQdPfeZEJmQNwkBNoCY95po6ouWV0Zt8pat7XVxNYvuD8alAjv8fVuu7kLpPnYevSVI2ozrr2o0hVFDcFIDduBDsuT0+84SJF9164UWODsQ8cT57wCluQ2Hy3u4gbXwi91d60MTEn/JYFY8nV+0NLfdT+zXgnH/jx9de2Jqw605DLQzW+REWy0+n2afkqvROyijkkyyJ6ngCDQKQ2TDc/dHrWi2gHI//MSLU97RgpNgQ3eDlWVg0X4+ha2TTNpospy1qNIR+w8N4rYy9UEIf24zoRbZwhs0GVh2EiOtqIUIe1zlVbShqvuJR85HRAe80bi6NVWyn6iOfdPZnGyXN/VN/fUs+CZh2mGskwxNGr/KJuZt659r9+c6Rl5HnmV8EsjVVumNm7YvTHI8/12WkWUuc3g/RLSLwyPuN9KuC/jV2J5yfJA5sgYzO62HNjhE0XcHDFTftRylG5j/RtgIjEwR1v0tLx4jxfQ+ynLHd15vR7h4tDNLAVKEb7hewb72BXGmdqzo82Ll2o0vG8xU5ZWNoge/S+igrI3JuoXWSalwDuZeKG7Pl+kFR6ZXbp/55eEwl5b3pcdo1vZrZe4hN0ifFP/cHQETUG3nWT4uHhX3io3okIH5fpVlY0aWA0YPfFbmI+42Gbf6Th3WUoBMDNxa6r9ZZ8KkY7d6tSwBQkOB134NonT9THU0dQ5Y4zM51Zh7juXNY5s6Klm8dvIYdqar/3vQ7x8fHSlvAROI/Ys8SfUXTkLoxWB7AutpMb+axtg/SGfF6BaZrK+gmxna0Vjz1Jrnz8vpTGgTg7jZ7qqHdrHCU7hrOsgiUuY0KKtF8pitPNhjkpM9gJZrl0hhfeByMUqk6v7ikEdsQuxsAp4F4saN1yYr2Hus56S3zBGpc0Y4BalWqY9fM1/17NC8qf9lOgxmV2e6FDKwYsWuBViun0t7MI2sX8n8Rs8zTeMgYwYTkw0sCBZB7m1zuJleD/LFwSKo6/oCeOdJvosgpHTECwWgRhTMRp1RP5kLIY6bPdTw4jvzKYvbqctdLfS9448sbYhE8G4fwmUyYbX/Y/Zd1qF4rxA0BN6SgE6iJahNOXfk13kww7E2uu+Wu92Ej5vlmX1uya0S79GKh9jQCQhE34DnWhK9rq9w7DawXxn5JpxU02Pc+ABzzN+94Aog+VXZte3NmrtoVaxtRjmhGY4+EvsfTYpUkvqgFEBGWlwlwgMDd5bL7QjW9WLiSL0TMwb2lvC/b7bcOtJNl9BASuOp3iDT8cNyiuUhGJ8EowiGdh9UagmAclAI2b0ilpQm9xAOAoZ7wz4PDijNQ8NdxbMc+51zkSh8SW4VmLYMArMNa/h3i2Jcjo1ZqWos77rfnAswBOrPuB4YdtzuRrwHT8cKU2w1b0UAqSaEJvGDm8Oq94RzB2iQoFhYWH1VB19ZqIPgWBf6q6IPmSzVyU1zlwARD1HuLgLaDdxRvfp+aowA/rzEyZ+dt\"}],\"role\": \"model\"},\"finishReason\": \"STOP\",\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 15,\"candidatesTokenCount\": 9,\"totalTokenCount\": 254,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 15}],\"thoughtsTokenCount\": 230,\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.5-flash\",\"responseId\": \"gQCeap60F9fV_uMP2Y-c-AI\"}\r\n\r\n"
+      },
+      "recorded_at": "2026-09-07T00:08:34Z"
+    }
+  ]
+}

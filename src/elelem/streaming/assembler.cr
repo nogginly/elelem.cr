@@ -8,17 +8,28 @@ module Elelem::Streaming
   #
   # ## The rule every implementation follows
   #
-  # **Assemble from complete units; deltas are for events.** A frame carrying a
-  # finished thing — an output item, a content block, a whole candidate — is
-  # accumulated. A frame carrying a fragment is turned into an `Event` and
-  # forgotten. Nothing is stitched together from fragments.
+  # **Never stitch anything whose partial form is invalid.**
   #
-  # This is not fussiness. It is what makes an interrupted turn produce
-  # something usable: whatever finished arriving is a legitimate partial reply,
-  # while a half-received tool call simply never becomes one, because it never
-  # completed. A caller that stops a turn gets an honest short answer rather
-  # than an answer with an invented tail — and rather than nothing at all,
-  # which is what a "keep only the terminal frame" assembler would hand back.
+  # Text's partial form is valid text: concatenation is exact, a prefix is a
+  # legitimate short answer, and nothing about it can be misread. A tool call's
+  # partial form is not a tool call — half a JSON arguments blob is unparseable
+  # and cannot be dispatched — so a call that was still arriving when the
+  # stream ended must simply not appear in the reply.
+  #
+  # This is what makes an interrupted turn produce something usable rather than
+  # something plausible. A caller that stops a turn gets an honest short answer
+  # instead of an answer with an invented tail, and a session never ends up
+  # holding a call nobody can act on.
+  #
+  # **What counts as a unit differs by protocol, and that is not a wrinkle in
+  # the rule but the reason it is phrased this way.** An earlier version said
+  # "assemble from complete units; deltas are for events", which fits Responses
+  # exactly — it emits finished items, so fragments can be watched and thrown
+  # away. Gemini emits no finished items at all: every chunk is a whole
+  # envelope wrapping fragmentary parts, so its text *must* be concatenated,
+  # and following the older phrasing literally would have produced a reply
+  # consisting of the final fragment. The rule above survives both, because it
+  # asks the question that actually matters.
   #
   # ## Why `finish` returns a message and not a wire type
   #

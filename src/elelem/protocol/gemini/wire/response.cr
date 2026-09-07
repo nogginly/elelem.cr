@@ -79,6 +79,19 @@ module Elelem::Protocol::Gemini
           raise MalformedResponseError.new(NAME, "response body is not JSON: #{error.message}")
         end
 
+        from_any(parsed)
+      end
+
+      # The same reader, from an object someone else already parsed.
+      #
+      # Streaming needs it, and needs it more here than anywhere else: every
+      # chunk of a Gemini stream is a whole `GenerateContentResponse`, so the
+      # assembler can read each one with *this* reader rather than growing a
+      # second understanding of what a part is. Given that part reading on this
+      # protocol branches on key presence, checks `thought` before `text`, and
+      # tolerates two spellings of `inlineData`, a second copy of it would be a
+      # second set of those traps to get right.
+      def self.from_any(parsed : JSON::Any) : Response
         raw = parsed["candidates"]?.try(&.as_a?)
         unless raw
           raise MalformedResponseError.new(NAME, "response has no `candidates` array")
