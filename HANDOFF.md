@@ -232,6 +232,16 @@ finished units at all. `docs/STREAMING_DESIGN.md` records both corrections;
 expect Anthropic and Chat Completions to test the rule again rather than to
 fit it quietly.
 
+**Streaming is proved against vendors, not only against Ollama.** That turned
+out to matter: recording against Azure and Anthropic found a bug Ollama had
+been hiding — every `Usage.parse` mishandled a `"usage": null` chunk, which
+Azure and OpenAI send and Ollama omits — and confirmed the one thing only a
+vendor could confirm, that a streamed Anthropic `signature_delta` survives and
+is accepted when replayed. The general lesson is in `docs/servers/OLLAMA.md`:
+this server is *more* forgiving than the endpoints it imitates, and offline
+fixtures cut from its transcripts inherit that blind spot. Gemini's streamed
+`thoughtSignature` is still unproven on replay and is the one gap left.
+
 **Next: `SCOPE.md`'s interrupted-turn repair**, which streaming was holding up
 and which is now unblocked. Read that entry before touching it — the
 conclusion recorded there was "not yet decidable", not "not yet worth doing",

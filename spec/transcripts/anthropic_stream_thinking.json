@@ -1,0 +1,58 @@
+{
+  "name": "anthropic_stream_thinking",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "x-api-key": "[FILTERED]",
+          "Content-Length": "257",
+          "Host": "api.anthropic.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5\",\"max_tokens\":1536,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}],\"stream\":true,\"thinking\":{\"type\":\"enabled\",\"budget_tokens\":1024}}",
+        "body_digest": "7d94aca817fbb47f7f1785c1b51b3aa97a5e8633790c660c49c176222156a04e"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Date": "Mon, 07 Sep 2026 18:46:40 GMT",
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Transfer-Encoding": "chunked",
+          "Connection": "keep-alive",
+          "Cache-Control": "no-cache",
+          "anthropic-ratelimit-input-tokens-limit": "500000",
+          "anthropic-ratelimit-input-tokens-remaining": "500000",
+          "anthropic-ratelimit-input-tokens-reset": "2026-09-07T18:46:40Z",
+          "anthropic-ratelimit-output-tokens-limit": "80000",
+          "anthropic-ratelimit-output-tokens-remaining": "80000",
+          "anthropic-ratelimit-output-tokens-reset": "2026-09-07T18:46:40Z",
+          "anthropic-ratelimit-requests-limit": "1000",
+          "anthropic-ratelimit-requests-remaining": "999",
+          "anthropic-ratelimit-requests-reset": "2026-09-07T18:46:40Z",
+          "anthropic-ratelimit-tokens-limit": "580000",
+          "anthropic-ratelimit-tokens-remaining": "580000",
+          "anthropic-ratelimit-tokens-reset": "2026-09-07T18:46:40Z",
+          "request-id": "req_011CepaPFszHkZvifSPqHsmz",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "anthropic-organization-id": "73a57cec-8684-4a17-8a8a-236663eb1dd3",
+          "anthropic-workspace-id": "wrkspc_01TZaSJ9Q4GT9s3KXaMsNH6P",
+          "traceresponse": "00-33eaa3885f1ecb3429380a7c5df7883c-5055922dbaa44c23-01",
+          "Server": "cloudflare",
+          "vary": "Accept-Encoding",
+          "X-Robots-Tag": "none",
+          "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+          "cf-cache-status": "DYNAMIC",
+          "CF-RAY": "a377e0a4fec2a2b2-YUL"
+        },
+        "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CepaPGwjVVmGxX3zMmdQu\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":52,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":4,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}              }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"\"}            }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"This is a straight\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"forward factual question. The tallest mountain on Earth is Mount Everest, which stands at 29,032 feet (8,849 meters) above sea level. The user\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" asked for one short sentence, so I'll keep my answer brief and concise.\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"EuYDCpoBCBEYAipAS34cfBJNuKicWBB0iRxYoFpF7K7ztTjMU278izFflAfucIGf6/cnkIctImjjcrohxNfqXdsGdFOQoHfCgyWP9TIZY2xhdWRlLWhhaWt1LTQtNS0yMDI1MTAwMTgAQgh0aGlua2luZ1okNzNhNTdjZWMtODY4NC00YTE3LThhOGEtMjM2NjYzZWIxZGQzqAGRjfzUBhIMsOHYjScSXAlqyiuKGgxtK/q+KVuD1MHjgkciMDjdLAvaTTHnB3mHj0MmOqGKf/pLbo/ZmrnYhyqaifHWO3bt9JawLT8oReH9AtPgair4AbplzCHoBYSRaqsLbC35G6gVfHrfMBVbr/SVDLOFx9Iu7UxqXYju/2+R5qKASfmUN+aSVmrZRE+xUIvQZytWW3JR5xE9gwVZMIMt+Lk8yZ60SPVxgjPclDKj0bmnOSHqtcFN8H3aDpCPvI9ouSEKcEbxOo2+Lziy0kckrwHmRyf/0K2YtSDtbOX/I2fTs/v17EZsZZ5Xdyi8T4EklzC7ldDxfoXIl3zzIxlLgdYRyDIfkFhWQgRdVsCje0MtHsDLJbGqUaWnQqWU82XYPpgft+H7ZcOSRQSi/ueGf0SkiESyDc4NLm1jUDtV0nM7qO0SXdSum1EMsK4AGAE=\"}   }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0       }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"Mount Everest is the tallest mountain\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\" on Earth, standing at 29,032 feet (8,849 meters) above sea level.\"}  }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1              }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":52,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":102,\"output_tokens_details\":{\"thinking_tokens\":65}}         }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"      }\n\n"
+      },
+      "recorded_at": "2026-09-07T18:46:41Z"
+    }
+  ]
+}

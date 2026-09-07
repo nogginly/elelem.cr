@@ -26,10 +26,20 @@ module Elelem::Protocol::ChatCompletions
       end
 
       def self.parse(any : JSON::Any?) : Usage?
-        return nil unless any
-        new(any["prompt_tokens"]?.try(&.as_i?),
-          any["completion_tokens"]?.try(&.as_i?),
-          any["total_tokens"]?.try(&.as_i?))
+        # `as_h?` rather than a bare nil check. A streamed chunk carries
+        # `"usage": null` on every frame until the last one, so the key is
+        # *present* holding a JSON null — which is not Crystal's `nil`, passes
+        # a truthiness guard, and is then indexed into as a hash. Absent and
+        # explicitly null mean the same thing here, and now behave the same.
+        #
+        # Found against Azure and OpenAI, which both send it; Ollama omits the
+        # key entirely, so the emulator was the forgiving one.
+        fields = any.try(&.as_h?)
+        return nil unless fields
+
+        new(fields["prompt_tokens"]?.try(&.as_i?),
+          fields["completion_tokens"]?.try(&.as_i?),
+          fields["total_tokens"]?.try(&.as_i?))
       end
 
       def to_metadata : MPSH::Object

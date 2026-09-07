@@ -228,12 +228,29 @@ worth asking: the non-streamed path already returns thinking blocks from this
 endpoint, so a streamed path without them would have been an emulator
 supporting less than the protocol it imitates. It does not.
 
-**Anthropic's own API is untested for streaming.** Everything above is one
-compatibility port. That is the mirror image of Gemini's gap, where the vendor
-was tested and no emulator was, and it is worth closing when someone next has
-a key in hand — the `thinking` block's `signature_delta` in particular is the
-detail most likely to differ, and the one that breaks a following turn when it
-does.
+### Live finding: a streamed signature survives, and the provider accepts it back
+
+`spec/live/anthropic_streaming_spec.cr`, against the real API. This is the
+detail the whole protocol turns on: `signature` is a required field on
+Anthropic's own request schema, so a `thinking` block replayed without one
+fails outright, and the streamed shape delivers that signature on its own
+`signature_delta` — after the thinking text, before the block closes. An
+assembler can lose it two ways, by ignoring that delta or by closing the block
+on first sight of text, and every offline test would still pass because those
+frames were written by the same hand as the code.
+
+It does not lose it. And the spec goes one step past *present* to *intact*: a
+streamed thinking turn is appended to its session and sent back, which is the
+only check that distinguishes a signature that arrived from a signature that
+survived unmodified. The provider accepts it, with no `Degraded` outcome under
+the default `Compensating` policy — which would have raised rather than passed
+quietly.
+
+**Ollama emits no signatures at all**, on either the streamed or non-streamed
+path. Not a streaming divergence but the expected limit of an emulator: a
+signature is Anthropic's own attestation and a local model cannot mint one. So
+this path could only ever have been proved against the vendor, and the
+compatibility port's green run was never evidence about it.
 
 ## Conformance
 

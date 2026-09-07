@@ -16,11 +16,13 @@ outstanding belongs here, because nobody greps a codebase for open questions.
 
 ### Interrupted turns must leave a sendable session
 
-**Now reproducible on demand.** `spec/live/ollama_spec.cr` records a turn cut
-short by `max_output_tokens: 24`: `stop_reason: max_tokens`, a thinking block,
-and no answer. It first appeared by accident — a small model reasoning past its
-ceiling — and an accident is a poor fixture. Repair remains unbuilt; the
-exporter is deliberately honest and returns what arrived.
+**Unblocked.** Streaming is built, which is what this was waiting for. Repair
+itself remains unbuilt, and the exporter is still deliberately honest: it
+returns what arrived.
+
+`spec/live/ollama_spec.cr` records a turn cut short by
+`max_output_tokens: 24` — `stop_reason: max_tokens`, a thinking block, no
+answer. It first appeared by accident, and an accident is a poor fixture.
 
 A turn can stop before it completes: a user interrupt in an interactive agent, a
 resource limit in an automated one, a provider quota, a dropped connection, a
@@ -91,25 +93,84 @@ strongest argument for a canonical field on `MPSH::Message` rather than a
 lookup over the four existing spellings — and it is an argument that only
 appears once streaming is in view, which is why this waits for it.
 
-**Held until streaming lands.** Classes 1 and 2 are already handled or already
-fixture-covered; class 3 is unreachable without a streaming seam, and it is the
-class that shapes where the fact lives. Building the truncation half now would
-mean choosing that home while unable to test the case that constrains it. The
-invariant above is what this closes on, and it stays the acceptance test.
+**What building streaming already settled.** Three things, none of them
+planned as repair work, all of which change what is left to do.
 
-**When it resumes, the fixtures cost nothing.** Truncation is recorded already
-(the `max_output_tokens: 24` transcript). Ollama's small-context and
-fail-when-full flags give a genuine class-1 rejection. A real vendor 400 comes
-free from requesting `max_tokens` above a model's ceiling — rejected before
-generation, so no output tokens are billed. Class 3 should be *deliberately*
-synthetic: a stream cut after three deltas, or an error frame in place of the
-terminal event, is a transport shape rather than model output, so a
-hand-authored transcript tests our parser rather than our guess about a vendor.
-Copy the error envelopes verbatim from provider documentation.
+*The hard row of the table is done for streamed turns, by construction.* Every
+assembler refuses to emit a tool call it cannot vouch for: Anthropic drops a
+`tool_use` block that never closed, Chat Completions withholds all calls until
+a `finish_reason` arrives, Responses only accumulates finished items, Gemini
+takes `functionCall` parts whole and never merges them. So "drop the calls,
+keep any text" is already the behaviour of a cut stream, and it is pinned
+offline for all four. **What remains is the non-streamed truncation case** —
+class 2 — where a complete 200 body can legitimately carry a call set the model
+never finished planning.
+
+*A stopped turn and a cut turn are indistinguishable to an assembler*, and
+deliberately so: `complete?` is false for both, because only `Client` knows
+whether anybody asked. That is not a gap to close but a confirmation — the fact
+has to be *set* by the layer that knows, exactly as this entry's "the absence
+is the finding" argument predicted.
+
+*Class 3 currently raises.* `Client#send` raises `Protocol::StreamError` when a
+stream ends incomplete and unstopped. That is a placeholder chosen for safety
+rather than an answer: the caller appends nothing, so no session is left
+holding a dangling turn. Repair may well soften it to a returned partial reply
+once there is somewhere to record *why* it was partial.
+
+**The home now looks decidable, and the answer looks like `MPSH::Message`.**
+This entry concluded "not yet decidable"; the argument that decides it is that
+**`Capability::Report` is not archived and `MPSH::Message` is.** A session
+reloaded from disk in a new process has no report — but it still has to know
+its last turn was cut, or the first `send` after a reload rebuilds the same
+unsendable request. `Report#streamed` is a fine precedent for a plain per-call
+fact, and interruption is not one: it is a property of the turn that outlives
+the call that produced it.
+
+That points at a canonical field on `MPSH::Message`, settable by the client
+from a transport observation rather than derived by normalising four vendor
+spellings — which is what the absence argument above asked for. It should be
+confirmed against `MPSH_SPECIFICATION.md` and the archive round-trip before
+being built, since adding a field to the portable envelope is the most
+expensive change in this repository to get wrong.
+
+The invariant above is what this closes on, and it stays the acceptance test.
+
+**The fixtures still cost nothing.** Truncation is recorded already (the
+`max_output_tokens: 24` transcript). Ollama's small-context and fail-when-full
+flags give a genuine class-1 rejection. A real vendor 400 comes free from
+requesting `max_tokens` above a model's ceiling — rejected before generation,
+so no output tokens are billed. Class 3 should be *deliberately* synthetic: a
+stream cut after three deltas, or an error frame in place of the terminal
+event, is a transport shape rather than model output, so a hand-authored
+transcript tests our parser rather than our guess about a vendor. Copy the
+error envelopes verbatim from provider documentation.
+
+`spec/streaming/` already contains cut-stream examples for all four
+assemblers, built exactly this way. They pin what a cut stream *produces*;
+what is missing is what the session then *does* with it.
 
 ---
 
 ## WILL FIX
+
+### A streamed Gemini `thoughtSignature` is unproven on replay
+
+The one live gap left after streaming. `spec/live/gemini_streaming_spec.cr`
+confirms a signature arrives in a streamed turn and survives export; nothing
+confirms Google accepts it back. Present is not the same as intact, and a
+signature damaged by fragmenting or merging would look identical to a good one
+until the following request is rejected.
+
+Anthropic's equivalent *is* proven —
+`spec/live/anthropic_streaming_spec.cr` streams a thinking turn, appends the
+reply to its session and sends it back — so the shape to copy already exists.
+One extra paid call on Flash, and worth it on the protocol whose signatures
+this shard has already caught the provider omitting undocumented
+(`gemini_thought_no_signature.json`).
+
+Cheap, and left as WILL FIX rather than MUST FIX only because streamed Gemini
+turns with thinking requested are not yet a path anything depends on.
 
 ### Retention governs replay, not display and not storage
 

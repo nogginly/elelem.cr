@@ -260,10 +260,26 @@ reasoning and indexed tool-call fragments, reports a finish reason, and
 here, since that option's empty-`choices` final chunk is an odd shape and an
 easy one for a compatibility port to skip.
 
-OpenAI's own Chat Completions endpoint remains unstreamed by this shard, as
-does Azure's. The Azure case is the more interesting gap: `max_tokens` versus
-`max_completion_tokens` already differs there per deployment, and nothing yet
-says whether its streaming shape differs too.
+### Live finding: `"usage": null` on every chunk but the last
+
+Azure and OpenAI both send the `usage` key on *every* streamed chunk, holding
+a JSON null until the final one fills it in. Ollama omits the key entirely.
+
+That difference broke this shard, on all four protocols simultaneously. Every
+`Usage.parse` guarded against an absent key and none against a present null,
+which passes a truthiness check — `JSON::Any` wrapping nil is not Crystal's
+`nil` — and is then indexed into as a hash. Fixed in all four readers and
+pinned by `spec/streaming/null_usage_spec.cr`; the reasoning lives in
+`docs/servers/AZURE.md`, since that is where it was caught.
+
+The lesson is more general than the bug. Three protocols had been proved
+against an emulator more forgiving than the endpoints it imitates, and the
+offline fixtures inherited that forgiveness because they were cut from those
+same transcripts. A fixture written from a lenient server tests leniently.
+
+Azure's streaming otherwise matches, including its content-filter chunks,
+which share the empty-`choices` shape the usage chunk uses and are told apart
+by key. See `docs/servers/AZURE.md`.
 
 ## Conformance
 

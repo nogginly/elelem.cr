@@ -1,0 +1,58 @@
+{
+  "name": "anthropic_stream_tools",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "x-api-key": "[FILTERED]",
+          "Content-Length": "490",
+          "Host": "api.anthropic.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5\",\"max_tokens\":1536,\"system\":\"Use the supplied tools when they apply.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]}],\"stream\":true,\"tools\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}],\"thinking\":{\"type\":\"enabled\",\"budget_tokens\":1024}}",
+        "body_digest": "d406493dd61965758cc3ae35235ba181c82994056368b7e5d0a2adee818ef07e"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Date": "Mon, 07 Sep 2026 18:46:45 GMT",
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Transfer-Encoding": "chunked",
+          "Connection": "keep-alive",
+          "Cache-Control": "no-cache",
+          "anthropic-ratelimit-input-tokens-limit": "500000",
+          "anthropic-ratelimit-input-tokens-remaining": "500000",
+          "anthropic-ratelimit-input-tokens-reset": "2026-09-07T18:46:45Z",
+          "anthropic-ratelimit-output-tokens-limit": "80000",
+          "anthropic-ratelimit-output-tokens-remaining": "80000",
+          "anthropic-ratelimit-output-tokens-reset": "2026-09-07T18:46:45Z",
+          "anthropic-ratelimit-requests-limit": "1000",
+          "anthropic-ratelimit-requests-remaining": "999",
+          "anthropic-ratelimit-requests-reset": "2026-09-07T18:46:45Z",
+          "anthropic-ratelimit-tokens-limit": "580000",
+          "anthropic-ratelimit-tokens-remaining": "580000",
+          "anthropic-ratelimit-tokens-reset": "2026-09-07T18:46:45Z",
+          "request-id": "req_011CepaPc6R2NEdhUAFtXCs2",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "anthropic-organization-id": "73a57cec-8684-4a17-8a8a-236663eb1dd3",
+          "anthropic-workspace-id": "wrkspc_01TZaSJ9Q4GT9s3KXaMsNH6P",
+          "traceresponse": "00-d919f8baf5c5f98bfca183f9b46060c2-a48a0666ed691d0c-01",
+          "Server": "cloudflare",
+          "vary": "Accept-Encoding",
+          "X-Robots-Tag": "none",
+          "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+          "cf-cache-status": "DYNAMIC",
+          "CF-RAY": "a377e0c2fc600682-YUL"
+        },
+        "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CepaPcoaUASx5WW9yD93j\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":619,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":4,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}    }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"\"}     }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"The user is asking\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" for the weather in Paris and specifically requesting that I use the get_weather tool. I have all the required parameters - the city is\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" \\\"Paris\\\". I should call the get_weather function with \\\"Paris\\\" as the city parameter.\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"EusDCpoBCBEYAipAic8UnAieMrFwSqVjDrfEv0ZiQRBZ0T2XDHZdjP19WQuKjBafBJO/BzUZTmEtF4868irIsyGUgiB7PL0EBW003TIZY2xhdWRlLWhhaWt1LTQtNS0yMDI1MTAwMTgAQgh0aGlua2luZ1okNzNhNTdjZWMtODY4NC00YTE3LThhOGEtMjM2NjYzZWIxZGQzqAGWjfzUBhIMOAuZQsPD/BvSnQFGGgwz4h1hSyjjCTdCmYkiMNPQhRgLxX4IPSQhvLgXYmnHjnIBS4acJ+LJRLFTfEaOLAS4wG67ZfLZp7/ke6fbuyr9ARumzFaHZERCm88Crs6FiFo/EUjUe052h3M7NkzVex9b+OInqHFqgNlUmjY3cSvn+53Kyzw5hPP3gofaZnneIPs8TUeGqNnYbHapNh0RnPb+UR4hduM8UG5FPBRFzQm0dzw02ZWretNaKWKR4EnAlq26+YMkMYE7eQW3OL0Bf7Z1Bm4HD9a5CpStXy8BV8K0yBTbuvWQhF1oW4lgoniAWBUu1s3RLW15KtQ7Rb9RLdT/FMTqwUNaRq9WH39Z5CEFBWFqmwrHHcHSTFf30lo20NR1PaoyupzfiqnYfueWhrB6iLuEiLAxaDDTa2pR4bsX6NNs4ePhRsHzB8LmR7UYAQ==\"}              }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0      }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01JV6oBvHgRwiCMbiJxj5xpg\",\"name\":\"get_weather\",\"input\":{},\"caller\":{\"type\":\"direct\"}}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"city\\\"\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"Pa\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"ris\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"}\"}            }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1       }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":619,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":112,\"output_tokens_details\":{\"thinking_tokens\":56}}              }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"   }\n\n"
+      },
+      "recorded_at": "2026-09-07T18:46:46Z"
+    }
+  ]
+}

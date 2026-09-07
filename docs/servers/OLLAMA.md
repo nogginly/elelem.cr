@@ -154,6 +154,30 @@ The prediction is still the right default — it costs nothing to hold and this
 is one server on one day — but it should now be held as a caution rather than
 as an expectation.
 
+### The sharper correction: this server is *more* forgiving, not less
+
+Two findings from the vendor recordings turn the prediction around, and both
+matter more than the paragraph above.
+
+**Ollama omits `"usage"` from streamed chunks entirely.** Azure and OpenAI send
+the key on every chunk holding a JSON null until the last. Every `Usage.parse`
+in this shard guarded against an absent key and none against a present null, so
+three protocols passed here while being broken against the endpoints they
+imitate. See `docs/servers/AZURE.md`.
+
+**Ollama's Anthropic port emits no thought signatures**, on either the streamed
+or non-streamed path — expected, since a signature is Anthropic's own
+attestation and a local model cannot mint one. But it means a green run on this
+server was never evidence about the signature path at all, and reading it as
+such would have been reading an absence as a pass.
+
+So the risk this server poses is not the predicted one. It is not that Ollama
+does less than the protocols and breaks code written for them; it is that
+Ollama does less *demandingly*, and code proved only here can be wrong in ways
+nothing here will show. Offline fixtures cut from these transcripts inherit the
+same blind spot. **Record against a vendor before believing a protocol is
+done.**
+
 ### What remains unproven here
 
 Gemini, which Ollama has never served at all, so this server can say nothing

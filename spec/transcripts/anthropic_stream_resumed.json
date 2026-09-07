@@ -1,0 +1,109 @@
+{
+  "name": "anthropic_stream_resumed",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "x-api-key": "[FILTERED]",
+          "Content-Length": "257",
+          "Host": "api.anthropic.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5\",\"max_tokens\":1536,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]}],\"stream\":true,\"thinking\":{\"type\":\"enabled\",\"budget_tokens\":1024}}",
+        "body_digest": "7d94aca817fbb47f7f1785c1b51b3aa97a5e8633790c660c49c176222156a04e"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Date": "Mon, 07 Sep 2026 18:46:42 GMT",
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Transfer-Encoding": "chunked",
+          "Connection": "keep-alive",
+          "Cache-Control": "no-cache",
+          "anthropic-ratelimit-input-tokens-limit": "500000",
+          "anthropic-ratelimit-input-tokens-remaining": "500000",
+          "anthropic-ratelimit-input-tokens-reset": "2026-09-07T18:46:42Z",
+          "anthropic-ratelimit-output-tokens-limit": "80000",
+          "anthropic-ratelimit-output-tokens-remaining": "80000",
+          "anthropic-ratelimit-output-tokens-reset": "2026-09-07T18:46:42Z",
+          "anthropic-ratelimit-requests-limit": "1000",
+          "anthropic-ratelimit-requests-remaining": "999",
+          "anthropic-ratelimit-requests-reset": "2026-09-07T18:46:42Z",
+          "anthropic-ratelimit-tokens-limit": "580000",
+          "anthropic-ratelimit-tokens-remaining": "580000",
+          "anthropic-ratelimit-tokens-reset": "2026-09-07T18:46:42Z",
+          "request-id": "req_011CepaPNx8t92mvPPoPL4QL",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "anthropic-organization-id": "73a57cec-8684-4a17-8a8a-236663eb1dd3",
+          "anthropic-workspace-id": "wrkspc_01TZaSJ9Q4GT9s3KXaMsNH6P",
+          "traceresponse": "00-1f7f11fd66305771001369e5e3307464-d3e32fad50da6e85-01",
+          "Server": "cloudflare",
+          "vary": "Accept-Encoding",
+          "X-Robots-Tag": "none",
+          "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+          "cf-cache-status": "DYNAMIC",
+          "CF-RAY": "a377e0afb932a25b-YUL"
+        },
+        "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CepaPPeZ7Kc4AhdxAwTW3\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":52,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":1,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}    }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"\"}            }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"This\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" is a straightforward factual question. The tallest mountain on Earth is Mount Everest, which stands at 29,032 feet (8,849 meters) above sea level. The user\"}        }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" asked for the answer in one short sentence.\"}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"EsoDCpoBCBEYAipA/mfSdRi1rnI0EDqht1pexGtaHmJxRtfKcizUdV1xmPH0le+r4l2KDpwPKAm69Cak0GT+UsTqk8/gALdf3ZkRDjIZY2xhdWRlLWhhaWt1LTQtNS0yMDI1MTAwMTgAQgh0aGlua2luZ1okNzNhNTdjZWMtODY4NC00YTE3LThhOGEtMjM2NjYzZWIxZGQzqAGTjfzUBhIMltZe4fPIdCQjD5GMGgzTZXI3pytgFonftXEiMCVjHPMia9DKIMeRd/7xTMR4rKKS1VxrynsxUxiJQZxv8iaja9OxQgSTa9MXXwypiircAcuZvd8SuVpiTtPnu7XdQhKdo68xpi3T/KUd1+mv1tZxyWMMiqkRKwj5wrzdwwZJSP4/NXolvnAhWf0vVWH8GcwaF7z9zzUFhj9hgSFG9jyP0g4WwvPCGSirVzbjs4fUaF7KuIRASTccPf9/SVm3J+Vw9uUqnfZ/P9epx9qqqmEB1X4EFefmnvFBfgmuZtqLPOSqUHSld2MA37xiAIeJlgz8IJin8wJxviAXFUc6Szc+TBLesBcNiH69WDx2CWdWkbpGIMuPbp4ljwTb3cvsAMmSAjgbTeD7N5rmn04YAQ==\"}              }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0       }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"Mount Everest is the tallest mountain on Earth, standing at 29,\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"032 feet (8,849 meters) above sea level.\"}           }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1          }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":52,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":94,\"output_tokens_details\":{\"thinking_tokens\":57}}       }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"     }\n\n"
+      },
+      "recorded_at": "2026-09-07T18:46:43Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "headers": {
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "x-api-key": "[FILTERED]",
+          "Content-Length": "1355",
+          "Host": "api.anthropic.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5\",\"max_tokens\":1536,\"system\":\"Answer in one short sentence.\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"What is the tallest mountain on Earth?\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"This is a straightforward factual question. The tallest mountain on Earth is Mount Everest, which stands at 29,032 feet (8,849 meters) above sea level. The user asked for the answer in one short sentence.\",\"signature\":\"EsoDCpoBCBEYAipA/mfSdRi1rnI0EDqht1pexGtaHmJxRtfKcizUdV1xmPH0le+r4l2KDpwPKAm69Cak0GT+UsTqk8/gALdf3ZkRDjIZY2xhdWRlLWhhaWt1LTQtNS0yMDI1MTAwMTgAQgh0aGlua2luZ1okNzNhNTdjZWMtODY4NC00YTE3LThhOGEtMjM2NjYzZWIxZGQzqAGTjfzUBhIMltZe4fPIdCQjD5GMGgzTZXI3pytgFonftXEiMCVjHPMia9DKIMeRd/7xTMR4rKKS1VxrynsxUxiJQZxv8iaja9OxQgSTa9MXXwypiircAcuZvd8SuVpiTtPnu7XdQhKdo68xpi3T/KUd1+mv1tZxyWMMiqkRKwj5wrzdwwZJSP4/NXolvnAhWf0vVWH8GcwaF7z9zzUFhj9hgSFG9jyP0g4WwvPCGSirVzbjs4fUaF7KuIRASTccPf9/SVm3J+Vw9uUqnfZ/P9epx9qqqmEB1X4EFefmnvFBfgmuZtqLPOSqUHSld2MA37xiAIeJlgz8IJin8wJxviAXFUc6Szc+TBLesBcNiH69WDx2CWdWkbpGIMuPbp4ljwTb3cvsAMmSAjgbTeD7N5rmn04YAQ==\"},{\"type\":\"text\",\"text\":\"Mount Everest is the tallest mountain on Earth, standing at 29,032 feet (8,849 meters) above sea level.\"}]},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"And the second tallest?\"}]}],\"thinking\":{\"type\":\"enabled\",\"budget_tokens\":1024}}",
+        "body_digest": "472c777445134fcddcd732c8a6bbe246dd38ed8704aeb7ad9abffed330547e95"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Date": "Mon, 07 Sep 2026 18:46:44 GMT",
+          "Content-Type": "application/json",
+          "Transfer-Encoding": "chunked",
+          "Connection": "keep-alive",
+          "anthropic-ratelimit-input-tokens-limit": "500000",
+          "anthropic-ratelimit-input-tokens-remaining": "500000",
+          "anthropic-ratelimit-input-tokens-reset": "2026-09-07T18:46:43Z",
+          "anthropic-ratelimit-output-tokens-limit": "80000",
+          "anthropic-ratelimit-output-tokens-remaining": "80000",
+          "anthropic-ratelimit-output-tokens-reset": "2026-09-07T18:46:44Z",
+          "anthropic-ratelimit-requests-limit": "1000",
+          "anthropic-ratelimit-requests-remaining": "999",
+          "anthropic-ratelimit-requests-reset": "2026-09-07T18:46:43Z",
+          "anthropic-ratelimit-tokens-limit": "580000",
+          "anthropic-ratelimit-tokens-remaining": "580000",
+          "anthropic-ratelimit-tokens-reset": "2026-09-07T18:46:43Z",
+          "request-id": "req_011CepaPUuZp3BaLmePMBUJs",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "anthropic-organization-id": "73a57cec-8684-4a17-8a8a-236663eb1dd3",
+          "anthropic-workspace-id": "wrkspc_01TZaSJ9Q4GT9s3KXaMsNH6P",
+          "traceresponse": "00-540c0841623d59a8be6ca9e129c7a699-c6d0fd0116976cff-01",
+          "Server": "cloudflare",
+          "vary": "Accept-Encoding",
+          "X-Robots-Tag": "none",
+          "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+          "cf-cache-status": "DYNAMIC",
+          "CF-RAY": "a377e0b85fcf5e1b-YUL"
+        },
+        "body": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CepaPVbVCrEEMDB74oDjZ\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The second tallest mountain on Earth is K2, which is located in the Karakoram Range on the border between Pakistan and China. It stands at 28,251 feet (8,611 meters) above sea level.\\n\\nThe user asked for one short sentence, so I should keep my answer concise.\",\"signature\":\"EoAECpoBCBEYAipAu4aj8W4GiLFpEMgIZje6ObiOKoivkWEN5IwO7oofy/C39KW30esEP1Lc1n9JtUCnTDhvKk700GbTnPp/Z28RejIZY2xhdWRlLWhhaWt1LTQtNS0yMDI1MTAwMTgAQgh0aGlua2luZ1okNzNhNTdjZWMtODY4NC00YTE3LThhOGEtMjM2NjYzZWIxZGQzqAGUjfzUBhIMVT0mKpd0wAjstGKuGgyi6ZUL5bHRiw7IMVciMGTSGO2/mBG/mSYV7M65C6NCZDhshjsOkP//W3OHGKB1UJtegyGTz+5TxrlrT40CZSqSAjdsVLo5lLegDQzmU7EwDe6igP9MIs7HfxqONB5tpGr8XAnxH57MtCVKNazxPQ7jSWcPugLdvWF3iAIUpiycgDmy3tXMOFYQ3ivT0qNiQfMqDG0l/Yy0c2prVk5WpPZIvZQAfxrg+PQELVF2uiTweh/jL8Zew2FwHPRahtZ5aYzIzYGRmhTuVgZnR6Vnzp6m+AR9NWvnIpO9bYa3eyjxP6TLIhsdUO5jkNZGA68XlYGU92Qag0dLYi71UGtvDCaSUm27RgP8VDhYRuZlhCn3NaiMuvZHtJQFF+jDg/yFyI/9XdpfrNaWQfRvjNnAIj93L7VTA2zsKWaUZUvXBbokz1JpjMEysH+bSMBNdz0Gy5YifiIYAQ==\"},{\"type\":\"text\",\"text\":\"K2 is the second tallest mountain on Earth, at 28,251 feet (8,611 meters) above sea level.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":95,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":109,\"output_tokens_details\":{\"thinking_tokens\":73},\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}"
+      },
+      "recorded_at": "2026-09-07T18:46:44Z"
+    }
+  ]
+}

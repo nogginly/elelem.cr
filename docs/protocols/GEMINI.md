@@ -277,6 +277,11 @@ survives export. What is not is that the provider accepts it back — a streamed
 turn *resumed* on a following request is the check that would show a signature
 subtly damaged rather than merely absent, and nothing here does that yet.
 
+`spec/live/anthropic_streaming_spec.cr` now does exactly that check for
+Anthropic's signatures, and is the model to copy when someone next has a Gemini
+key in hand: stream a thinking turn, append the reply to its session, send it
+back, and assert no `Degraded` outcome. One extra paid call.
+
 ## Conformance
 
 `spec/conformance/gemini_spec.cr`. Fourteen fixtures round-trip untouched,

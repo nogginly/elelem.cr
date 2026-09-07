@@ -80,6 +80,47 @@ portal. Two consequences, both already handled rather than newly found here:
   carries no model identity a catalog could match against. See *`max_tokens`
   vs `max_completion_tokens`* in `SCOPE.md`.
 
+### Streamed chunks carry `"usage": null` until the last one
+
+The most useful thing the streaming recordings found, and it was not an Azure
+divergence at all — OpenAI's own endpoint does the same, and it broke this
+shard on all four protocols at once.
+
+Every `Usage.parse` guarded against an *absent* `usage` key. None guarded
+against a key that is present holding a JSON null. A null passes a truthiness
+check, because `JSON::Any` wrapping nil is not Crystal's `nil`, and is then
+indexed into as a hash — raising from inside the reader with a message about
+`Hash` that says nothing about usage. Absent and explicitly null now mean the
+same thing, in all four readers, pinned by `spec/streaming/null_usage_spec.cr`.
+
+Worth knowing *why it survived so long*: Ollama omits the key entirely. Three
+protocols had been proved against an emulator more forgiving than the
+endpoints it imitates, and every offline fixture inherited that forgiveness,
+having been cut from the same transcripts. This is the clearest argument in
+the repository for recording against vendors and not only against what is
+free.
+
+### Content-filter chunks are inert, and share a shape with the usage chunk
+
+Azure prepends a chunk carrying `prompt_filter_results` with an **empty
+`choices` array** — which is also exactly the shape
+`stream_options.include_usage` uses for the token count. Two different chunks
+distinguished only by which key they carry.
+
+The Chat Completions assembler reads usage by key and returns early when a
+chunk has no choice, so the two are told apart without anything having been
+designed for it. `spec/live/azure_streaming_spec.cr` asserts a plausible token
+count precisely to pin that: a filter chunk read as usage would yield nil or
+nonsense, and neither would be obvious.
+
+### Streaming otherwise matches
+
+Both protocols stream the shape their vendors do. Responses delivers finished
+items whole, so partial replies work here; Chat Completions reports a finish
+reason and honours `include_usage` once the null-chunk problem above is
+handled. Neither needed a `stream_path` override, and no further
+deployment-specific divergence appeared.
+
 ## What a green run here does not prove
 
 Two live calls, both plain text, both capped at 64 tokens, against one
