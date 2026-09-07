@@ -115,9 +115,31 @@ Recorded facts, each pinned by a live example in
   available at all, since its terminal frame carries the vendor's assembly of
   the very stream we assembled independently.
 
-None of this generalises. It is one endpoint on one day, and the other three
-protocols are unproven here — Ollama does not serve Gemini at all, and its
-Anthropic and Chat Completions ports have not been asked to stream yet.
+### The Anthropic port streams the whole shape too
+
+Asked next, and for a sharper reason: the non-streamed path already returns
+*thinking blocks* from this endpoint, so a streamed path without them would
+have been the emulator divergence this design keeps predicting. It streams
+text, thinking and tool calls, closes its blocks, terminates on
+`message_stop`, and reports the stop reason on `message_delta` where the
+protocol puts it. Pinned in `spec/live/ollama_anthropic_streaming_spec.cr`.
+
+Notable because Anthropic's streaming shape is the most intricate of the four
+— indexed blocks opened and closed individually, arguments arriving as
+`input_json_delta` fragments, a signature on its own delta — and a
+compatibility port had every opportunity to implement a simpler subset. It
+did not.
+
+### What remains unproven here
+
+Two protocols on this server have not been asked to stream: Chat Completions,
+which is simply not built yet, and Gemini, which Ollama has never served at
+all.
+
+And nothing above generalises beyond this endpoint on this day. The reverse
+gap is worth naming too: **Anthropic's own API has never been streamed by this
+shard**, so that protocol is proven against an emulator and not its vendor,
+while Gemini is proven against its vendor and no emulator.
 
 ## Operational notes
 

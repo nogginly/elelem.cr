@@ -247,13 +247,26 @@ module Elelem::Protocol::Anthropic
       getter thinking_budget : Int32?
       getter effort : String?
       getter? thinking_disabled : Bool
+      # Asks for the reply as a frame stream. Not set by the mapper: whether to
+      # stream is a fact about how this call is made, not about what the
+      # session contains. `with_stream` is how the adapter says so.
+      getter? stream : Bool
 
       def initialize(@model : String, @messages : Array(Message),
                      @max_tokens : Int32, @system : String? = nil,
                      @tools : Array(ToolDeclaration) = [] of ToolDeclaration,
                      @thinking_budget : Int32? = nil,
                      @effort : String? = nil,
-                     @thinking_disabled : Bool = false)
+                     @thinking_disabled : Bool = false,
+                     @stream : Bool = false)
+      end
+
+      # The same request, streamed. A copy rather than a setter, following
+      # `Profile#with_metadata_key`: these are value types, and a mutating
+      # setter on a struct edits whichever copy you happened to be holding.
+      def with_stream(value : Bool) : Request
+        Request.new(@model, @messages, @max_tokens, @system, @tools,
+          @thinking_budget, @effort, @thinking_disabled, value)
       end
 
       def to_json(json : JSON::Builder)
@@ -266,6 +279,10 @@ module Elelem::Protocol::Anthropic
             json.field "system", text
           end
           json.field("messages") { json.array { @messages.each(&.to_json(json)) } }
+          # Emitted only when true, so a non-streamed body is byte-identical to
+          # what it was before streaming existed and every recorded transcript
+          # stays valid.
+          json.field "stream", true if @stream
           unless @tools.empty?
             json.field("tools") { json.array { @tools.each(&.to_json(json)) } }
           end

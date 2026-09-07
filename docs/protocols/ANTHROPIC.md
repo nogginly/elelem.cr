@@ -173,6 +173,68 @@ system prompt is present, which is `MoveSystemPrompt`'s doing and unrelated to
 reasoning entirely — see `spec/live/anthropic_spec.cr` for why the test checks
 annotations rather than `report.worst` for this reason.
 
+## Streaming
+
+`Protocol::Anthropic::Assembler`, over `"stream": true` on the same path.
+
+### The protocol where the assembler rule stopped being one verdict
+
+`Streaming::Assembler`'s rule — never stitch anything whose partial form is
+invalid — had a single answer per protocol until this one. Responses emits
+finished items; Gemini emits fragmentary text; each needed one decision.
+Anthropic emits both **in the same stream**, block by block:
+
+Block     |Deltas carry                            |Cut mid-flight                       
+----------|----------------------------------------|-------------------------------------
+`text`    |`text_delta`                            |**Kept** — a prefix of prose is prose
+`thinking`|`thinking_delta`, then `signature_delta`|**Kept**, signature or not           
+`tool_use`|`input_json_delta`                      |**Dropped** — fragments of an object 
+
+So a stream cut while a tool call is still arriving yields the text and the
+thinking it had and no call at all. That is not a partial reply being tidied
+up: a half-received `partial_json` is not arguments, and a call that reached a
+session could be dispatched. The decision is made per block in `#materialise`,
+and both halves are pinned in `spec/streaming/anthropic_assembler_spec.cr`,
+which is also the only place they can be — a live server cannot be asked to
+stop mid-call on demand.
+
+### Blocks are reconstructed, then read by the ordinary reader
+
+`content_block_start` carries a block's skeleton, deltas fill it,
+`content_block_stop` closes it. Rather than building `Wire::Block`s directly,
+the assembler rebuilds the JSON object a non-streamed reply would have carried
+and hands it to `Wire::Response.from_content_block`. One understanding of what
+a block is, including the suffix rule that makes an unheard-of `*_tool_result`
+read as provider-run — a second reader would have had to remember that.
+
+### Two details that are easy to lose
+
+**Indices, not arrival order.** Every block frame carries an `index` and this
+protocol does not promise they arrive in order. Blocks are held in a hash and
+sorted on the way out. An assembler appending in arrival order would be right
+almost always, which is the worst frequency for a bug.
+
+**Usage arrives in two halves.** `message_start` reports input tokens;
+`message_delta` reports output tokens; neither carries the other. They are
+merged, so a streamed reply reports the same usage a non-streamed one does.
+Taking only the later frame would drop the input count silently.
+
+### Live finding: Ollama's compatibility port streams the whole shape
+
+Recorded in `spec/live/ollama_anthropic_streaming_spec.cr`. The port streams
+text, thinking and tool calls, terminates properly, and reports its stop
+reason on `message_delta` as the protocol says. The thinking case was the one
+worth asking: the non-streamed path already returns thinking blocks from this
+endpoint, so a streamed path without them would have been an emulator
+supporting less than the protocol it imitates. It does not.
+
+**Anthropic's own API is untested for streaming.** Everything above is one
+compatibility port. That is the mirror image of Gemini's gap, where the vendor
+was tested and no emulator was, and it is worth closing when someone next has
+a key in hand — the `thinking` block's `signature_delta` in particular is the
+detail most likely to differ, and the one that breaks a following turn when it
+does.
+
 ## Conformance
 
 `spec/conformance/anthropic_spec.cr`. Ten fixtures round-trip untouched.

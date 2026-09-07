@@ -56,6 +56,7 @@ require "./elelem/protocol/anthropic/wire/request"
 require "./elelem/protocol/anthropic/wire/response"
 require "./elelem/protocol/anthropic/mapper"
 require "./elelem/protocol/anthropic/export"
+require "./elelem/protocol/anthropic/stream"
 # - Gemini
 require "./elelem/protocol/gemini/capabilities"
 require "./elelem/protocol/gemini/wire/request"

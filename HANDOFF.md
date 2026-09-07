@@ -201,8 +201,8 @@ assemble into each protocol's own `Wire::Response` and then take the *existing*
 streamed reply is the same `MPSH::Message` as a non-streamed one by
 construction.
 
-**Slices 1 and 2 of four are done: the seam, Responses, and Gemini.** What
-exists now:
+**Slices 1 to 3 of four are done: the seam, Responses, Gemini, and
+Anthropic.** What exists now:
 
 - `Elelem::Streaming` — `Sse` framing shared by all four protocols, a closed
   five-variant `Event` union, `Turn` (the cooperative stop handle), and the
@@ -212,8 +212,8 @@ exists now:
   block is the request to stream**; there is no flag. Adapters opt in by
   overriding `Adapter#prepare_stream`, which returns `nil` by default, and
   `Report#streamed` says which way a turn actually went.
-- `Protocol::Responses::Assembler` and `Protocol::Gemini::Assembler`, each
-  with offline and live specs.
+- `Protocol::Responses::Assembler`, `Protocol::Gemini::Assembler` and
+  `Protocol::Anthropic::Assembler`, each with offline and live specs.
 - `Adapter#stream_path`, defaulting to `path`. Gemini is the only protocol
   where streaming is a different method on the URL rather than a flag in the
   body, and `alt=sse` is required or the endpoint streams a chunked JSON array
@@ -232,9 +232,14 @@ finished units at all. `docs/STREAMING_DESIGN.md` records both corrections;
 expect Anthropic and Chat Completions to test the rule again rather than to
 fit it quietly.
 
-**Remaining: Anthropic, then Chat Completions**, one slice each, each a
-stopping point. Chat Completions is last deliberately: it is the one where
-inventing the shape under pressure would go worst.
+**Remaining: Chat Completions**, the last slice. It was left until last
+deliberately — it is the one where inventing the shape under pressure would go
+worst, and the one whose framing is least like the others: indexed tool-call
+fragments with no explicit block boundaries, usage only if `stream_options`
+asks for it, and a `[DONE]` sentinel that is not JSON.
+
+After that, `SCOPE.md`'s interrupted-turn repair, which streaming was holding
+up, and then the CLI half.
 
 **Two traps worth knowing before touching `Server#stream`.** Nothing within its
 reach may `yield`: the block reaches `HTTP::Client#exec(request, &)`, which

@@ -74,6 +74,18 @@ module Elelem::Protocol::Anthropic
           usage: Usage.parse(parsed["usage"]?))
       end
 
+      # One content block, from an object someone else assembled.
+      #
+      # Streaming needs it: Anthropic sends a block's skeleton in
+      # `content_block_start` and fills it with deltas, so the assembler holds
+      # a reconstructed object rather than a body. Reading it through *this*
+      # reader is what keeps a streamed `tool_use` and a non-streamed one the
+      # same block — including the suffix match that makes an unheard-of
+      # server-tool result still read as provider-run.
+      def self.from_content_block(any : JSON::Any) : Block?
+        block(any)
+      end
+
       # A reply can in principle carry any block this protocol defines, so all
       # of them are read. The alternative — reading only what a model is
       # *expected* to emit — is how a capability quietly stops working the
