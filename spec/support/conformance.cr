@@ -68,6 +68,16 @@ module Conformance
     found
   end
 
+  # `Message#ending` is deliberately not compared, on the same grounds as
+  # `text_fallback` below. No protocol has a request-side field meaning "this
+  # message was cut short" — the vendor spellings all belong to the *response*
+  # direction — so an ending cannot survive a request round trip through any of
+  # the four. Comparing it would add a permanent divergence to any fixture
+  # carrying one, and that divergence would read as a mapper bug.
+  #
+  # Which leaves it uncovered here, and covered in `spec/mpsh/archive_spec.cr`
+  # instead. That is the split it wants: an ending is not something a wire
+  # preserves, and is something an archive must.
   private def compare_message(a : M::Message, b : M::Message, path : String,
                               found : Array(Divergence)) : Nil
     if a.role != b.role

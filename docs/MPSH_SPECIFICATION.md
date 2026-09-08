@@ -33,6 +33,7 @@ MPSH
 └── messages[]
     ├── role : user | assistant
     ├── content[] : ContentBlock
+    ├── ending : complete | truncated | stopped | interrupted
     └── provenance? : { provider, model, bias }
 ```
 
@@ -95,6 +96,56 @@ particular drove a new `Capability::Profile` field and the first model catalog
 without any of it entering a session. If a future concern is genuinely a
 property of *the conversation* rather than of *a request*, that is when this
 section needs revisiting.
+
+### The one concern that has come back through that door
+
+**`ending`**, and it is the reason the paragraph above ends the way it does.
+
+The line is worth drawing precisely, because the two look alike at a glance.
+`max_output_tokens: 24` is what was asked of the model, and stays in `Options`.
+*This reply stopped at 24 tokens* is a fact about the reply — about how much of
+what was said arrived — and belongs to the message that got cut. A conversation
+whose last turn is a fragment is a different conversation from one whose last
+turn is a short answer, and nothing in the content distinguishes them.
+
+Four members, of which only the first three have any vendor field behind them:
+
+Member       |Means                                                   |Set by                                       
+-------------|--------------------------------------------------------|---------------------------------------------
+`complete`   |The model finished                                      |The default                                  
+`truncated`  |An output cap or resource limit stopped generation short|An exporter, from its own protocol's spelling
+`stopped`    |The caller asked for the turn to end                    |The client                                   
+`interrupted`|The stream ended without its terminal event             |The client                                   
+
+**It must be settable, not merely derivable, and that is the whole argument for
+a canonical field over a lookup across the four vendor spellings.** The first
+three can be read off `provider_metadata` — `max_tokens`, `length`,
+`MAX_TOKENS`, `incomplete`. The fourth cannot be read off anything, because a
+dropped stream carries the fact as an *absence*: no status, no error object, no
+field. A design that could only normalise could not express it at all.
+
+**Why not the per-call report instead.** Because a report is not archived and a
+session is. A session reloaded in another process has no report, and still has
+to know whether its last turn was an answer or a fragment.
+
+**Not a fidelity outcome, and not an annotation.** An interrupted turn is not
+a mapping that lost something; the annotation channel means damage this format
+inflicted, and mixing a transport observation into it makes the channel
+worthless. It is the same reasoning that keeps `reasoning_dropped` a plain
+count.
+
+**Outside round-trip identity**, on the same terms as `text_fallback`. No
+protocol has a *request*-side field meaning "this message was cut short" — every
+vendor spelling belongs to the response direction — so an ending cannot survive
+a round trip through any of the four, and comparing it would report a permanent
+divergence that reads as a mapper bug. It is the archive's job to preserve it,
+and conformance comparison should say in writing that it does not check it.
+
+**What it obliges.** A cut turn may hold a tool call the model never finished
+planning, and a dangling call is the one shape a protocol rejects outright.
+Repairing that is a pure operation over this format — drop the calls, keep any
+text — and the invariant it closes on is that no session is ever left in a state
+a subsequent request cannot build on.
 
 ---
 
@@ -379,6 +430,7 @@ Un-hoist fields into blocks     |`tool_calls` field → `tool_call` blocks
 Namespace provider data         |Anything not canonically representable goes under `provider_metadata[<vendor>]`, never into canonical fields
 Flag server-executed tools      |Provider-run tool calls and results marked `server_executed: true` so no client ever dispatches them        
 Preserve redacted reasoning     |Reasoning that occurred but was withheld becomes `reasoning(redacted: true)`, not an omission               
+Record how the turn ended       |A protocol's own stop reason is normalized onto `ending` *and* kept verbatim under `provider_metadata`      
 Discard compensation scaffolding|A synthetic user message this client generated must not be re-imported as if it were real                   
 
 That last one is only achievable if compensation is generated at map time and never round-tripped. It is the practical reason rule 2 of §1 is stated as an invariant rather than a guideline.
@@ -492,13 +544,23 @@ All structural. No API key, no model, no network.
 - [ ] Refusal carries its reason as text where there is no refusal channel
 - [ ] Structural adaptations classified; merge and placeholder are Compensated
 - [ ] Reasoning retention offered as a playback preference, counted and not annotated
+- [ ] `ending` set from the protocol's stop reason on export, and from transport observation by the client
+- [ ] `ending` archived, and excluded from round-trip comparison
+- [ ] No session left holding a tool call without its result
 - [ ] Round-trip conformance distinguishes bug / matrix error / format gap
 
 ---
 
-**Document Version**: 1.6
+**Document Version**: 1.7
 
-**Last Updated**: 2026-08-19
+**Last Updated**: 2026-09-08
+
+**Changes from 1.6**: Adds `ending` to the message envelope — the first concern
+to come back through the door §3a leaves open, and the section argues why it is
+a property of the conversation rather than of a request. Records that it must be
+settable rather than derived, since one of its four causes has no vendor field
+to derive from; that it sits outside round-trip identity on `text_fallback`'s
+terms; and the repair obligation it carries.
 
 **Changes from 1.5**: Adds §8a recording what the checkpoint established — four protocols implemented, the format unchanged by the structurally divergent one, and which decisions paid off — together with what structural verification leaves unproven.
 

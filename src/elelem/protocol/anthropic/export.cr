@@ -58,7 +58,12 @@ module Elelem::Protocol::Anthropic
       reply = MPSH::Message.new(MPSH::Role::Assistant, blocks,
         response.model.try { |model| MPSH::Provenance.new(NAME, model) })
 
-      response.stop_reason.try { |value| reply.put_meta(METADATA_KEY, "stop_reason", value) }
+      # `max_tokens` is this protocol's spelling of a turn cut short by an
+      # output cap, normalised onto `Message#ending` and also kept verbatim.
+      response.stop_reason.try do |value|
+        reply.put_meta(METADATA_KEY, "stop_reason", value)
+        reply.ending = MPSH::Ending::Truncated if value == "max_tokens"
+      end
       response.stop_sequence.try { |value| reply.put_meta(METADATA_KEY, "stop_sequence", value) }
       response.id.try { |value| reply.put_meta(METADATA_KEY, "response_id", value) }
       response.usage.try { |usage| reply.put_meta(METADATA_KEY, "usage", usage.to_metadata) }

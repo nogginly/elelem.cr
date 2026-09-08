@@ -183,6 +183,7 @@ describe "Ollama streaming over the Chat Completions API" do
         # stays distinguishable from a finished one downstream, and why no
         # tool call could have been released from it.
         chat_meta(reply, "finish_reason").should be_nil
+        reply.ending.should eq M::Ending::Stopped
       end
     end
   end

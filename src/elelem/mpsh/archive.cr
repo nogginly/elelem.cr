@@ -16,6 +16,13 @@ module Elelem::MPSH
   # deployment `continue` is aimed at. Losslessness here is the whole point;
   # `Conformance.compare` on a written-then-read session should never report
   # a divergence, for any fixture, ever.
+  #
+  # That gate is necessary and not sufficient, which matters when adding a
+  # field here. `compare` answers a *protocol* question — what survived a round
+  # trip through a wire shape — so it walks only what a wire can carry, and is
+  # silent on `Message#ending`, `Provenance` and `Session#annotations` alike.
+  # Each of those needs an assertion of its own in `spec/mpsh/archive_spec.cr`,
+  # or this module can drop it and every fixture still passes.
   module Archive
     extend self
 
@@ -50,6 +57,7 @@ module Elelem::MPSH
     private def write_message(json : JSON::Builder, message : Message) : Nil
       json.object do
         json.field "role", message.role.user? ? "user" : "assistant"
+        json.field "ending", ending_name(message.ending) unless message.ending.complete?
         json.field("content") { json.array { message.content.each { |block| write_block(json, block) } } }
         if provenance = message.provenance
           json.field("provenance") do
@@ -72,8 +80,32 @@ module Elelem::MPSH
           provenance_node["bias"]?.try(&.as_s?))
       end
       message = Message.new(role, content, provenance)
+      message.ending = node["ending"]?.try(&.as_s?).try { |name| parse_ending(name) } || Ending::Complete
       message.provider_metadata = read_metadata(node)
       message
+    end
+
+    # Written only when it is not `Complete`, and read as `Complete` when
+    # absent. An archive predating this field is a session whose turns all
+    # finished, which is what it meant when it was written, so the format
+    # version does not move.
+    private def ending_name(ending : Ending) : String
+      case ending
+      in .complete?    then "complete"
+      in .truncated?   then "truncated"
+      in .stopped?     then "stopped"
+      in .interrupted? then "interrupted"
+      end
+    end
+
+    private def parse_ending(name : String) : Ending
+      case name
+      when "complete"    then Ending::Complete
+      when "truncated"   then Ending::Truncated
+      when "stopped"     then Ending::Stopped
+      when "interrupted" then Ending::Interrupted
+      else                    raise FormatError.new("unrecognised ending #{name.inspect}")
+      end
     end
 
     # -- Block --------------------------------------------------------------

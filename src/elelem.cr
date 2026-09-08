@@ -9,6 +9,7 @@ require "./elelem/mpsh/message"
 require "./elelem/mpsh/annotation"
 require "./elelem/mpsh/session"
 require "./elelem/mpsh/archive"
+require "./elelem/mpsh/repair"
 require "./elelem/mpsh/turns"
 require "./elelem/mpsh/translation"
 

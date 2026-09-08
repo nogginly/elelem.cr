@@ -92,7 +92,14 @@ module Elelem::Protocol::Responses
       reply = MPSH::Message.new(MPSH::Role::Assistant, blocks,
         response.model.try { |model| MPSH::Provenance.new(NAME, model) })
 
-      response.status.try { |value| reply.put_meta(METADATA_KEY, "status", value) }
+      # This protocol says it with a status rather than a reason, and
+      # `incomplete` covers both an output cap and the assembler's own verdict
+      # on a cut stream — `Client` overwrites the latter with `Interrupted`,
+      # since only it knows whether a stream reached its terminal frame.
+      response.status.try do |value|
+        reply.put_meta(METADATA_KEY, "status", value)
+        reply.ending = MPSH::Ending::Truncated if value == "incomplete"
+      end
       response.id.try { |value| reply.put_meta(METADATA_KEY, "response_id", value) }
       response.usage.try { |usage| reply.put_meta(METADATA_KEY, "usage", usage.to_metadata) }
 

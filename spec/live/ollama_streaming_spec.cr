@@ -210,6 +210,12 @@ describe "Ollama streaming over the Responses API" do
         # assembler would have produced nothing at all.
         key = Elelem::Protocol::Responses::METADATA_KEY
         reply.meta?(key, "status").should eq "incomplete"
+
+        # And canonically `Stopped`, not `Truncated` — which is the ordering
+        # this protocol makes load-bearing. Its exporter reads `incomplete` and
+        # sets `Truncated`; only the client knows somebody asked, so only the
+        # client can correct it, and it runs second.
+        reply.ending.should eq M::Ending::Stopped
       end
     end
   end

@@ -42,6 +42,40 @@ describe "MPSH::Archive" do
     a.block_kind.should eq(M::BlockKind::Image)
   end
 
+  # The field the whole of interrupted-turn repair rests on, and the one
+  # `Conformance.compare` reaches least: it walks what a wire can carry, and no
+  # protocol's request shape can carry an ending at all. Without this example
+  # `Archive` could stop writing the field entirely and every fixture above
+  # would still pass.
+  {M::Ending::Truncated, M::Ending::Stopped, M::Ending::Interrupted}.each do |ending|
+    it "round-trips a #{ending} ending, which Conformance.compare does not check" do
+      session = Elelem::Fixtures.single_user_turn
+      reply = M::Message.assistant("As I was saying")
+      reply.ending = ending
+      session << reply
+
+      restored = M::Archive.read(M::Archive.write(session))
+
+      restored.messages.last.ending.should eq(ending)
+    end
+  end
+
+  it "reads an archive written before endings existed as complete" do
+    session = Elelem::Fixtures.single_user_turn
+    written = M::Archive.write(session)
+
+    written.should_not contain(%("ending"))
+    M::Archive.read(written).messages.each { |message| message.ending.complete?.should be_true }
+  end
+
+  it "rejects an unrecognised ending rather than assuming completeness" do
+    session = Elelem::Fixtures.single_user_turn
+    session.messages.first.ending = M::Ending::Truncated
+    written = M::Archive.write(session).sub(%("truncated"), %("abandoned"))
+
+    expect_raises(M::Archive::FormatError, /abandoned/) { M::Archive.read(written) }
+  end
+
   it "rejects a source that isn't an MPSH archive" do
     expect_raises(M::Archive::FormatError) { M::Archive.read(%({"hello": "world"})) }
   end

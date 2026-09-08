@@ -60,11 +60,17 @@ module Elelem::Protocol::ChatCompletions
         assistant_blocks(choice.message),
         response.model.try { |model| MPSH::Provenance.new(NAME, model) })
 
-      # Namespaced, because none of it is canonical. A finish reason is not
-      # consulted for control flow — "are there client-executed tool calls in
-      # the reply" is the whole condition — and it is recorded only so a
-      # caller that wants it can find it.
-      choice.finish_reason.try { |value| reply.put_meta(METADATA_KEY, "finish_reason", value) }
+      # Namespaced, because none of it is canonical. A finish reason is still
+      # not consulted for control flow — "are there client-executed tool calls
+      # in the reply" is the whole condition — but one value of it now also
+      # sets `Message#ending`, which is canonical: `length` means the model was
+      # cut off by an output cap, and a session reloaded in another process has
+      # to know that without knowing this protocol's spelling of it. The
+      # namespaced copy stays, since normalising is not the same as discarding.
+      choice.finish_reason.try do |value|
+        reply.put_meta(METADATA_KEY, "finish_reason", value)
+        reply.ending = MPSH::Ending::Truncated if value == "length"
+      end
       response.id.try { |value| reply.put_meta(METADATA_KEY, "response_id", value) }
       response.usage.try { |usage| reply.put_meta(METADATA_KEY, "usage", usage.to_metadata) }
 

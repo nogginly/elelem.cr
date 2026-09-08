@@ -154,27 +154,40 @@ honours *less* than its protocol allows, never more.
 
 ## Next
 
-`SCOPE.md`'s `MUST FIX` is down to **one item** — interrupted-turn session
-repair — and as of August 2026 it is **held until streaming lands**. Read its
-entry before reopening it: the investigation is recorded there and the
-conclusion is not "not yet worth doing" but "not yet decidable".
+**`SCOPE.md`'s `MUST FIX` is empty.** Interrupted-turn repair, the last entry
+in it, is built, and the argument that used to live there now lives in
+`docs/MPSH_SPECIFICATION.md` §3a — where it belongs, being a statement about
+the format rather than an open question.
 
-The short version. Interruption is three classes, not one cause with
-variations. Pre-request rejections and model-side stops are already handled or
-already fixture-covered. The third — a failure part-way through generation —
-does not exist without streaming, because nothing has reached the wire and the
-server simply discards the partial and returns an error. With streaming it
-exists in a form that carries no vendor field at all: a stream that ends
-without its terminal event. That absence is what constrains where the portable
-"this turn was cut short" fact must live — it has to be settable from a
-transport observation, not merely parsed from a response — and choosing that
-home while unable to test the case that constrains it is how the wrong home
-gets chosen.
+`MPSH::Ending` is a settable field on `MPSH::Message`: `Complete`, `Truncated`,
+`Stopped`, `Interrupted`. The four exporters normalise their own stop reason
+onto it and keep the verbatim copy; `Client` sets the two facts only it knows.
+`MPSH::Repair` is pure MPSH — drop the calls, keep any text — with the
+invariant expressed as `Repair.sendable?` rather than described.
 
-So the design fork this section used to describe is *answered in outline* and
-deliberately not built: a canonical `Ending` on `MPSH::Message`, additive in
-`Archive`, with repair as a pure-MPSH `MPSH::Repair`. `SCOPE.md` has the
-reasoning and the fixture plan, which costs nothing when it resumes.
+Three things about it are worth knowing before touching it, because each was
+checked and none is obvious:
+
+- **The field is outside round-trip identity, deliberately**, on
+  `text_fallback`'s terms. No protocol has a *request*-side field meaning "this
+  message was cut short", so `Conformance.compare` does not check it and says
+  so in writing. Adding it there would report a permanent divergence reading as
+  a mapper bug.
+- **Which means the archive's own gate does not reach it.** `archive_spec.cr`
+  claims zero divergence for every fixture and enforces it through
+  `Conformance.compare` — which walks only what a wire can carry, and is
+  equally silent on `Provenance` and annotations. `Archive` could stop writing
+  `ending` entirely and every fixture would still pass. Covered by explicit
+  examples instead, the same way annotations already were.
+- **`Client` no longer raises on a cut stream.** It returns the partial reply
+  carrying `Ending::Interrupted`; the raise was a placeholder chosen when there
+  was nowhere to record *why* a reply was partial. An in-band error frame still
+  raises `Protocol::StreamError` from the assembler that read it — that is a
+  failure the server described, this is one it never mentioned.
+
+What is left is coverage, not design: `Ending::Interrupted` is the one member
+with no end-to-end spec, since no transcript ends without its terminal frame.
+`SCOPE.md`'s remaining entry has the fixture plan.
 
 Session pruning and deletion, which was the unblocked item here, is **built**:
 `elelem prune SESSID --keep N` and `elelem delete SESSID`, with the design
@@ -183,10 +196,9 @@ so both are fully spec-covered without a recording.
 
 What remains on `docs/CLI_DESIGN.md`'s *Deliberately deferred, not forgotten*
 is tool support (open question: text-only first?) and streaming in the CLI.
-Tool support is downstream of interrupted-turn repair, since repair is what
-shapes the turn loop — which puts both of them behind streaming. **Streaming
-is the work in progress**, and it has stopped being merely additive: two other
-items are queued behind it.
+Tool support was downstream of interrupted-turn repair, since repair is what
+shapes the turn loop; repair is built, so what is left in front of it is the
+CLI half of streaming alone.
 
 The CLI half is *decided and deliberately waiting*: stream when **stdout** is a
 terminal, `--stream`/`--no-stream` overriding, reasoning to stderr behind
@@ -194,8 +206,8 @@ terminal, `--stream`/`--no-stream` overriding, reasoning to stderr behind
 a library that ships a CLI to prove itself, and a CLI built against a moving
 seam ends up answering the library's design questions by accident.
 
-Streaming is **being built, one protocol at a time** — read
-`docs/STREAMING_DESIGN.md` before continuing. The short version: frames
+Streaming was built **one protocol at a time** — read
+`docs/STREAMING_DESIGN.md` before touching it. The short version: frames
 assemble into each protocol's own `Wire::Response` and then take the *existing*
 `export_reply(Wire::Response)`, so there is exactly one translation path and a
 streamed reply is the same `MPSH::Message` as a non-streamed one by
@@ -242,16 +254,16 @@ this server is *more* forgiving than the endpoints it imitates, and offline
 fixtures cut from its transcripts inherit that blind spot. Gemini's streamed
 `thoughtSignature` is still unproven on replay and is the one gap left.
 
-**Next: `SCOPE.md`'s interrupted-turn repair**, which streaming was holding up
-and which is now unblocked. Read that entry before touching it — the
-conclusion recorded there was "not yet decidable", not "not yet worth doing",
-and streaming is what makes it decidable. Two things the build has already
-settled feed straight into it: a stopped turn and a cut turn are
-indistinguishable to an assembler, and every assembler already refuses to
-emit a tool call it cannot vouch for, which is most of what repair would
-otherwise have had to arrange.
+**Interrupted-turn repair is built on top of it** — see *Next* above. Two
+things the streaming build had already settled did most of the work: a stopped
+turn and a cut turn are indistinguishable to an assembler, so the fact has to
+be set by the layer that knows; and every assembler already refuses to emit a
+tool call it cannot vouch for, so "drop the calls, keep any text" was already
+true for a cut stream in all four protocols before repair existed.
 
-**Then the CLI half**, decided and waiting in `docs/CLI_DESIGN.md`.
+**Next: the CLI half of streaming**, decided and waiting in
+`docs/CLI_DESIGN.md`. Tool support sits behind it, and is no longer blocked by
+repair.
 
 **How the rule was arrived at matters more than the rule.** It was rewritten
 twice under contact — first from "keep the terminal frame", then from

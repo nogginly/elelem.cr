@@ -308,6 +308,7 @@ describe "Gemini streaming" do
         # No finish reason, because none arrived — which is exactly how a
         # stopped turn is distinguishable from a completed one downstream.
         gemini_meta(reply, "finishReason").should be_nil
+        reply.ending.should eq M::Ending::Stopped
       end
     end
   end

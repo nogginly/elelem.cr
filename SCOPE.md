@@ -14,145 +14,40 @@ outstanding belongs here, because nobody greps a codebase for open questions.
 
 ## MUST FIX
 
-### Interrupted turns must leave a sendable session
+Empty. Interrupted-turn repair — the last entry here — is built: `MPSH::Ending`
+on the message, `MPSH::Repair` over the session, and the invariant it closes on
+(*no tool call without its result*) asserted directly rather than described.
+`docs/MPSH_SPECIFICATION.md` §3a carries the argument now, which is where it
+belongs: it is a statement about the format, not an outstanding question.
 
-**Unblocked.** Streaming is built, which is what this was waiting for. Repair
-itself remains unbuilt, and the exporter is still deliberately honest: it
-returns what arrived.
-
-`spec/live/ollama_spec.cr` records a turn cut short by
-`max_output_tokens: 24` — `stop_reason: max_tokens`, a thinking block, no
-answer. It first appeared by accident, and an accident is a poor fixture.
-
-A turn can stop before it completes: a user interrupt in an interactive agent, a
-resource limit in an automated one, a provider quota, a dropped connection, a
-timeout. All produce the same problem and differ only in cause, so they are one
-case with a cause attached.
-
-**The invariant**: the session is never left in a state a subsequent `send`
-cannot build on. Concretely, no `tool_call` block without a matching
-`tool_result` — a dangling call is the one shape Anthropic rejects outright and
-the others merely tolerate. Partial turns therefore need *repair*, not just
-truncation.
-
-Three states, and only the third is awkward:
-
-What arrived                   |Action                                                                                                                                       
--------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------
-Nothing                        |Append nothing. The session is unchanged and immediately resendable                                                                          
-Text, no tool calls            |Append the partial assistant message; mark it truncated in `provider_metadata`                                                               
-Tool calls, possibly incomplete|**Drop the calls, keep any text.** A partial set may be half a parallel plan, and there is no way to know whether another was about to arrive
-
-**Mechanism: cooperative, not an exception.** Raising from inside the caller's
-block unwinds through the client mid-parse, leaving it to reconstruct state
-while handling control flow — where subtle bugs live. Prefer a signal the block
-can set, with the client stopping at the next safe point and finalising
-normally:
-
-```crystal
-reply, report = client.send(session) do |event, turn|
-  turn.stop if user_pressed_escape?
-  present(event)
-end
-report.interrupted?   # cause attached
-```
-
-The cause matters only for the caller's next move — await input, back off,
-retry. Session repair is identical in all three.
-
-**Three classes, not one cause with variations.** Investigated August 2026; the
-entry above collapsed them, which is what made the item look buildable.
-
-1. **Pre-request rejection** — quota, rate limit, context window exceeded, bad
-   auth. Rejected before generation: 429, 400, 413, no partial content in
-   either mode. The session is untouched and this is a plain retry.
-   `transmit` already raises. Nothing to repair.
-2. **Model-side stop** — `max_tokens`, stop sequence, safety. A complete,
-   well-formed 200 with the reason in its own field, identical streaming or
-   not. This is the truncation case, and today it is the *only* one that
-   reaches repair.
-3. **Mid-generation server failure** — and here the two modes diverge sharply.
-
-Without streaming there is no third state. Nothing has reached the wire, so the
-server discards the partial generation and returns an HTTP error; the tokens
-are gone and there is no partial response to repair. With streaming the outer
-status is already committed at 200, so the failure arrives *in band*: an
-`error` event in place of the terminal one, or — worse and reportedly common —
-the stream simply ending with no terminal event at all.
-
-**Context windows create no new state.** Input too large is rejected up front,
-class 1. A model running out of room mid-generation is not a server decision;
-it is class 2 under another name.
-
-**The absence is the finding.** A dropped stream carries the "cut short" fact
-as the *lack* of a terminal event. There is no vendor field to read, so any
-design that *derives* the fact by normalising `provider_metadata` cannot
-express it. Whatever holds this must be something the client can **set** from a
-transport observation, not only something a response reader parses. That is the
-strongest argument for a canonical field on `MPSH::Message` rather than a
-lookup over the four existing spellings — and it is an argument that only
-appears once streaming is in view, which is why this waits for it.
-
-**What building streaming already settled.** Three things, none of them
-planned as repair work, all of which change what is left to do.
-
-*The hard row of the table is done for streamed turns, by construction.* Every
-assembler refuses to emit a tool call it cannot vouch for: Anthropic drops a
-`tool_use` block that never closed, Chat Completions withholds all calls until
-a `finish_reason` arrives, Responses only accumulates finished items, Gemini
-takes `functionCall` parts whole and never merges them. So "drop the calls,
-keep any text" is already the behaviour of a cut stream, and it is pinned
-offline for all four. **What remains is the non-streamed truncation case** —
-class 2 — where a complete 200 body can legitimately carry a call set the model
-never finished planning.
-
-*A stopped turn and a cut turn are indistinguishable to an assembler*, and
-deliberately so: `complete?` is false for both, because only `Client` knows
-whether anybody asked. That is not a gap to close but a confirmation — the fact
-has to be *set* by the layer that knows, exactly as this entry's "the absence
-is the finding" argument predicted.
-
-*Class 3 currently raises.* `Client#send` raises `Protocol::StreamError` when a
-stream ends incomplete and unstopped. That is a placeholder chosen for safety
-rather than an answer: the caller appends nothing, so no session is left
-holding a dangling turn. Repair may well soften it to a returned partial reply
-once there is somewhere to record *why* it was partial.
-
-**The home now looks decidable, and the answer looks like `MPSH::Message`.**
-This entry concluded "not yet decidable"; the argument that decides it is that
-**`Capability::Report` is not archived and `MPSH::Message` is.** A session
-reloaded from disk in a new process has no report — but it still has to know
-its last turn was cut, or the first `send` after a reload rebuilds the same
-unsendable request. `Report#streamed` is a fine precedent for a plain per-call
-fact, and interruption is not one: it is a property of the turn that outlives
-the call that produced it.
-
-That points at a canonical field on `MPSH::Message`, settable by the client
-from a transport observation rather than derived by normalising four vendor
-spellings — which is what the absence argument above asked for. It should be
-confirmed against `MPSH_SPECIFICATION.md` and the archive round-trip before
-being built, since adding a field to the portable envelope is the most
-expensive change in this repository to get wrong.
-
-The invariant above is what this closes on, and it stays the acceptance test.
-
-**The fixtures still cost nothing.** Truncation is recorded already (the
-`max_output_tokens: 24` transcript). Ollama's small-context and fail-when-full
-flags give a genuine class-1 rejection. A real vendor 400 comes free from
-requesting `max_tokens` above a model's ceiling — rejected before generation,
-so no output tokens are billed. Class 3 should be *deliberately* synthetic: a
-stream cut after three deltas, or an error frame in place of the terminal
-event, is a transport shape rather than model output, so a hand-authored
-transcript tests our parser rather than our guess about a vendor. Copy the
-error envelopes verbatim from provider documentation.
-
-`spec/streaming/` already contains cut-stream examples for all four
-assemblers, built exactly this way. They pin what a cut stream *produces*;
-what is missing is what the session then *does* with it.
+One thing the build left uncovered, recorded below rather than here because it
+is coverage rather than design.
 
 ---
 
 ## WILL FIX
+
+### `Ending::Interrupted` has no end-to-end spec
+
+The other three members are asserted against recordings. `Truncated` comes off
+the `max_output_tokens: 24` transcript, and `Stopped` off the stopped-turn spec
+in each of the four streaming suites — including the one place the ordering is
+load-bearing, where the Responses exporter reads `incomplete`, sets `Truncated`,
+and the client corrects it because only the client knows somebody asked.
+
+`Interrupted` is the one with nothing behind it. What a *cut* stream produces
+is pinned offline for all four assemblers; what `Client` then writes onto the
+message is not, because no transcript ends without its terminal frame.
+
+The fixture is nearly free and deliberately synthetic: hand-truncate a recorded
+SSE transcript after three deltas. That escapes the usual objection — what is
+under test is our own response to a cut byte stream, not our guess about what a
+vendor sends. What it needs is a way to replay a transcript Wiretap did not cut
+itself, which is the only part worth thinking about before writing it.
+
+Left as WILL FIX rather than MUST FIX because the branch it exercises is two
+lines and its inputs are pinned on both sides — but it is the member whose
+existence justified the field, so it should not stay uncovered long.
 
 ### A streamed Gemini `thoughtSignature` is unproven on replay
 

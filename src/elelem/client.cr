@@ -115,24 +115,29 @@ module Elelem
         !turn.stopped?
       end
 
-      # A stream that ended without a terminal frame, that nobody asked to end,
-      # is a transport failure — and raising is what keeps the session clean:
-      # the caller appends nothing, so nothing is left holding a half-finished
-      # turn. That is deliberately *not* an answer to `SCOPE.md`'s repair
-      # question; it is the honest behaviour until there is one, and repair may
-      # well soften it to a returned partial reply once it can say what a
-      # partial reply should contain.
+      report.streamed = true
+      reply = assembler.finish
+
+      # How the turn ended is recorded, not raised on. This used to raise
+      # `Protocol::StreamError` on a stream that stopped short with nobody
+      # asking, which kept the session clean by giving the caller nothing to
+      # append — the honest behaviour while there was nowhere to record *why* a
+      # reply was partial. `MPSH::Ending` is that somewhere, so the partial
+      # reply is returned with its cause attached and `MPSH::Repair` decides
+      # what the session may keep.
       #
-      # A stopped turn takes the other branch and returns what arrived, which
-      # is the whole reason the assembler accumulates finished items rather
-      # than keeping only the terminal frame.
-      unless assembler.complete? || turn.stopped?
-        raise Protocol::StreamError.new(server.name,
-          "the stream ended before the reply was complete")
+      # Only this layer can tell the two cases apart. To an assembler a stopped
+      # turn and a cut one are identical — `complete?` is false for both,
+      # because neither knows whether anybody asked — and `turn.stopped?` is
+      # the whole difference.
+      #
+      # An in-band error frame still raises, from the assembler that read it.
+      # That is a failure the server described; this is one it never mentioned.
+      unless assembler.complete?
+        reply.ending = turn.stopped? ? MPSH::Ending::Stopped : MPSH::Ending::Interrupted
       end
 
-      report.streamed = true
-      {assembler.finish, report}
+      {reply, report}
     end
 
     private def once(session : MPSH::Session, model : String,

@@ -192,6 +192,7 @@ describe "Ollama streaming over the Anthropic Messages API" do
         # a stopped turn stays distinguishable from a finished one downstream.
         key = Elelem::Protocol::Anthropic::METADATA_KEY
         reply.meta?(key, "stop_reason").should be_nil
+        reply.ending.should eq M::Ending::Stopped
       end
     end
   end

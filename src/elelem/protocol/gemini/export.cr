@@ -95,7 +95,12 @@ module Elelem::Protocol::Gemini
       reply = MPSH::Message.new(MPSH::Role::Assistant, blocks,
         response.model_version.try { |model| MPSH::Provenance.new(NAME, model) })
 
-      candidate.finish_reason.try { |value| reply.put_meta(METADATA_KEY, "finishReason", value) }
+      # `MAX_TOKENS` is this protocol's spelling of a turn cut short by an
+      # output cap, normalised onto `Message#ending` and also kept verbatim.
+      candidate.finish_reason.try do |value|
+        reply.put_meta(METADATA_KEY, "finishReason", value)
+        reply.ending = MPSH::Ending::Truncated if value == "MAX_TOKENS"
+      end
       response.usage.try { |usage| reply.put_meta(METADATA_KEY, "usage", usage.to_metadata) }
 
       reply

@@ -463,6 +463,14 @@ describe "Ollama" do
         # and repair is the caller's business, not the exporter's.
         reply.meta?(key, "stop_reason").should eq "max_tokens"
         reply.content.should_not be_empty
+
+        # And says so canonically as well as verbatim. This is the one class of
+        # interruption a recording can reach — a complete 200 whose own field
+        # admits the cut — so it is where the normalisation gets tested against
+        # something the shard did not write. The other two are transport shapes
+        # and are pinned offline.
+        reply.ending.should eq M::Ending::Truncated
+        M::Repair.needed?(reply).should be_false
       end
     end
   end
