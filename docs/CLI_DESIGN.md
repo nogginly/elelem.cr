@@ -97,10 +97,16 @@ Search order: `$ELELEM_CONFIG` if set — the literal path, no search — else
 env var naming the file directly always wins over guessing from what
 happens to exist.
 
-Two tables. A **server** is somewhere to send requests and the protocol it
-speaks; a **deployment** is a named way to reach one model on one server.
+Two tables and a block. A **server** is somewhere to send requests and the
+protocol it speaks; a **deployment** is a named way to reach one model on one
+server; **defaults** is how the CLI itself behaves, which is the third question
+and belongs to neither of the first two.
 
 ```yaml
+defaults:
+  streaming: false
+  show_reasoning: false
+
 servers:
   anthropic:
     protocol: anthropic
@@ -141,6 +147,28 @@ deployments:
 
 Credentials are referenced by environment variable name, never stored in the
 file.
+
+### `defaults`: how the CLI behaves
+
+Neither key describes where a request goes or what is asked of a model, which
+is why they are not on a server or a deployment. They describe what happens in
+the terminal while an answer arrives.
+
+Key             |Default|Flag                     |Means                                        
+----------------|-------|-------------------------|---------------------------------------------
+`streaming`     |`false`|`--stream`, `--no-stream`|Show the reply as it arrives                 
+`show_reasoning`|`false`|`--show-reasoning`       |Put reasoning deltas on stderr as they arrive
+
+**Every key here pairs with a flag of the same name**, and that is the rule the
+block is held to rather than a coincidence. A key with no flag behind it is how
+a section like this turns into a junk drawer, and a key spelled differently
+from its flag is a translation table someone has to keep in step with `--help`.
+
+Both default to false, which is what the CLI did before the block existed. An
+`elelem.yaml` written before this keeps meaning exactly what it meant.
+
+Precedence — flag, then this block, then a terminal test — is in *Streaming*
+below, along with the one asymmetry in it worth arguing about.
 
 ### Model preferences: `reasoning` and `reasoning_retention`
 
@@ -311,6 +339,37 @@ A snapshot written before this existed has no deployment segment in its
 filename. Treated as genuinely unknown rather than guessed at: `continue`
 against one of these asks for `--on` once, and every snapshot after that
 carries the answer.
+
+### What is archived is repaired; what is printed is what arrived
+
+A turn can end early — an output cap, a dropped connection — and a turn that
+ended early can hold a tool call the model never finished planning.
+`MPSH::Repair` drops those calls and keeps the text. The CLI applies it in two
+places, and the two are not the same decision.
+
+**On append**, in `Query`: the message that goes into the snapshot is the
+repaired one, and the message handed back for printing is the unrepaired one.
+A dangling call in a snapshot is a session nothing can continue — not this CLI,
+not another one, not another provider — which is the single property the
+archive exists to protect. But a person is entitled to see what the model
+actually said before it was cut, so the screen gets that.
+
+**On load**, in `continue`: a snapshot may have been written by a build that
+predates repair, or by something else entirely, since the whole point of this
+format is that other things can write it. One pass over messages already in
+memory, and it says so on stderr — quietly fixing a file someone may be
+reasoning about is worse than one line of explanation.
+
+A cut turn that produced nothing but tool calls repairs to nothing, and nothing
+is appended. The user's prompt stays: it was asked, and the next turn reads
+better with the question in it than without.
+
+The cut itself is reported by `Output.warn_cut`, on stderr, and deliberately
+*not* through `warn_lossy`. A fidelity annotation means damage this shard's
+mapping inflicted. An interrupted turn is something that happened to the
+connection or the model. Routing the second through the channel built for the
+first makes the channel mean less, which is the failure mode the annotation
+design exists to avoid.
 
 ## Verbs: `list`, `show`, `prune`, `delete`
 
@@ -490,9 +549,6 @@ returns. Recorded so it is not rediscovered as a bug.
   end up answering the library's design questions by accident. The decision is
   recorded in *Streaming: decided, waiting on the library* below rather than
   left open, because settling it was cheap and rediscovering it would not be.
-- **Interrupted-turn repair.** `SCOPE.md` MUST FIX, unbuilt. A `continue`
-  against a session left dangling by a cut-short turn behaves however the
-  library currently behaves — honest, not (yet) repaired.
 
 ## Streaming: decided, waiting on the library
 
@@ -500,19 +556,52 @@ Nothing here is built. It is written down because the two questions
 `docs/STREAMING_DESIGN.md` ended with were settled before the first assembler,
 and one of the two answers is this document's.
 
-### The default is a tty test on stdout
+### `defaults.streaming`, then a tty test on stdout
 
-**Stream when `stdout` is a terminal.** Not stderr. `Progress` asks
+**Off unless asked for.** `defaults.streaming` is false, which is what the CLI
+did before the key existed. A configuration written today keeps meaning what it
+meant.
+
+**With it on, stream when `stdout` is a terminal.** Not stderr. `Progress` asks
 `STDERR.tty?` because it *writes* to stderr; deltas write to stdout, so the
 analogous rule is the same question asked of the other stream. Copying the
 expression rather than the rule would stream into a file under
 `elelem start ollama "…" > answer.txt 2>&1`, where stderr is a terminal and
 stdout is not.
 
-**`--stream` and `--no-stream` override it, and win.** Not decoration: it is
+**`--stream` and `--no-stream` override both, and win.** Not decoration: it is
 how both modes get recorded per protocol, and it is the escape hatch the
 library's own design argues for — the caller who has just asked for a very
 large output and would rather the connection stayed warm.
+
+The order is therefore flag, then configuration, then the terminal test — with
+one asymmetry that is deliberate. **The tty test is a floor that configuration
+does not lift.** `defaults.streaming: true` is a preference about how this
+person likes to watch answers arrive; it is not a claim that a cron job
+redirecting stdout into a file wants a failure mode it cannot see. `--stream`
+goes through the floor, because a flag is typed with the specific run in view.
+The cost is one surprise the first time someone with `streaming: true`
+redirects output and notices it did not stream; the alternative is a silent new
+truncation class in exactly the runs nobody is watching.
+
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart TD
+    A["elelem start / continue"] --> B{{"--stream or --no-stream?"}}
+    B -- "--stream" --> S["Stream"]
+    B -- "--no-stream" --> O["One body"]
+    B -- neither --> C{{"defaults.streaming"}}
+    C -- false --> O
+    C -- true --> D{{"stdout a terminal?"}}
+    D -- yes --> S
+    D -- no --> O
+
+    classDef floor stroke:#ef6c00,stroke-width:3px
+    class D floor
+```
 
 ### Transport follows rendering
 
@@ -527,11 +616,11 @@ visible benefit is a bad trade, so the non-tty path asks for one body.
 This is the load-bearing argument for the tty rule, and it is stronger than
 "a person is probably watching".
 
-Interrupted-turn repair operates on the assembled message and may remove
-content from it — a dangling tool call, most obviously. Repair cannot un-print.
-Streaming to stdout is reading a page as it comes off the press: fine when you
-are standing there and can see the correction slip, less fine when you wanted
-the corrected edition.
+Repair operates on the assembled message and may remove content from it — a
+dangling tool call, most obviously. Repair cannot un-print. Streaming to stdout
+is reading a page as it comes off the press: fine when you are standing there
+and can see the correction slip, less fine when you wanted the corrected
+edition.
 
 The tty rule confines that irreversibility to the terminal, where a person can
 see what happened and a stderr warning reaches them. Redirected stdout — the
@@ -539,6 +628,24 @@ thing a script consumes — is never streamed, so it always receives the repaire
 reply. Streaming and non-streaming stdout are therefore not quite the same
 artifact, and this is the sentence that says so out loud rather than leaving it
 to be found.
+
+**The hazard is prospective, and a reader who goes looking for it today will
+not find it.** Repair removes tool calls and keeps text; `Output.reply` prints
+`Message#text`, which is text blocks only. So the one thing repair takes away
+is the one thing stdout has never shown, and a streamed run and its saved
+session currently agree exactly. The rule is being kept in advance of the thing
+it guards against rather than in response to it.
+
+What it guards against arrives with tool execution. Once the CLI narrates a
+call as it materialises — `→ get_weather(Paris)`, which is the natural use of
+`Progress`'s settable label — a stream cut mid-plan leaves a terminal showing a
+call that the saved session does not contain and that nothing ever dispatched.
+Scroll back tomorrow and the screen disagrees with `elelem show`. That is the
+discrepancy the tty rule confines to a place where a person saw it happen.
+
+So the rule is better stated as a property than as a guess about who is
+watching: **the terminal is the only surface permitted to disagree with the
+archive.**
 
 ### Reasoning is not the reply, and does not go to stdout
 
@@ -549,8 +656,8 @@ guarantee: `Output.reply` prints `Message#text`, which concatenates text blocks
 only, so reasoning has never reached stdout. Streaming must not be the thing
 that changes that.
 
-So: **reasoning deltas go to stderr, behind `--show-reasoning`, off by
-default.** Someone who set `reasoning_retention: none` on a deployment and sees
+So: **reasoning deltas go to stderr, behind `defaults.show_reasoning` and
+`--show-reasoning`, off by default.** Someone who set `reasoning_retention: none` on a deployment and sees
 no reasoning in their terminal gets what they expected — by way of the control
 that actually governs display, rather than by the library second-guessing a
 playback preference. Someone who wants to watch the model think asks for it.

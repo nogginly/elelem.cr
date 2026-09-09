@@ -107,12 +107,35 @@ module Elelem::Cli
     end
   end
 
+  # How the CLI behaves, as opposed to where requests go or what is asked of
+  # a model. The third question, and the one that had no home: a server is
+  # *where*, a deployment is *what to ask of which model*, and neither of them
+  # is *how the terminal behaves while the answer arrives*.
+  #
+  # Every key here pairs with a flag of the same name, so there is no
+  # translation table between the config and `--help`. A key with no flag
+  # behind it should be viewed with suspicion — that is how a section like
+  # this becomes a junk drawer.
+  #
+  # Both default to false. The quiet, non-streaming, no-thinking-shown
+  # behaviour is what the CLI did before either key existed, so an
+  # `elelem.yaml` written today keeps meaning what it meant.
+  struct Defaults
+    getter? streaming : Bool
+    getter? show_reasoning : Bool
+
+    def initialize(@streaming : Bool = false, @show_reasoning : Bool = false)
+    end
+  end
+
   class Config
+    getter defaults : Defaults
     getter servers : Hash(String, ServerConfig)
     getter deployments : Hash(String, Deployment)
 
     def initialize(@servers : Hash(String, ServerConfig),
-                   @deployments : Hash(String, Deployment))
+                   @deployments : Hash(String, Deployment),
+                   @defaults : Defaults = Defaults.new)
     end
 
     # `$CWD/elelem.yaml`, then `$HOME/elelem.yaml`. See `docs/CLI_DESIGN.md`.
@@ -163,7 +186,34 @@ module Elelem::Cli
         deployments[name] = parse_deployment(name, node, servers)
       end
 
-      new(servers, deployments)
+      new(servers, deployments, parse_defaults(root["defaults"]?))
+    end
+
+    # Absent means the defaults, which are what the CLI did before this block
+    # existed. A present block may name either key or neither.
+    private def self.parse_defaults(node : YAML::Any?) : Defaults
+      return Defaults.new if node.nil? || node.raw.nil?
+
+      node.as_h? || raise ConfigError.new(
+        "'defaults' is not a block — expected 'defaults:' with 'streaming' or 'show_reasoning' under it")
+
+      Defaults.new(
+        streaming: parse_flag(node, "streaming"),
+        show_reasoning: parse_flag(node, "show_reasoning"),
+      )
+    end
+
+    # Anything that is not a boolean is refused, and the message names the key
+    # — `defaults.streaming`, not "expected true or false" on its own, which
+    # in a file with two boolean keys tells you nothing about which one.
+    private def self.parse_flag(node : YAML::Any, key : String) : Bool
+      field = node[key]?
+      return false if field.nil? || field.raw.nil?
+
+      value = field.as_bool?
+      return value unless value.nil?
+
+      raise ConfigError.new("'defaults.#{key}' is #{field.raw.inspect} — expected true or false")
     end
 
     # The old flat table said `server: https://…` on the deployment itself.

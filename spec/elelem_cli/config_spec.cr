@@ -18,6 +18,45 @@ private def deployment_with(*lines : String) : Elelem::Cli::Deployment
 end
 
 describe Elelem::Cli::Config do
+  describe "defaults" do
+    base = "servers:\n  ollama:\n    protocol: chat_completions\n    url: http://localhost:11434\n" \
+           "deployments:\n  qwen:\n    server: ollama\n    model: qwen3.8\n"
+
+    it "is quiet and unstreamed when the block is absent" do
+      defaults = Elelem::Cli::Config.from_yaml(base).defaults
+
+      defaults.streaming?.should be_false
+      defaults.show_reasoning?.should be_false
+    end
+
+    it "reads either key on its own" do
+      config = Elelem::Cli::Config.from_yaml(base + "defaults:\n  streaming: true\n")
+
+      config.defaults.streaming?.should be_true
+      config.defaults.show_reasoning?.should be_false
+    end
+
+    it "reads both" do
+      config = Elelem::Cli::Config.from_yaml(
+        base + "defaults:\n  streaming: true\n  show_reasoning: true\n")
+
+      config.defaults.streaming?.should be_true
+      config.defaults.show_reasoning?.should be_true
+    end
+
+    it "refuses a value that is not a boolean, and names the key" do
+      expect_raises(Elelem::Cli::ConfigError, /defaults.streaming/) do
+        Elelem::Cli::Config.from_yaml(base + "defaults:\n  streaming: 1\n")
+      end
+    end
+
+    it "refuses a defaults that is not a block" do
+      expect_raises(Elelem::Cli::ConfigError, /not a block/) do
+        Elelem::Cli::Config.from_yaml(base + "defaults: true\n")
+      end
+    end
+  end
+
   describe ".from_yaml" do
     it "parses a server and a deployment pointing at it" do
       config = Elelem::Cli::Config.from_yaml(<<-YAML)

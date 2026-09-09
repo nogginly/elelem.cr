@@ -20,6 +20,40 @@ module Elelem::Cli
       stream.puts message.text
     end
 
+    # A turn that did not finish, said once, on stderr.
+    #
+    # Not a fidelity annotation, and deliberately not routed through
+    # `warn_lossy`: an annotation means damage this shard's mapping inflicted,
+    # and an interrupted turn is something that happened to the connection or
+    # the model. Mixing the two makes the annotation channel mean less.
+    #
+    # Silent when the turn completed, which is nearly always.
+    def warn_cut(reply : MPSH::Message) : Nil
+      return if reply.ending.complete?
+
+      dropped = reply.content.count { |block| block.is_a?(MPSH::ToolCallBlock) }
+      note = case reply.ending
+             in MPSH::Ending::Complete    then return
+             in MPSH::Ending::Truncated   then "the model stopped short — an output cap or a resource limit"
+             in MPSH::Ending::Stopped     then "the turn was stopped"
+             in MPSH::Ending::Interrupted then "the stream ended before the reply did"
+             end
+
+      error_stream.puts "warning: #{note}"
+      return if dropped.zero?
+
+      error_stream.puts "warning: #{dropped} unfinished tool #{dropped == 1 ? "call" : "calls"} " \
+                        "left out of the saved session"
+    end
+
+    # Said out loud because it changes what is on disk. A session that arrives
+    # holding a dangling call was written by something that did not repair it,
+    # and quietly fixing a file someone may be reasoning about is worse than
+    # one line on stderr.
+    def repaired_on_load(id : String) : Nil
+      error_stream.puts "note: #{id} held an unfinished turn from an earlier run; it was repaired on load"
+    end
+
     def session_id(id : String) : Nil
       error_stream.puts "Session: #{id}"
     end

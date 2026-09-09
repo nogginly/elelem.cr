@@ -45,6 +45,7 @@ module Elelem::Cli::Commands
 
       Output.session_id(id)
       Output.warn_lossy(report)
+      Output.warn_cut(reply)
       Output.reply(reply)
     end
 

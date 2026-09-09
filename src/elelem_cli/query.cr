@@ -23,7 +23,22 @@ module Elelem::Cli
       reply, report = client.send(session, model,
         retention: retention,
         options: Options.new(reasoning: reasoning))
-      session << reply
+
+      # What is archived is repaired; what is returned is what arrived.
+      #
+      # The two differ only for a cut turn, and only by its tool calls, but
+      # the split is the point. A dangling call in a snapshot is a session
+      # that cannot be continued — by this CLI, by another one, on another
+      # provider — which is the single property the archive exists to keep.
+      # The caller still gets the unrepaired reply, because a person is
+      # entitled to see what the model actually said before it was cut.
+      #
+      # A cut turn that produced nothing but calls repairs to nothing, and
+      # nothing is what gets appended. The user prompt stays: it was asked,
+      # and the next turn reads better with it there than without.
+      if repaired = MPSH::Repair.repaired(reply)
+        session << repaired
+      end
 
       {reply, report}
     end

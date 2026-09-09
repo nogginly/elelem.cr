@@ -32,7 +32,13 @@ module Elelem::Cli::Commands
       d = config.deployment(deployment_name)
       provider = config.provider_for(deployment_name)
 
+      # Snapshots written before repair existed can hold a turn cut mid-call,
+      # and a session is portable enough to have been written by something
+      # else entirely. Repairing on load costs one pass over messages that
+      # are already in memory and removes the only shape a request cannot be
+      # built from.
       session = Sessions.latest(session_id)
+      Output.repaired_on_load(session_id) if MPSH::Repair.repair!(session)
       reply, report = Progress.while_waiting("waiting on #{deployment_name}", Output.error_stream) do
         Query.run(provider, d.model, session, prompt,
           reasoning: d.reasoning, retention: d.reasoning_retention)
@@ -40,6 +46,7 @@ module Elelem::Cli::Commands
       Sessions.snapshot(session_id, session, deployment_name)
 
       Output.warn_lossy(report)
+      Output.warn_cut(reply)
       Output.reply(reply)
     end
 
