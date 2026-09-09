@@ -1,3 +1,4 @@
+require "colorize"
 require "../elelem"
 
 module Elelem::Cli
@@ -52,6 +53,61 @@ module Elelem::Cli
     # one line on stderr.
     def repaired_on_load(id : String) : Nil
       error_stream.puts "note: #{id} held an unfinished turn from an earlier run; it was repaired on load"
+    end
+
+    # A fragment of the reply, as it arrives. Flushed immediately: a delta held
+    # in a buffer is a delta that has not been streamed.
+    #
+    # No newline of its own. Deltas do not arrive on line boundaries, and
+    # inventing them would put the streamed reply and the saved one at odds
+    # over something as visible as where the lines break.
+    def text_delta(text : String) : Nil
+      stream.print text
+      stream.flush
+    end
+
+    # Closes a streamed reply, so a shell prompt does not land on the last
+    # line of it. Called once per turn, and only when something was printed.
+    def end_stream : Nil
+      stream.puts
+    end
+
+    # Reasoning goes to stderr, always, streamed or not.
+    #
+    # `Output.reply` prints `Message#text`, which concatenates text blocks
+    # only, so reasoning has never reached stdout and streaming must not be
+    # what changes that. `elelem start … > answer.txt` gets an answer, not an
+    # answer with the model's thinking wrapped around it.
+    #
+    # A rule and a divider, so the two are distinguishable when both are on a
+    # terminal and interleaved. Grey because thinking is not the answer and
+    # should not compete with it for attention.
+    def reasoning_open : Nil
+      error_stream.print "\n┄┄┄ thinking ┄┄┄\n".colorize.dark_gray
+      error_stream.flush
+    end
+
+    def reasoning_delta(text : String) : Nil
+      error_stream.print text.colorize.dark_gray
+      error_stream.flush
+    end
+
+    def reasoning_close : Nil
+      error_stream.print "\n┄┄┄\n".colorize.dark_gray
+      error_stream.flush
+    end
+
+    # Colour is decided on **stderr**, because that is the only stream the CLI
+    # colours. The asymmetry with the streaming decision — which asks about
+    # stdout — is deliberate: each asks about the stream it writes to, which is
+    # the same reasoning that keeps `Progress` on `STDERR.tty?`.
+    #
+    # `Colorize.default_enabled?` is the whole test, `NO_COLOR` included, so
+    # everything below can go on saying `.colorize.dark_gray` without asking.
+    # A spec that has redirected `error_stream` into memory gets plain text for
+    # free.
+    def tune_colour : Nil
+      Colorize.enabled = Colorize.default_enabled?(error_stream)
     end
 
     def session_id(id : String) : Nil

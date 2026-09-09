@@ -56,6 +56,15 @@ module Elelem::Cli
     def start : Nil
       return if @running || !@io.tty?
 
+      # Fresh channels per run, because this method is called more than once
+      # per turn now. `stop` closes both, and a closed `@stop` makes the next
+      # fiber's `receive?` return immediately — so a reused channel would draw
+      # the indicator exactly zero frames the second time it went up. The
+      # doc comment above always intended `start`/`stop` to be repeatable
+      # within a turn; this is what that costs.
+      @stop = Channel(Nil).new
+      @drained = Channel(Nil).new
+
       @running = true
       started = Time.instant
 

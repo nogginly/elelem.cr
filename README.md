@@ -81,6 +81,40 @@ report.annotations.each { |note| puts note }   # what the handoff cost, if anyth
 
 Nothing in `vienna.json` names a vendor as its owner. That is the whole idea.
 
+### Watching the reply arrive
+
+`send` takes a block and streams, on all four protocols. Events are
+**presentation**: the reply and the report are still what they were, and a
+caller that accumulates events into an answer has reimplemented the exporter,
+worse.
+
+```crystal
+reply, report = Elelem::Client.new(provider).send(session, "llama3.2") do |event, turn|
+  case event
+  when Elelem::Streaming::TextDelta then print event.text
+  end
+  turn.stop if enough?
+end
+```
+
+A protocol with no streaming seam falls back to a single request. `report.streamed?`
+says which happened.
+
+### When a turn does not finish
+
+A stream can drop, a model can hit an output cap, and either leaves a reply
+holding a tool call nobody finished planning — the one shape a provider will
+reject outright.
+
+```crystal
+session << MPSH::Repair.repaired(reply) if reply.ending.cut?
+```
+
+`Message#ending` is `complete`, `truncated`, `stopped` or `interrupted`, and it
+is archived, so a session reloaded next week still knows its last turn was a
+fragment rather than a short answer. Repair drops the unfinished calls and keeps
+the text.
+
 ### Choosing how much loss you will accept
 
 Translation loss is graded, and the policy decides what to do about it:
@@ -116,8 +150,10 @@ The shard ships a CLI, which is also the most direct demonstration of the
 handoff — start a session on one deployment, continue it on another.
 
 ```
-elelem start <deployment> <prompt...> [--id <session-id>]
-elelem continue <session-id> <prompt...> [--on <deployment>]
+elelem start <deployment> <prompt...> [--id <session-id>] [--stream|--no-stream]
+                                       [--show-reasoning|--hide-reasoning]
+elelem continue <session-id> <prompt...> [--on <deployment>] [--stream|--no-stream]
+                                         [--show-reasoning|--hide-reasoning]
 elelem list
 elelem show <session-id> [--snapshots] [--json]
 elelem prune <session-id> --keep <n>
@@ -133,7 +169,8 @@ $ elelem continue brisk-comet "Recommend one coffee house." --on anthropic
 Café Sperl, for the billiard tables and the lack of hurry.
 ```
 
-Deployments are named in `elelem.yaml`; see
+Streaming and reasoning display default off and can be set for good under
+`defaults:` in the config. Deployments are named in `elelem.yaml`; see
 [docs/CLI_DESIGN.md](./docs/CLI_DESIGN.md) for the format and for why it is
 shaped the way it is.
 
@@ -157,6 +194,7 @@ Document                                                  |Holds
 [DEVELOPMENT.md](./DEVELOPMENT.md)                        |Layering, conventions, how to add a protocol                    
 [docs/protocols/](./docs/protocols/)                      |One file per protocol: gotchas and compensations                
 [docs/servers/](./docs/servers/)                          |One file per server, and what a green run there does *not* prove
+[docs/STREAMING_DESIGN.md](./docs/STREAMING_DESIGN.md)    |The streamed turn, and the two places its design was wrong      
 [docs/CLI_DESIGN.md](./docs/CLI_DESIGN.md)                |The `elelem` executable                                         
 [SCOPE.md](./SCOPE.md)                                    |What is still outstanding                                       
 

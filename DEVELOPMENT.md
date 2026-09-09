@@ -93,6 +93,14 @@ flowchart TB
         W["each: capabilities · wire/request<br/>wire/response · mapper · export"]
     end
 
+    subgraph STREAM["streaming/ — presentation, never state"]
+        SSE["Sse<br/>bytes → frames"]
+        AS["Assembler<br/>frames → reply"]
+        EV["Event union<br/>text · reasoning · tool_call_started<br/>annotation · provider"]
+        TU["Turn<br/>cooperative stop"]
+        SSE --> AS --> EV
+    end
+
     subgraph LIVE["the live layer — the only part that touches a network"]
         SV["Server<br/>deployment · connection · status→error"]
         PV["Provider<br/>server + protocol + vendor"]
@@ -103,6 +111,10 @@ flowchart TB
         OP --> AD
     end
 
+    AS -.exports through.-> PROTO
+    CL -.drives.-> SSE
+    TU -.answers.-> CL
+
     B -.consumed by.-> R
     R -.governs.-> PROTO
     T -.owned by.-> PROTO
@@ -110,7 +122,7 @@ flowchart TB
     PROTO -.driven by.-> AD
 
     classDef built stroke:#2e7d32,stroke-width:3px
-    class S,M,B,P,T,PR,R,ST,PO,RC,CT,C1,C2,C3,C4,W,SV,PV,AD,CL,OP built
+    class S,M,B,P,T,PR,R,ST,PO,RC,CT,C1,C2,C3,C4,W,SV,PV,AD,CL,OP,SSE,AS,EV,TU built
 ```
 
 ```
@@ -123,6 +135,11 @@ src/elelem/
                   wire/response.cr  parse-only — what we read
                   mapper.cr         MPSH → request
                   export.cr         request or response → MPSH
+  streaming/    the streamed turn — depends on mpsh and protocol, never the reverse:
+                  sse.cr        frame the byte stream, protocol-agnostic
+                  assembler.cr  frames → a reply, one implementation per protocol
+                  event.cr      the closed union a caller may watch
+                  turn.cr       the handle a caller stops a turn with
   adapters/     path, headers, prepare/read — one file per protocol adapter:
                   adapter.cr              the abstract base every adapter models on
                   <protocol>.cr           a protocol's own adapter
@@ -568,6 +585,15 @@ An MPSH conversation mapped to a protocol and exported back must reproduce the
 original exactly — *except* where the capability matrix declares the mapping
 Compensated or Degraded, in which case **the divergence must match what the
 matrix predicts.**
+
+"Exactly" means everything a wire can carry, which is not everything MPSH
+holds. `Conformance.compare` deliberately skips `Message#ending`, `Provenance`
+and `Session#annotations`: none has a request-side field in any of the four
+protocols, so comparing them would report a permanent divergence on every
+fixture that reads as a mapping bug. They are the archive's to preserve, and
+`spec/mpsh/archive_spec.cr` asserts each by hand — which is worth knowing
+before adding a field to the envelope, because the archive's own losslessness
+gate runs through this same comparison and would not notice the loss.
 
 A failure is one of three things, and naming which is mandatory:
 

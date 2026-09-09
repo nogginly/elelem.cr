@@ -543,18 +543,16 @@ returns. Recorded so it is not rediscovered as a bug.
   start`/`continue` take tool declarations at all in v1, or ship text-only
   first, is still open — leaning text-only first, since it's the smaller
   surface to get the verb grammar and storage shape right against.
-- **Streaming.** Decided in outline, deliberately unbuilt until the library's
-  own streaming seam is finished and stable — this shard is a library that
-  ships a CLI to prove itself, and a CLI written against a moving seam would
-  end up answering the library's design questions by accident. The decision is
-  recorded in *Streaming: decided, waiting on the library* below rather than
-  left open, because settling it was cheap and rediscovering it would not be.
 
-## Streaming: decided, waiting on the library
+## Streaming
 
-Nothing here is built. It is written down because the two questions
-`docs/STREAMING_DESIGN.md` ended with were settled before the first assembler,
-and one of the two answers is this document's.
+Decided before the first assembler and built after the last one, which is the
+order this shard keeps: a library that ships a CLI to prove itself cannot let
+the CLI answer the library's design questions by accident.
+
+`Display` resolves what the terminal does; `Query` runs the streamed turn;
+`Output` prints it. The sections below are the reasoning, and all of it is now
+load-bearing rather than prospective.
 
 ### `defaults.streaming`, then a tty test on stdout
 
@@ -662,10 +660,28 @@ no reasoning in their terminal gets what they expected — by way of the control
 that actually governs display, rather than by the library second-guessing a
 playback preference. Someone who wants to watch the model think asks for it.
 
+### Whether the reply was streamed is read off the report, not the request
+
+Both verbs print the reply with `Output.reply(reply) unless report.streamed?`,
+and the temptation is to ask `display.streaming?` instead. It would be wrong.
+A protocol with no streaming seam falls back to a single body inside
+`Client#send`, having printed nothing on the way, and a request that *asked* to
+stream is not evidence that anything was streamed. `Report#streamed` is set by
+the path that actually ran. Ask the request and a fallback prints nothing at
+all.
+
 ### `Progress` survives, as its own doc predicted
 
 Up before the first delta, down on it, up again with a new `label` during the
 stretches that cannot be shown — a tool call spread over several deltas has to
 be aggregated before it is parseable. Started and stopped repeatedly within one
 turn rather than wrapping the whole call. `#start`/`#stop` being public and
-`#label` being mutable is exactly this, and no part of it needs rewriting.
+`#label` being mutable is exactly this, and no part of the interface needed
+rewriting.
+
+One line of the implementation did. `Progress` built its stop channels once, in
+`initialize`, which is invisible while `while_waiting` is the only door: the
+indicator goes up once and comes down once. Called twice, the second fiber
+found a channel `stop` had already closed, took the break branch on its first
+pass and drew nothing. The design anticipated being restarted; the code had
+never been. Channels are now made per `start`.

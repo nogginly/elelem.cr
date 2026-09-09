@@ -60,6 +60,54 @@ describe Elelem::Cli::Output do
     end
   end
 
+  describe "streaming" do
+    it "prints deltas to stdout with no newlines of its own" do
+      printed, warned = captured do
+        Elelem::Cli::Output.text_delta("Kyoto ")
+        Elelem::Cli::Output.text_delta("is mild.")
+      end
+
+      printed.should eq("Kyoto is mild.")
+      warned.should be_empty
+    end
+
+    it "closes the reply so a shell prompt does not land on it" do
+      printed, _ = captured do
+        Elelem::Cli::Output.text_delta("Kyoto is mild.")
+        Elelem::Cli::Output.end_stream
+      end
+
+      printed.should eq("Kyoto is mild.\n")
+    end
+
+    # The guarantee `elelem start … > answer.txt` rests on. Streaming was the
+    # obvious way to break it and does not.
+    it "keeps reasoning entirely off stdout" do
+      printed, warned = captured do
+        Elelem::Cli::Output.tune_colour
+        Elelem::Cli::Output.reasoning_open
+        Elelem::Cli::Output.reasoning_delta("Kyoto is in Kansai…")
+        Elelem::Cli::Output.reasoning_close
+      end
+
+      printed.should be_empty
+      warned.should contain("Kyoto is in Kansai…")
+      warned.should contain("thinking")
+    end
+
+    # `Colorize.default_enabled?` on a redirected stream is false, so the
+    # escapes are absent rather than merely invisible — which is what makes
+    # the example above able to assert on plain text at all.
+    it "emits no colour escapes when stderr is not a terminal" do
+      _, warned = captured do
+        Elelem::Cli::Output.tune_colour
+        Elelem::Cli::Output.reasoning_delta("thinking")
+      end
+
+      warned.should_not contain("\e[")
+    end
+  end
+
   describe ".repaired_on_load" do
     it "names the session, since it changed what is on disk" do
       printed, warned = captured { Elelem::Cli::Output.repaired_on_load("brisk-otter") }

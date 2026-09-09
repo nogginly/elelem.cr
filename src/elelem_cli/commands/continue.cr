@@ -2,6 +2,7 @@ require "option_parser"
 require "../config"
 require "../sessions"
 require "../query"
+require "../display"
 require "../output"
 require "../progress"
 
@@ -9,14 +10,21 @@ module Elelem::Cli::Commands
   module Continue
     extend self
 
-    USAGE = "usage: elelem continue <session-id> <prompt...> [--on <deployment>]"
+    USAGE = "usage: elelem continue <session-id> <prompt...> [--on <deployment>] " \
+            "[--stream|--no-stream] [--show-reasoning|--hide-reasoning]"
 
     def run(args : Array(String)) : Nil
       on_deployment = nil.as(String?)
+      stream_flag = nil.as(Bool?)
+      show_reasoning = nil.as(Bool?)
       OptionParser.parse(args) do |parser|
         parser.on("--on DEPLOYMENT", "continue on a different deployment than this session last used") do |value|
           on_deployment = value
         end
+        parser.on("--stream", "show the reply as it arrives, whatever the config says") { stream_flag = true }
+        parser.on("--no-stream", "wait for the whole reply") { stream_flag = false }
+        parser.on("--show-reasoning", "put the model's thinking on stderr as it arrives") { show_reasoning = true }
+        parser.on("--hide-reasoning", "keep the model's thinking off the terminal") { show_reasoning = false }
       end
 
       session_id, prompt = parse_positional(args)
@@ -39,15 +47,18 @@ module Elelem::Cli::Commands
       # built from.
       session = Sessions.latest(session_id)
       Output.repaired_on_load(session_id) if MPSH::Repair.repair!(session)
-      reply, report = Progress.while_waiting("waiting on #{deployment_name}", Output.error_stream) do
+      display = Display.resolve(config.defaults, stream_flag, show_reasoning, Output.stream)
+
+      reply, report = Progress.while_waiting("waiting on #{deployment_name}", Output.error_stream) do |ticker|
         Query.run(provider, d.model, session, prompt,
-          reasoning: d.reasoning, retention: d.reasoning_retention)
+          reasoning: d.reasoning, retention: d.reasoning_retention,
+          display: display, indicator: ticker)
       end
       Sessions.snapshot(session_id, session, deployment_name)
 
       Output.warn_lossy(report)
       Output.warn_cut(reply)
-      Output.reply(reply)
+      Output.reply(reply) unless report.streamed?
     end
 
     private def parse_positional(args : Array(String)) : {String, String}
