@@ -124,8 +124,19 @@ filename rather than a config default — `docs/CLI_DESIGN.md` records that a
 because it answered "what does the config prefer" when what `continue` needs
 is "what was this conversation already having."
 
-`elelem.yaml` is two tables: a **server** is a url plus the protocol it
-speaks, a **deployment** names one model on one server. Deployments may also
+`elelem.yaml` is two tables and a block. A **server** is a url plus the
+protocol it speaks, a **deployment** names one model on one server, and
+**`defaults`** is how the CLI itself behaves — `streaming` and
+`show_reasoning`, both false, each pairing with a flag of the same name. That
+pairing is the rule the block is held to: a key with no flag behind it is how a
+section like this becomes a junk drawer.
+
+The CLI applies `MPSH::Repair` in two places. On append, in `Query`, the
+snapshot gets the repaired message and the screen gets what actually arrived.
+On load, in `continue`, because a snapshot may have been written by a build
+predating repair or by something else entirely — the format being portable is
+the point — and it says so on stderr rather than quietly rewriting a file
+someone may be reasoning about. Deployments may also
 carry `reasoning` and `reasoning_retention`, which settled the question
 `Capability::Retention` had parked — those are soft preferences read off a
 model card, not hard protocol facts, so they live in config rather than in
@@ -133,8 +144,10 @@ model card, not hard protocol facts, so they live in config rather than in
 
 `Progress` shows a spinner and elapsed seconds while a request is in flight,
 on stderr and only when stderr is a terminal. It is a fiber and a clock, not
-an event queue; `docs/CLI_DESIGN.md` records what streaming will want from it,
-which is why `#start`/`#stop` are public and `#label` is mutable.
+an event queue. Its own doc comment predicted that streaming would put it up
+and down repeatedly within one turn rather than retire it, which is why
+`#start`/`#stop` are public and `#label` is mutable — and that is exactly how
+the streamed turn uses it, relabelled to name the tool being called.
 
 Live-tested in-process against a sandboxed config and session store, recorded
 against Ollama (`spec/elelem_cli/commands/`). `spec/support/cli_output.cr`
@@ -153,6 +166,18 @@ narrowing is **one-directional**. A provider may declare that a deployment
 honours *less* than its protocol allows, never more.
 
 ## Next
+
+**Next is tool execution**, the last entry on `docs/CLI_DESIGN.md`'s
+*Deliberately deferred, not forgotten* and the only one left. It is genuinely
+open rather than merely unbuilt: whether `start`/`continue` take tool
+declarations in v1 or ship text-only first is unanswered, the doc leans
+text-only, and `Client#send`'s turn loop is caller-owned by design so the CLI
+has to decide what *it* does. It is also what finally gives `CLI_DESIGN.md`'s
+*Printed bytes precede repair* something to bite on — see below.
+
+Two smaller open items, both recorded in `SCOPE.md`: `Ending::Interrupted` has
+no end-to-end spec, and there is no recorded spec of a streamed `start` or
+`continue`. The first is free; the second costs a recording.
 
 **`SCOPE.md`'s `MUST FIX` is empty.** Interrupted-turn repair, the last entry
 in it, is built, and the argument that used to live there now lives in
@@ -194,17 +219,31 @@ Session pruning and deletion, which was the unblocked item here, is **built**:
 record in `docs/CLI_DESIGN.md`'s *Removing things*. Neither touches a network,
 so both are fully spec-covered without a recording.
 
-What remains on `docs/CLI_DESIGN.md`'s *Deliberately deferred, not forgotten*
-is tool support (open question: text-only first?) and streaming in the CLI.
-Tool support was downstream of interrupted-turn repair, since repair is what
-shapes the turn loop; repair is built, so what is left in front of it is the
-CLI half of streaming alone.
+**The CLI half of streaming is built.** `Display` resolves what the terminal
+does, `Query` runs the streamed turn, `Output` prints it. Precedence is flag,
+then `defaults.streaming`, then a tty test on **stdout** — with the tty test a
+floor that configuration does not lift, and `--stream` the one thing that goes
+through it. Reasoning goes to stderr in grey behind `defaults.show_reasoning`
+and `--show-reasoning`, off by default.
 
-The CLI half is *decided and deliberately waiting*: stream when **stdout** is a
-terminal, `--stream`/`--no-stream` overriding, reasoning to stderr behind
-`--show-reasoning`. Recorded in `docs/CLI_DESIGN.md`. It waits because this is
-a library that ships a CLI to prove itself, and a CLI built against a moving
-seam ends up answering the library's design questions by accident.
+Three things in it were checked rather than assumed:
+
+- **Whether a reply was streamed is read off `report.streamed?`, never off the
+  request.** A protocol with no streaming seam falls back to one body inside
+  `Client#send` having printed nothing, so asking the request would print
+  nothing at all on exactly those providers.
+- **`Progress` had a latent bug this was the first code to reach.** Its stop
+  channels were built once in `initialize`, invisible while `while_waiting` was
+  the only door; put the indicator up a second time and the new fiber found a
+  closed channel and drew nothing, silently. Channels are made per `start` now.
+- **`CLI_DESIGN.md`'s *Printed bytes precede repair* guards a hazard that does
+  not exist yet.** Repair removes tool calls; `Output.reply` prints text blocks
+  only; so a streamed run and its saved session currently agree exactly and
+  anyone looking for the discrepancy will not find it. It arrives with tool
+  execution, when the terminal starts narrating calls as they materialise. The
+  rule is stated there as a property — *the terminal is the only surface
+  permitted to disagree with the archive* — rather than as a guess about who is
+  watching.
 
 Streaming was built **one protocol at a time** — read
 `docs/STREAMING_DESIGN.md` before touching it. The short version: frames
@@ -261,9 +300,8 @@ be set by the layer that knows; and every assembler already refuses to emit a
 tool call it cannot vouch for, so "drop the calls, keep any text" was already
 true for a cut stream in all four protocols before repair existed.
 
-**Next: the CLI half of streaming**, decided and waiting in
-`docs/CLI_DESIGN.md`. Tool support sits behind it, and is no longer blocked by
-repair.
+Both halves of streaming are now built, library and CLI. Tool execution is what
+sits behind them, and is no longer blocked by anything.
 
 **How the rule was arrived at matters more than the rule.** It was rewritten
 twice under contact — first from "keep the terminal frame", then from
