@@ -541,8 +541,20 @@ returns. Recorded so it is not rediscovered as a bug.
 - **Tool execution.** `Client#send`'s turn loop, including tool dispatch, is
   caller-owned by design (`client.cr`'s own doc comment). Whether `elelem
   start`/`continue` take tool declarations at all in v1, or ship text-only
-  first, is still open — leaning text-only first, since it's the smaller
-  surface to get the verb grammar and storage shape right against.
+  first, is still open — leaning text-only first.
+
+  **Declaring and executing are one decision, not two**, which is a better
+  argument for that lean than the original "smaller surface" was.
+  `Repair.needed?` requires `ending.cut?`, so a turn that *completes* holding a
+  tool call is untouched, and nothing in `Client` or this CLI enforces
+  `Repair.sendable?` — it appears only in specs. A CLI that declares tools
+  without dispatching them therefore writes exactly the unsendable session the
+  archive exists to prevent, and nothing notices until the next `continue` is
+  rejected by a protocol strict enough to care. There is no safe half-step:
+  either the CLI runs something, or it declares nothing.
+
+  What the terminal prints while a call is in flight is settled ahead of this,
+  in *Printed bytes precede repair* above.
 
 ## Streaming
 
@@ -631,19 +643,119 @@ to be found.
 not find it.** Repair removes tool calls and keeps text; `Output.reply` prints
 `Message#text`, which is text blocks only. So the one thing repair takes away
 is the one thing stdout has never shown, and a streamed run and its saved
-session currently agree exactly. The rule is being kept in advance of the thing
-it guards against rather than in response to it.
-
-What it guards against arrives with tool execution. Once the CLI narrates a
-call as it materialises — `→ get_weather(Paris)`, which is the natural use of
-`Progress`'s settable label — a stream cut mid-plan leaves a terminal showing a
-call that the saved session does not contain and that nothing ever dispatched.
-Scroll back tomorrow and the screen disagrees with `elelem show`. That is the
-discrepancy the tty rule confines to a place where a person saw it happen.
+session agree exactly. That agreement is now asserted rather than described —
+`spec/elelem_cli/commands/streaming_spec.cr` compares streamed stdout to the
+saved reply's text for equality — which is what turns this section from an
+argument into a constraint.
 
 So the rule is better stated as a property than as a guess about who is
 watching: **the terminal is the only surface permitted to disagree with the
 archive.**
+
+#### Three surfaces, not two
+
+An earlier version of this section predicted the hazard would arrive with tool
+execution, "once the CLI narrates a call as it materialises — `→
+get_weather(Paris)`, which is the natural use of `Progress`'s settable label."
+That sentence names two different artifacts as one, and the difference decides
+the whole design.
+
+Surface              |Erasable|Must agree with the archive  
+---------------------|--------|-----------------------------
+stdout: the reply    |No      |Always                       
+stderr: printed lines|No      |Yes, if durable              
+`Progress`           |**Yes** |No — it leaves nothing behind
+
+`Progress#stop` erases its line. A spinner is a light on a dashboard, not an
+entry in a logbook, and the scenario this rule warns about — *scroll back
+tomorrow and the screen disagrees with `elelem show`* — needs bytes that are
+still there tomorrow. So the label version of that prediction cannot produce
+the failure the prediction describes.
+
+Which the CLI already relies on: `Query#stream` has handled `ToolCallStarted`
+since streaming landed, by relabelling the ticker. A call that never finishes
+leaves no trace, which is exactly what the archive will say happened. That
+narration is correct as it stands and needs no rule to confine it.
+
+#### The durable announcement lands after repair, not after `finish`
+
+"Announce the call once the assembler has vouched for it" sounds sufficient and
+is not. Repair drops **every** call on a cut turn, including calls that arrived
+whole, because a complete-looking set may be half a parallel plan. And the
+assemblers disagree about what reaches `finish` at all:
+
+- Chat Completions materialises no calls on a cut. It has no per-call end
+  signal, so arguments that merely look finished are the dangerous case.
+- Anthropic materialises any `content_block_stop`-closed `tool_use`; Responses
+  keeps every `response.output_item.done`.
+
+So a stream cut after one finished call and mid-second leaves a reply carrying
+a real `ToolCallBlock` on two protocols and none on the third — and repair
+removes it on all three. Announce at `finish` and the terminal claims a call
+the session does not hold, *and claims it differently depending on which vendor
+answered*. Announce after repair and the durable line is a statement about the
+archive by construction.
+
+**The rule, stated so it can be applied rather than admired:** the terminal
+announces a tool call at the moment the CLI commits to dispatching it, which is
+after repair. The only surface permitted to mention a call that never made it
+is the one that erases itself.
+
+Two consequences follow, and both are cheaper to know than to discover.
+
+**Dispatch reads the repaired message.** `Query.run` appends the repaired
+message and returns the unrepaired one, for the reasons in *What is archived is
+repaired*. A turn loop reading the returned reply would dispatch a call the
+session does not contain and append a result whose call is missing — breaking
+`Repair.sendable?` from the other direction, and doing it on exactly the cut
+turns this whole arrangement exists for.
+
+**Tool activity is stderr, so stdout stays text-only.** A call is a fact about
+the invocation, not about the answer, which puts it on the same side of this
+file's opening rule as the session id and the fidelity warnings. `Output.reply`
+keeps printing `Message#text` and nothing else. Which means the tty floor now
+rests primarily on *Transport follows rendering* — streaming buys a redirected
+run nothing but a new truncation class — while this section stays a guard
+against a hazard that has still not arrived. That is worth saying plainly,
+because a reader will keep going looking for the discrepancy and keep not
+finding it.
+
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart TD
+    F["SSE frames"] --> E{{"event"}}
+    E -- TextDelta --> SO["stdout: the reply, as it arrives"]
+    E -- ReasoningDelta --> SE["stderr: grey thinking, behind a flag"]
+    E -- ToolCallStarted --> PR["Progress label: 'calling get_weather'"]
+
+    SO --> FIN["assembler.finish"]
+    SE --> FIN
+    PR --> FIN
+
+    FIN --> C{{"reply.ending.cut?"}}
+    C -- no --> KEEP["calls survive"]
+    C -- yes --> DROP["Repair drops every call,<br/>including ones that arrived whole"]
+
+    KEEP --> APPEND["the session gets the repaired message"]
+    DROP --> APPEND
+    APPEND --> D{{"calls left to dispatch?"}}
+    D -- no --> END["turn ends"]
+    D -- yes --> ANN["stderr: the call, announced<br/>and true of the archive"]
+    ANN --> RUN["Progress label: 'running get_weather'"]
+    RUN --> RES["append the result, send again"]
+    RES --> F
+
+    classDef ephemeral stroke:#6a1b9a,stroke-width:3px
+    classDef durable stroke:#ef6c00,stroke-width:3px
+    class PR,RUN ephemeral
+    class SO,SE,ANN durable
+```
+
+Bordered nodes are the surfaces that outlive the turn. The two in purple do
+not, which is the only reason they may speak before repair has had its say.
 
 ### Reasoning is not the reply, and does not go to stdout
 
