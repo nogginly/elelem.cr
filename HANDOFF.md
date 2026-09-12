@@ -175,9 +175,8 @@ text-only, and `Client#send`'s turn loop is caller-owned by design so the CLI
 has to decide what *it* does. It is also what finally gives `CLI_DESIGN.md`'s
 *Printed bytes precede repair* something to bite on — see below.
 
-One smaller open item, recorded in `SCOPE.md`: `Ending::Interrupted` has no
-end-to-end spec. It is free — a hand-truncated SSE transcript, and the only
-part worth thinking about is letting Wiretap replay a cut it did not make.
+Nothing else from the streaming and repair work is outstanding. `SCOPE.md`'s
+remaining entries all predate it.
 
 **`SCOPE.md`'s `MUST FIX` is empty.** Interrupted-turn repair, the last entry
 in it, is built, and the argument that used to live there now lives in
@@ -210,9 +209,22 @@ checked and none is obvious:
   raises `Protocol::StreamError` from the assembler that read it — that is a
   failure the server described, this is one it never mentioned.
 
-What is left is coverage, not design: `Ending::Interrupted` is the one member
-with no end-to-end spec, since no transcript ends without its terminal frame.
-`SCOPE.md`'s remaining entry has the fixture plan.
+**`Ending::Interrupted` is now covered end to end**
+(`spec/streaming/interrupted_spec.cr`), which was the last gap the repair work
+left. No server sends a truncated stream on request, so the two fixtures are
+recorded transcripts cut by hand — the one sanctioned exception to *record,
+never hand-write*, argued in `DEVELOPMENT.md`: the frames are recorded and only
+the cut is ours. Replaying one needed nothing from Wiretap, since both
+responses are chunked with no `Content-Length` and a shorter body is just a
+shorter body.
+
+The pair also earns its keep beyond the field it covers. Cut at the same point
+— immediately after a tool call finished arriving — Anthropic carries the call
+into the reply because `content_block_stop` vouched for it, and Chat
+Completions refuses it because nothing did, even though its arguments parse.
+Two different messages, identical sessions after `Repair`. That divergence is
+what `docs/CLI_DESIGN.md`'s *The durable announcement lands after repair, not
+after `finish`* rests on, and it had no test until now.
 
 Session pruning and deletion, which was the unblocked item here, is **built**:
 `elelem prune SESSID --keep N` and `elelem delete SESSID`, with the design

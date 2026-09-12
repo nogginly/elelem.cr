@@ -20,34 +20,9 @@ on the message, `MPSH::Repair` over the session, and the invariant it closes on
 `docs/MPSH_SPECIFICATION.md` §3a carries the argument now, which is where it
 belongs: it is a statement about the format, not an outstanding question.
 
-One thing the build left uncovered, recorded below rather than here because it
-is coverage rather than design.
-
 ---
 
 ## WILL FIX
-
-### `Ending::Interrupted` has no end-to-end spec
-
-The other three members are asserted against recordings. `Truncated` comes off
-the `max_output_tokens: 24` transcript, and `Stopped` off the stopped-turn spec
-in each of the four streaming suites — including the one place the ordering is
-load-bearing, where the Responses exporter reads `incomplete`, sets `Truncated`,
-and the client corrects it because only the client knows somebody asked.
-
-`Interrupted` is the one with nothing behind it. What a *cut* stream produces
-is pinned offline for all four assemblers; what `Client` then writes onto the
-message is not, because no transcript ends without its terminal frame.
-
-The fixture is nearly free and deliberately synthetic: hand-truncate a recorded
-SSE transcript after three deltas. That escapes the usual objection — what is
-under test is our own response to a cut byte stream, not our guess about what a
-vendor sends. What it needs is a way to replay a transcript Wiretap did not cut
-itself, which is the only part worth thinking about before writing it.
-
-Left as WILL FIX rather than MUST FIX because the branch it exercises is two
-lines and its inputs are pinned on both sides — but it is the member whose
-existence justified the field, so it should not stay uncovered long.
 
 ### Retention governs replay, not display and not storage
 

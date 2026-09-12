@@ -640,6 +640,14 @@ Five things learned the hard way:
 
 - **Record, never hand-write.** Both times a transcript was guessed at rather
   than captured, the guess was wrong and cost a debugging round.
+- **One sanctioned exception: a recorded transcript cut by hand.** No server
+  sends a truncated stream on request, so `Ending::Interrupted` could not be
+  covered by recording anything. `anthropic_stream_cut` and
+  `ollama_chat_stream_cut` are copies of recorded transcripts with their
+  trailing frames removed and their requests left verbatim, so the digest still
+  matches. The rule above still holds: the frames are recorded and only the
+  *cut* is ours, which is why this escapes the objection rather than bending it.
+  A fixture whose *frames* were invented would not.
 - **A fixture written by the same hand as the code tests the hand, not the
   wire.** Ollama spells the Chat Completions reasoning field `reasoning`; vLLM
   and DeepSeek spell it `reasoning_content`. The reader took only the second, so
