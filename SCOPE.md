@@ -49,24 +49,6 @@ Left as WILL FIX rather than MUST FIX because the branch it exercises is two
 lines and its inputs are pinned on both sides — but it is the member whose
 existence justified the field, so it should not stay uncovered long.
 
-### A streamed Gemini `thoughtSignature` is unproven on replay
-
-The one live gap left after streaming. `spec/live/gemini_streaming_spec.cr`
-confirms a signature arrives in a streamed turn and survives export; nothing
-confirms Google accepts it back. Present is not the same as intact, and a
-signature damaged by fragmenting or merging would look identical to a good one
-until the following request is rejected.
-
-Anthropic's equivalent *is* proven —
-`spec/live/anthropic_streaming_spec.cr` streams a thinking turn, appends the
-reply to its session and sends it back — so the shape to copy already exists.
-One extra paid call on Flash, and worth it on the protocol whose signatures
-this shard has already caught the provider omitting undocumented
-(`gemini_thought_no_signature.json`).
-
-Cheap, and left as WILL FIX rather than MUST FIX only because streamed Gemini
-turns with thinking requested are not yet a path anything depends on.
-
 ### Retention governs replay, not display and not storage
 
 Surfaced settling a streaming question, and recorded because the assumption is

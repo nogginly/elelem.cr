@@ -1,0 +1,74 @@
+{
+  "name": "gemini_stream_resumed",
+  "recorded_with": "wiretap/0.4.2",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "531",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"Use the supplied tools when they apply.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]}],\"tools\":[{\"functionDeclarations\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}],\"generationConfig\":{\"maxOutputTokens\":512,\"thinkingConfig\":{\"thinkingLevel\":\"MEDIUM\",\"includeThoughts\":true}}}",
+        "body_digest": "2a1b7855e38dacb993e8bf13ba59c1cb4a54dd72f6a03893190c25555f8b26cd"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream",
+          "Content-Disposition": "attachment",
+          "Vary": "Origin, X-Origin, Referer",
+          "Transfer-Encoding": "chunked",
+          "Date": "Sat, 12 Sep 2026 14:01:12 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=1075",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+        },
+        "body": "data: {\"candidates\": [{\"content\": {\"parts\": [{\"functionCall\": {\"name\": \"get_weather\",\"args\": {\"city\": \"Paris\"},\"id\": \"call_1187765\"},\"thoughtSignature\": \"Ep8DCpwDARFNMg8PXnwiIy1tVIPYQJ7qQHoq6KESlzscrHEcH0dcaYqTI9Qr6dAOPcMTneNPPub4WS6Iab+i8/J8oGfASDjNjZn6HIcbRFOLQS7FFTNUYjXx/3t4XQiE9H64U4pkQcvEVF2oqSbueBaYeP4Ye27GqBUFzyK9P3mKPPq4ICspyIfJpVhCAU0D8SC2/g+uUJ5HfSb4E/jDicRHVXx10ekX/JeWyJJTDBUiSvtpHzMqcCKfmpN7nCyLySq/Nf843yrLKq462OP8sY3ntZrzLxC/btwnUT0aLIP4XgwVTjfp8KNRsyh9f+NvhrG7DwOlbS1+U6pScSTAvf5KUvVCtE63BIrmj0vj7ZVzaNdVEGJa1xaIo8akJznAiElkyBSAJun4Ud8XWcaFwkeylASLPvyDcibmb3gQaf49bD3tce58rQJ5m2+mokLqbG9kQvlO9r58yYmklRV7KYcq+kW+ajqz102DtbGj13J2PVf4HZL4I2kZOuY0DoK5yv7oKrg0uaCI8RlN5RdlcSo7whQS9hmjVzwiRd9YI184Uw==\"}],\"role\": \"model\"},\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 75,\"candidatesTokenCount\": 16,\"totalTokenCount\": 157,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 75}],\"thoughtsTokenCount\": 66,\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.5-flash\",\"responseId\": \"J1ulaoqdH5LP_uMPj87hyQs\"}\r\n\r\ndata: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"\"}],\"role\": \"model\"},\"finishReason\": \"STOP\",\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 75,\"candidatesTokenCount\": 16,\"totalTokenCount\": 157,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 75}],\"thoughtsTokenCount\": 66,\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.5-flash\",\"responseId\": \"J1ulaoqdH5LP_uMPj87hyQs\"}\r\n\r\n"
+      },
+      "recorded_at": "2026-09-12T14:01:12Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+        "headers": {
+          "content-type": "application/json",
+          "x-goog-api-key": "[FILTERED]",
+          "Content-Length": "1326",
+          "Host": "generativelanguage.googleapis.com",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"systemInstruction\":{\"parts\":[{\"text\":\"Use the supplied tools when they apply.\"}]},\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"What is the weather in Paris? Use the get_weather tool.\"}]},{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_weather\",\"args\":{\"city\":\"Paris\"}},\"thoughtSignature\":\"Ep8DCpwDARFNMg8PXnwiIy1tVIPYQJ7qQHoq6KESlzscrHEcH0dcaYqTI9Qr6dAOPcMTneNPPub4WS6Iab+i8/J8oGfASDjNjZn6HIcbRFOLQS7FFTNUYjXx/3t4XQiE9H64U4pkQcvEVF2oqSbueBaYeP4Ye27GqBUFzyK9P3mKPPq4ICspyIfJpVhCAU0D8SC2/g+uUJ5HfSb4E/jDicRHVXx10ekX/JeWyJJTDBUiSvtpHzMqcCKfmpN7nCyLySq/Nf843yrLKq462OP8sY3ntZrzLxC/btwnUT0aLIP4XgwVTjfp8KNRsyh9f+NvhrG7DwOlbS1+U6pScSTAvf5KUvVCtE63BIrmj0vj7ZVzaNdVEGJa1xaIo8akJznAiElkyBSAJun4Ud8XWcaFwkeylASLPvyDcibmb3gQaf49bD3tce58rQJ5m2+mokLqbG9kQvlO9r58yYmklRV7KYcq+kW+ajqz102DtbGj13J2PVf4HZL4I2kZOuY0DoK5yv7oKrg0uaCI8RlN5RdlcSo7whQS9hmjVzwiRd9YI184Uw==\"},{\"text\":\"\"}]},{\"role\":\"user\",\"parts\":[{\"functionResponse\":{\"name\":\"get_weather\",\"response\":{\"output\":\"18C, light rain\"}}}]}],\"tools\":[{\"functionDeclarations\":[{\"name\":\"get_weather\",\"description\":\"Look up the current weather in a city\",\"parameters\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"City name\"}},\"required\":[\"city\"]}}]}],\"generationConfig\":{\"maxOutputTokens\":512,\"thinkingConfig\":{\"thinkingLevel\":\"MEDIUM\",\"includeThoughts\":true}}}",
+        "body_digest": "74a5f151c3caac52e99598a0650de896f7d3843933f390125941e7893de328e9"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Gemini-Service-Tier": "standard",
+          "Content-Type": "application/json; charset=UTF-8",
+          "Vary": "Origin, X-Origin, Referer",
+          "Date": "Sat, 12 Sep 2026 14:01:13 GMT",
+          "Server": "scaffolding on HTTPServer2",
+          "X-XSS-Protection": "0",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff",
+          "Server-Timing": "gfet4t7; dur=797",
+          "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+          "Transfer-Encoding": "chunked"
+        },
+        "body": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\": [\n          {\n            \"text\": \"The current weather in Paris is 18°C with light rain.\",\n            \"thoughtSignature\": \"EmgKZgERTTIPw9uPGhgZi2vBx+16fAfYZRHwRO2HNfm9S4P9Hbg47wnDdy5RdcvYSlaLRpSj7c+UXNUNILe1TaFMWESfdpxNEFcwIqUJgEzH1mbHOQRFOlLa1MX1M7NPBZXE7UFDX+ORtQ==\"\n          }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\": \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 176,\n    \"candidatesTokenCount\": 15,\n    \"totalTokenCount\": 191,\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 176\n      }\n    ],\n    \"serviceTier\": \"standard\"\n  },\n  \"modelVersion\": \"gemini-3.5-flash\",\n  \"responseId\": \"KFulavboKI22_PUPi6nI2Qg\"\n}\n"
+      },
+      "recorded_at": "2026-09-12T14:01:13Z"
+    }
+  ]
+}

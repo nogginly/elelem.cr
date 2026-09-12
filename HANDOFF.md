@@ -175,9 +175,9 @@ text-only, and `Client#send`'s turn loop is caller-owned by design so the CLI
 has to decide what *it* does. It is also what finally gives `CLI_DESIGN.md`'s
 *Printed bytes precede repair* something to bite on — see below.
 
-Two smaller open items, both recorded in `SCOPE.md`: `Ending::Interrupted` has
-no end-to-end spec, and there is no recorded spec of a streamed `start` or
-`continue`. The first is free; the second costs a recording.
+One smaller open item, recorded in `SCOPE.md`: `Ending::Interrupted` has no
+end-to-end spec. It is free — a hand-truncated SSE transcript, and the only
+part worth thinking about is letting Wiretap replay a cut it did not make.
 
 **`SCOPE.md`'s `MUST FIX` is empty.** Interrupted-turn repair, the last entry
 in it, is built, and the argument that used to live there now lives in
@@ -245,6 +245,20 @@ Three things in it were checked rather than assumed:
   permitted to disagree with the archive* — rather than as a guess about who is
   watching.
 
+**The streamed turn is now recorded end to end**
+(`spec/elelem_cli/commands/streaming_spec.cr`), against Ollama rather than a
+vendor: everything above the assemblers is protocol-agnostic, and the four
+assemblers are already proved where it counts. `--stream` is what the specs
+use, because `Output.stream` is an `IO::Memory` and the tty floor declines
+otherwise — which that file also asserts, for free, by replaying
+`start_spec.cr`'s own transcript.
+
+One example there is load-bearing beyond its own turn: streamed stdout is
+asserted **equal** to the saved reply's text. That is the property above stated
+as an assertion for the first time. It is trivially true today and stops being
+trivial the moment a tool call is narrated — at which point it is what goes red
+if the narration lands on stdout instead of stderr.
+
 Streaming was built **one protocol at a time** — read
 `docs/STREAMING_DESIGN.md` before touching it. The short version: frames
 assemble into each protocol's own `Wire::Response` and then take the *existing*
@@ -291,7 +305,10 @@ vendor could confirm, that a streamed Anthropic `signature_delta` survives and
 is accepted when replayed. The general lesson is in `docs/servers/OLLAMA.md`:
 this server is *more* forgiving than the endpoints it imitates, and offline
 fixtures cut from its transcripts inherit that blind spot. Gemini's streamed
-`thoughtSignature` is still unproven on replay and is the one gap left.
+`thoughtSignature` is now proven on replay too (`gemini_stream_resumed`), which
+was the last live gap: the signature rides on the `functionCall` part, and
+`Resolver` reports `Degraded` on a call that lost one, so a damaged signature
+raises rather than passing quietly. **No live gaps remain in streaming.**
 
 **Interrupted-turn repair is built on top of it** — see *Next* above. Two
 things the streaming build had already settled did most of the work: a stopped

@@ -9,7 +9,8 @@ require "../spec_helper"
 # exists; every other protocol asks for a stream in the body.
 #
 # **Recording.** Needs `GEMINI_API_KEY` and `RECORD=1`, as `gemini_spec.cr`
-# does. Four transcripts, four paid calls, all on Flash.
+# does. Five transcripts, six paid calls, all on Flash — the resumed one is two
+# calls in a single transcript.
 #
 # **What this has to settle, in order of how expensive it would be to get
 # wrong.**
@@ -23,7 +24,9 @@ require "../spec_helper"
 #    unmodified or the following turn is rejected, which makes this the point
 #    where streaming could break portable history on the protocol that most
 #    depends on it. If a signature arrives split across fragments, or not at
-#    all when streamed, that is a finding worth the whole recording.
+#    all when streamed, that is a finding worth the whole recording. Arriving
+#    is not the same as being accepted back, which is why a resumed turn sits
+#    below rather than the gap being left open as it was.
 # 3. **Does text actually need merging, and does it merge correctly?** Pinned
 #    by asserting the reply carries *one* text block rather than one per
 #    chunk. Offline specs prove the arithmetic; this proves it was the right
@@ -49,6 +52,7 @@ private STREAM_TEXT     = "gemini_stream_text"
 private STREAM_THINKING = "gemini_stream_thinking"
 private STREAM_TOOLS    = "gemini_stream_tools"
 private STREAM_CAPPED   = "gemini_stream_capped"
+private STREAM_RESUMED  = "gemini_stream_resumed"
 
 private def endpoint : Elelem::Server
   Elelem::Server.new("gemini", "https://generativelanguage.googleapis.com", ENV["GEMINI_API_KEY"]?)
@@ -274,6 +278,59 @@ describe "Gemini streaming" do
 
         signed.should_not be_empty
         signed.each { |signature| signature.as(String).should_not be_empty }
+      end
+    end
+  end
+
+  describe "a thought signature replayed on the next turn" do
+    it "is accepted by the provider that issued it" do
+      # The difference between a signature that is *present* and one that is
+      # *intact*. The example above proves bytes arrived and survived export;
+      # only sending them back proves they were the right bytes, unmodified.
+      # A signature damaged by fragmenting or merging looks identical to a good
+      # one until the following request is rejected.
+      #
+      # **Two things make this turn the one worth paying for.** The signature
+      # rides on the `functionCall` part here, which is the shape Gemini 3
+      # requires and the shape `elelem` had nowhere to carry until recently.
+      # And `Resolver` checks for a missing signature ahead of `own?`, so a
+      # call that lost one is reported `Degraded` and refused by the default
+      # `Compensating` policy — which means a lost signature raises here rather
+      # than passing quietly.
+      #
+      # **The second turn is deliberately not streamed.** What is under test is
+      # the signature a streamed turn produced, not the streaming of the reply
+      # that accepts it. Same choice as `anthropic_streaming_spec.cr`, for the
+      # same reason.
+      #
+      # **A tool result is required, not decoration.** Replaying the call
+      # without one leaves the session holding a dangling call, which
+      # `MPSH::Repair`'s invariant forbids and this protocol's validator
+      # rejects — so the request would fail for a reason that has nothing to do
+      # with the signature under test.
+      #
+      # Multi-turn, which `DEVELOPMENT.md` warns re-cuts every turn when
+      # re-recorded. Accepted here because the second turn is the whole point.
+      Wiretap.intercept(STREAM_RESUMED) do
+        session = tool_question
+        first, _ = streamed.send(session, MODEL, options: armed) { |_, _| }
+        session << first
+
+        calls = first.content.select(M::ToolCallBlock).reject(&.server_executed?)
+        calls.size.should eq 1
+        first.content.compact_map { |block| gemini_meta(block, "thought_signature") }
+          .should_not be_empty
+
+        session << M::Message.new(M::Role::User, calls.map do |call|
+          M::ToolResultBlock.new(call.call_id,
+            [M::TextBlock.new("18C, light rain").as(M::Block)]).as(M::Block)
+        end)
+
+        answer, report = streamed.send(session, MODEL, options: armed)
+
+        answer.content.select(M::TextBlock).should_not be_empty
+        report.annotations.map(&.outcome).should_not contain M::Outcome::Degraded
+        report.annotations.map(&.outcome).should_not contain M::Outcome::Refused
       end
     end
   end
