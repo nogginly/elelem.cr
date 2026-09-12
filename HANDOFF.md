@@ -175,8 +175,27 @@ text-only, and `Client#send`'s turn loop is caller-owned by design so the CLI
 has to decide what *it* does. It is also what finally gives `CLI_DESIGN.md`'s
 *Printed bytes precede repair* something to bite on — see below.
 
-Nothing else from the streaming and repair work is outstanding. `SCOPE.md`'s
-remaining entries all predate it.
+**Tool execution's library half is built**: `Elelem::Function` is a declaration
+plus its handler, `Elelem::Toolbox` holds a collection and is used at both ends
+of a turn — `#tools` out, `#dispatch` back, `nil` from `#dispatch` as the loop's
+exit condition. `docs/TOOL_EXECUTION.md` records the shape and the seven
+decisions behind it. Four are worth knowing before touching it: a tool result is
+`Array(MPSH::Block)` rather than a new type, because `ToolResultBlock#content`
+already is one; arguments arrive as a parsed `MPSH::Object` and `MPSH::Value` is
+a real union, not a `JSON::Any`; tools stay in `Options` and never in `Session`,
+because a `Function` is Crystal code and a portable archive cannot express one;
+and `#dispatch` repairs its own argument, so the ordering rule from
+`CLI_DESIGN.md` cannot be got wrong by a caller who has not read it.
+
+One asymmetry inside it is easy to get backwards. `ToolResultBlock#is_error` is
+carried by the mappers; `#exception` is written by `Archive` and read back, and
+nowhere else. So a tool that *reports* failure sets only `is_error`, and a tool
+that raises unexpectedly must set both — otherwise it crashes and the model is
+never told.
+
+What is left is the CLI half, and it is genuinely a CLI question now: whether
+`start`/`continue` declare tools at all, and what the executable would run.
+`SCOPE.md`'s remaining entries all predate the streaming work.
 
 **`SCOPE.md`'s `MUST FIX` is empty.** Interrupted-turn repair, the last entry
 in it, is built, and the argument that used to live there now lives in

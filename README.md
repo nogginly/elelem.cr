@@ -115,6 +115,30 @@ is archived, so a session reloaded next week still knows its last turn was a
 fragment rather than a short answer. Repair drops the unfinished calls and keeps
 the text.
 
+### Giving the model tools it can actually run
+
+`Tool` declares; `Function` declares *and* runs. A `Toolbox` holds a collection
+of them and is used at both ends of a turn.
+
+```crystal
+toolbox = Elelem::Toolbox.new([Weather.new, Clock.new] of Elelem::Function)
+
+loop do
+  reply, _ = client.send(session, model, options: Elelem::Options.new(tools: toolbox.tools))
+  session << reply
+
+  results = toolbox.dispatch(reply)
+  break unless results
+  session << results
+end
+```
+
+`#dispatch` returns `nil` when there is nothing to run, which is the loop's exit
+condition. Every call gets a result — including one naming a tool the box does
+not hold, and one whose tool raised — because a session holding a call without
+its result is the shape a provider rejects. A tool returns `Array(MPSH::Block)`,
+so a tool that answers with an image or a file needs no special handling.
+
 ### Choosing how much loss you will accept
 
 Translation loss is graded, and the policy decides what to do about it:
@@ -195,6 +219,7 @@ Document                                                  |Holds
 [docs/protocols/](./docs/protocols/)                      |One file per protocol: gotchas and compensations                
 [docs/servers/](./docs/servers/)                          |One file per server, and what a green run there does *not* prove
 [docs/STREAMING_DESIGN.md](./docs/STREAMING_DESIGN.md)    |The streamed turn, and the two places its design was wrong      
+[docs/TOOL_EXECUTION.md](./docs/TOOL_EXECUTION.md)        |Caller-supplied tools, and what was decided about them          
 [docs/CLI_DESIGN.md](./docs/CLI_DESIGN.md)                |The `elelem` executable                                         
 [SCOPE.md](./SCOPE.md)                                    |What is still outstanding                                       
 

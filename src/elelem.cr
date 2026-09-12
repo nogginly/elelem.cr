@@ -86,5 +86,12 @@ require "./elelem/adapters/azure/responses"
 require "./elelem/provider"
 require "./elelem/client"
 
+# Caller-facing tool execution. Depends on `mpsh/` and on `Tool` in
+# `options.cr`; depends on nothing in the live layer, which is why a `Toolbox`
+# can be built and tested without a `Client`. Required last because it is the
+# only place this shard runs code it did not write.
+require "./elelem/function"
+require "./elelem/toolbox"
+
 module Elelem
 end

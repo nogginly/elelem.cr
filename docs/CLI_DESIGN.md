@@ -554,7 +554,12 @@ returns. Recorded so it is not rediscovered as a bug.
   either the CLI runs something, or it declares nothing.
 
   What the terminal prints while a call is in flight is settled ahead of this,
-  in *Printed bytes precede repair* above.
+  in *Printed bytes precede repair* above. The library half is now built —
+  `Elelem::Function` and `Elelem::Toolbox`, see
+  [TOOL_EXECUTION.md](./TOOL_EXECUTION.md) — so what remains is genuinely a CLI
+  question: whether the executable declares anything, and what it would run.
+  `Toolbox#dispatch` already reads the repaired reply, so the ordering rule
+  above is enforced whatever the CLI decides.
 
 ## Streaming
 
